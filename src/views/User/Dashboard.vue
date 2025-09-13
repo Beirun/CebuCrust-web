@@ -1,6 +1,6 @@
 <template>
   <div></div>
-  <!-- <button @click="auth.logout">Logout</button> -->
+  <button @click="auth.logout">Logout</button>
 </template>
 
 <script setup lang="ts">
