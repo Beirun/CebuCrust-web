@@ -10,15 +10,16 @@ import { useFetch } from '@/plugins/api' // <-- your custom fetch wrapper
 export const useAuthStore = defineStore('auth', () => {
   const sonner = useSonnerStore()
   //   const notification = useNotificationStore()
-  const URL = import.meta.env.VITE_BASE_URL
+  const URL = import.meta.env.VITE_BASE_URL ?? 'http://localhost:5135/api'
 
   const token = ref(localStorage.getItem('token'))
   const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
   const isLoading = ref(false)
   const isAuthenticated = computed(() => !!token.value)
-  const isAdmin = ref(false)
+  const isAdmin = computed(() =>
+    token.value ? Object.values(jwtDecode(token.value))[2] === 'Admin' : false,
+  )
   const userInfo = computed(() => user.value)
-  const isFromLogin = ref(false)
 
   const register = async (credentials: {
     email: string
@@ -37,10 +38,6 @@ export const useAuthStore = defineStore('auth', () => {
       if (!res.ok) return sonner.error(data.message)
 
       sonner.success(data.message)
-      console.log('token', data.token)
-      const decoded: any = jwtDecode(data.token)
-      console.log('Decoded', decoded)
-      console.log('Role', decoded[' http://schemas.microsoft.com/ws/2008/06/identity/claims/role'])
 
       token.value = data.token
       user.value = data.user
@@ -126,14 +123,6 @@ export const useAuthStore = defineStore('auth', () => {
       })
       const data = await res.json()
       if (!res.ok) return sonner.error(data.message)
-      console.log('data', data)
-      console.log('token', data.token)
-      const decoded = jwtDecode(data.token)
-      console.log('Decoded', decoded)
-      console.log('Values', Object.values(decoded))
-
-      console.log('isAdmin', isAdmin.value)
-      isAdmin.value = Object.values(decoded)[2] === 'Admin'
 
       sonner.success(data.message)
       token.value = data.token
@@ -141,7 +130,6 @@ export const useAuthStore = defineStore('auth', () => {
 
       //   await notification.fetchNotifications(user.value.userId)
 
-      console.log('isAdmin', isAdmin.value)
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
       const redirectPath = sessionStorage.getItem('redirectAfterLogin')
@@ -159,7 +147,6 @@ export const useAuthStore = defineStore('auth', () => {
       sonner.error(err.message)
     } finally {
       isLoading.value = false
-      isFromLogin.value = true
     }
   }
 
