@@ -2,8 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Landing from '@/views/Landing.vue'
 import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
-import AboutUs from '@/views/AboutUs.vue'
-import Contact from '@/views/Contact.vue'
 import Settings from '@/views/Settings.vue'
 import AdminDashboard from '@/views/Admin/Dashboard.vue'
 import AdminMenu from '@/views/Admin/Menu.vue'
@@ -29,16 +27,6 @@ const router = createRouter({
       path: '/register',
       name: 'register',
       component: Register,
-    },
-    {
-      path: '/aboutus',
-      name: 'AboutUs',
-      component: AboutUs,
-    },
-    {
-      path: '/contact',
-      name: 'Contact',
-      component: Contact,
     },
     {
       path: '/settings',
