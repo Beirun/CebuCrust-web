@@ -235,7 +235,7 @@ const features = [
       </div>
     </div>
 
-    <div class="bg-[#121A1D] h-80 w-screen flex flex-col px-30 py-8 text-[#797B78] justify-between">
+    <div class="bg-[#121A1D] h-70 w-screen flex flex-col px-30 pt-8 text-[#797B78] justify-between">
       <div class="flex w-full justify-between gap-40">
         <div class="w-150 flex flex-col gap-2">
           <div>
@@ -272,6 +272,8 @@ const features = [
           <div>+1257 6541120</div>
         </div>
       </div>
+    </div>
+    <div class="bg-[#121A1D] flex justify-between px-30 py-8 text-[#797B78]">
       <div class="flex w-full justify-between">
         <div>©2024 ARR, All right reserved</div>
         <div class="flex gap-8">
