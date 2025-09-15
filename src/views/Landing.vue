@@ -1,13 +1,16 @@
 # /
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { onBeforeUnmount, onMounted, reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import ScrollToTopButton from '@/components/ScrollToTopButton.vue'
 import LandingNavbar from '@/components/LandingNavbar.vue'
 import LandingHero from '@/components/LandingHero.vue'
 import InfoCard from '@/components/InfoCard.vue'
+import LandingFooter from '@/components/LandingFooter.vue'
+import { useSonnerStore } from '@/stores/sonner'
 
+const sonner = useSonnerStore()
 const aboutSection = [
   {
     sectionTitle: 'ABOUT US',
@@ -58,6 +61,9 @@ const features = [
       'Lorem ipsum dolor sit amet consectetur. Felis eget sit sit scelerisque vestibulum. Urna faucibus amet massa lacus lorem. ',
   },
 ]
+
+onMounted(() => sonner.setTheme('dark'))
+onBeforeUnmount(() => sonner.setTheme('light'))
 </script>
 
 <template>
@@ -276,14 +282,6 @@ const features = [
       </div>
     </div>
 
-    <div class="bg-[#121A1D] flex justify-between px-30 py-8 text-[#797B78]">
-      <div class="flex w-full justify-between">
-        <div>©2024 ARR, All right reserved</div>
-        <div class="flex gap-8">
-          <button>Privacy Policy</button>
-          <button>Terms of Use</button>
-        </div>
-      </div>
-    </div>
+    <LandingFooter />
   </div>
 </template>

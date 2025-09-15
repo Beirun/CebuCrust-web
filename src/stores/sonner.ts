@@ -1,8 +1,12 @@
 // stores/sonner.ts
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
 import { toast } from 'vue-sonner'
 
 export const useSonnerStore = defineStore('sonner', () => {
+  const theme = ref<'light' | 'dark'>('light')
+
+  const setTheme = (newTheme: typeof theme.value) => (theme.value = newTheme)
   const error = (message: string) => {
     toast.error('Error', {
       description: message,
@@ -11,6 +15,9 @@ export const useSonnerStore = defineStore('sonner', () => {
 
   const success = (message: string) => {
     toast.success('Success', {
+      style: {
+        background: '',
+      },
       description: message,
     })
   }
@@ -21,6 +28,8 @@ export const useSonnerStore = defineStore('sonner', () => {
   }
 
   return {
+    theme,
+    setTheme,
     error,
     success,
     message,
