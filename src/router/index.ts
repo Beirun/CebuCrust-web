@@ -10,6 +10,7 @@ import Dashboard from '@/views/User/Dashboard.vue'
 import Favorites from '@/views/User/Favorites.vue'
 import Menu from '@/views/User/Menu.vue'
 import Orders from '@/views/User/Orders.vue'
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -71,6 +72,6 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach(async () => {})
+// router.beforeEach(async () => {})
 
 export default router
