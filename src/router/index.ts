@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Landing from '@/views/Landing.vue'
-import Login from '@/views/Login.vue'
-import Register from '@/views/Register.vue'
+import SignIn from '@/views/SignIn.vue'
+import SignUp from '@/views/SignUp.vue'
 import Settings from '@/views/Settings.vue'
 import AdminDashboard from '@/views/Admin/Dashboard.vue'
 import AdminMenu from '@/views/Admin/Menu.vue'
@@ -15,18 +15,18 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'landing',
+      name: 'Landing',
       component: Landing,
     },
     {
-      path: '/login',
-      name: 'login',
-      component: Login,
+      path: '/signin',
+      name: 'SignIn',
+      component: SignIn,
     },
     {
-      path: '/register',
-      name: 'register',
-      component: Register,
+      path: '/signup',
+      name: 'SignUp',
+      component: SignUp,
     },
     {
       path: '/settings',
