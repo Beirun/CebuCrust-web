@@ -3,6 +3,7 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import ScrollToTopButton from '@/components/ScrollToTopButton.vue'
 import LandingNavbar from '@/components/LandingNavbar.vue'
 import LandingHero from '@/components/LandingHero.vue'
 import InfoCard from '@/components/InfoCard.vue'
@@ -61,11 +62,12 @@ const features = [
 
 <template>
   <div class="min-h-screen w-screen scroll-smooth">
+    <ScrollToTopButton />
     <LandingNavbar />
     <LandingHero />
 
     <!-- About Us Section -->
-    <div class="flex flex-col min-h-screen w-screen bg-[#0A1316] p-30 gap-50">
+    <div id="about" class="flex flex-col min-h-screen w-screen bg-[#0A1316] p-30 pt-20 gap-50">
       <InfoCard
         v-for="(section, index) in aboutSection"
         :section-title="section.sectionTitle"
@@ -79,7 +81,7 @@ const features = [
     </div>
 
     <!-- Features Section -->
-    <div class="flex flex-col items-center w-screen bg-[#0A1316] p-30 gap-10">
+    <div class="flex flex-col items-center w-screen bg-[#0A1316] p-30 pt-20 gap-10">
       <div class="flex flex-col text-white items-center gap-2">
         FEATURES
         <span class="h-[1px] w-full bg-primary"></span>
@@ -102,7 +104,7 @@ const features = [
     </div>
 
     <!-- Menu Section -->
-    <div class="flex flex-col items-center w-screen bg-[#0A1316] p-30 gap-10">
+    <div id="menu" class="flex flex-col items-center w-screen bg-[#0A1316] p-30 pt-20 gap-10">
       <div class="flex flex-col text-white items-center gap-2">
         MENU
         <span class="h-[1px] w-full bg-primary"></span>
@@ -140,7 +142,7 @@ const features = [
     </div>
 
     <!-- Get In Touch Section -->
-    <div class="flex flex-col items-center w-screen bg-[#0A1316] p-30 gap-10">
+    <div id="contact" class="flex flex-col items-center w-screen bg-[#0A1316] p-30 pt-20 gap-10">
       <div class="flex flex-col text-white items-center gap-2">
         GET IN TOUCH
         <span class="h-[1px] w-full bg-primary"></span>
@@ -235,7 +237,7 @@ const features = [
       </div>
     </div>
 
-    <div class="bg-[#121A1D] h-70 w-screen flex flex-col px-30 pt-8 text-[#797B78] justify-between">
+    <div class="bg-[#121A1D] h-65 w-screen flex flex-col px-30 pt-8 text-[#797B78] justify-between">
       <div class="flex w-full justify-between gap-40">
         <div class="w-150 flex flex-col gap-2">
           <div>
@@ -273,6 +275,7 @@ const features = [
         </div>
       </div>
     </div>
+
     <div class="bg-[#121A1D] flex justify-between px-30 py-8 text-[#797B78]">
       <div class="flex w-full justify-between">
         <div>©2024 ARR, All right reserved</div>
