@@ -1,4 +1,12 @@
 <script setup lang="ts">
+import router from '@/router'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+const props = defineProps({
+  class: { type: String, default: '' },
+})
+
 const links = [
   { name: 'Home', target: 'top' },
   { name: 'About Us', target: 'about' },
@@ -6,19 +14,25 @@ const links = [
   { name: 'Contact', target: 'contact' },
 ]
 
-function scrollTo(id: string) {
+async function scrollTo(id: string) {
+  if (route.path !== '/') await router.push('/')
   const el = id === 'top' ? document.documentElement : document.getElementById(id)
   if (el) el.scrollIntoView({ behavior: 'smooth' })
 }
 </script>
 
 <template>
-  <div class="w-full flex justify-between absolute top-0 px-40 gap-10 py-6 text-lg z-10">
+  <div
+    :class="[
+      'w-full flex justify-between absolute top-0 px-30 gap-10 py-4 text-lg z-10',
+      props.class,
+    ]"
+  >
     <div>
       <img
         src="@/assets/logo.png"
         alt="Logo"
-        class="w-50 cursor-pointer"
+        class="w-55 cursor-pointer"
         @click="scrollTo('top')"
       />
     </div>
@@ -38,8 +52,10 @@ function scrollTo(id: string) {
     </div>
 
     <div class="flex gap-8">
-      <button class="text-primary">Sign In</button>
-      <button class="bg-primary text-white px-4 py-3 rounded-sm">Sign Up</button>
+      <button @click="router.push('/signin')" class="text-primary">Sign In</button>
+      <button @click="router.push('/signup')" class="bg-primary text-white px-4 py-3 rounded-sm">
+        Sign Up
+      </button>
     </div>
   </div>
 </template>
