@@ -39,8 +39,18 @@ const router = createRouter({
       component: AdminDashboard,
     },
     {
+      path: '/admin',
+      name: 'Admin',
+      component: AdminDashboard,
+    },
+    {
       path: '/menu/admin',
       name: 'AdminMenu',
+      component: AdminMenu,
+    },
+    {
+      path: '/menu',
+      name: 'AdminMenuDirect',
       component: AdminMenu,
     },
     {

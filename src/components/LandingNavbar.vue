@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import router from '@/router'
-
 const Links = [
   {
     name: 'Home',
@@ -23,7 +21,7 @@ const Links = [
       <img src="@/assets/logo.png" alt="Logo" class="w-50" />
     </div>
     <div class="flex gap-[clamp(20px,10vw,100px)] items-center">
-      <button v-for="link in Links" class="text-white">
+      <button v-for="link in Links" :key="link.name" class="text-white">
         {{ link.name }}
       </button>
     </div>
