@@ -3,9 +3,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
 import { ShoppingCart, Bell, User, Heart, Star, MapPin, Clock, ChevronDown } from 'lucide-vue-next'
 
 const auth = useAuthStore()
+const cart = useCartStore()
 
 // User data
 const user = ref({
@@ -55,7 +57,7 @@ const toggleFavorite = (item: any) => {
 }
 
 const addToCart = (item: any) => {
-  console.log('Added to cart:', item)
+  cart.addItem(item)
 }
 
 const trackOrder = () => {
@@ -91,18 +93,19 @@ const changeAddress = () => {
 
           <!-- User Actions -->
           <div class="flex items-center space-x-4">
-            <button class="p-2 text-white hover:text-orange-500">
+            <router-link to="/cart" class="relative p-2 text-white hover:text-orange-500">
               <ShoppingCart class="w-6 h-6" />
-            </button>
+              <span v-if="cart.itemCount > 0" class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-500 rounded-full">{{ cart.itemCount }}</span>
+            </router-link>
             <button class="p-2 text-white hover:text-orange-500 relative">
               <Bell class="w-6 h-6" />
               <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
-            <div class="flex items-center space-x-2">
+            <router-link to="/settings" class="flex items-center space-x-2 text-white hover:text-orange-300">
               <User class="w-6 h-6 text-white" />
               <span class="text-white font-medium">{{ user.name }}</span>
               <ChevronDown class="w-4 h-4 text-white" />
-            </div>
+            </router-link>
           </div>
         </div>
       </div>
