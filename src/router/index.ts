@@ -10,6 +10,8 @@ import Dashboard from '@/views/User/Dashboard.vue'
 import Favorites from '@/views/User/Favorites.vue'
 import Menu from '@/views/User/Menu.vue'
 import Orders from '@/views/User/Orders.vue'
+import ForgotPassword from '@/views/ForgotPassword.vue'
+import ResetPassword from '@/views/ResetPassword.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -28,6 +30,16 @@ const router = createRouter({
       path: '/signup',
       name: 'SignUp',
       component: SignUp,
+    },
+    {
+      path: '/forgot',
+      name: 'ForgotPassword',
+      component: ForgotPassword,
+    },
+    {
+      path: '/reset/:code',
+      name: 'ResetPassword',
+      component: ResetPassword,
     },
     {
       path: '/settings',
