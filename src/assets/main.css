@@ -167,3 +167,9 @@ body {
 ::-webkit-scrollbar {
   display: none;
 }
+
+@layer base {
+  button {
+    @apply cursor-pointer;
+  }
+}

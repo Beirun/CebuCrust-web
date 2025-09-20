@@ -1,3 +1,5 @@
+# /dashboard
+
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 // import { useAuthStore } from '@/stores/auth'
@@ -32,89 +34,11 @@ const orderSteps = ref([
 
 // Static menu data
 const favorites = ref([
-  {
-    id: 1,
-    name: 'Pepperoni Supreme',
-    description: 'Premium pepperoni slices with extra mozzarella cheese on our classic hand-tossed dough.',
-    price: 485,
-    rating: 4.8,
-    reviewCount: 124,
-    image: '/api/placeholder/200/200',
-    isFavorite: true
-  },
-  {
-    id: 2,
-    name: 'Classic Margherita',
-    description: 'Fresh mozzarella, vine-ripened tomatoes, and aromatic basil on our signature thin crust.',
-    price: 695,
-    rating: 4.8,
-    reviewCount: 124,
-    image: '/api/placeholder/200/200',
-    isFavorite: true
-  },
-  {
-    id: 3,
-    name: 'Hawaiian Paradise',
-    description: 'Sweet pineapple chunks and savory ham with melted mozzarella on thin crust.',
-    price: 465,
-    rating: 4.8,
-    reviewCount: 124,
-    image: '/api/placeholder/200/200',
-    isFavorite: true
-  },
-  {
-    id: 4,
-    name: 'Buffalo Chicken Fire',
-    description: 'Spicy buffalo chicken, celery, red onions with blue cheese sauce drizzle.',
-    price: 575,
-    rating: 4.8,
-    reviewCount: 124,
-    image: '/api/placeholder/200/200',
-    isFavorite: true
-  }
+  
 ])
 
 const todaysSpecials = ref([
-  {
-    id: 5,
-    name: 'Classic Margherita',
-    description: 'Fresh mozzarella, vine-ripened tomatoes, and aromatic basil on our signature thin crust.',
-    price: 695,
-    rating: 4.8,
-    reviewCount: 124,
-    image: '/api/placeholder/200/200',
-    isFavorite: false
-  },
-  {
-    id: 6,
-    name: 'Pepperoni Supreme',
-    description: 'Premium pepperoni slices with extra mozzarella cheese on our classic hand-tossed dough.',
-    price: 485,
-    rating: 4.8,
-    reviewCount: 124,
-    image: '/api/placeholder/200/200',
-    isFavorite: false
-  },
-  {
-    id: 7,
-    name: 'Hawaiian Paradise',
-    description: 'Sweet pineapple chunks and savory ham with melted mozzarella on thin crust.',
-    price: 465,
-    rating: 4.8,
-    reviewCount: 124,
-    image: '/api/placeholder/200/200',
-    isFavorite: false
-  },
-  {
-    id: 8,
-    name: 'Buffalo Chicken Fire',
-    description: 'Spicy buffalo chicken, celery, red onions with blue cheese sauce drizzle.',
-    price: 575,
-    rating: 4.8,
-    reviewCount: 124,
-    image: '/api/placeholder/200/200',
-    isFavorite: false
-  }
+ 
 ])
 
 // Computed properties
@@ -249,7 +173,18 @@ const changeAddress = () => {
             View All Favorites
           </router-link>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Empty state for favorites -->
+        <div v-if="favorites.length === 0" class="bg-white rounded-lg shadow-sm border p-12 text-center">
+          <Heart class="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">You have no favorites yet</h3>
+          <p class="text-gray-600 mb-6">Start exploring our menu and add your favorite pizzas to see them here!</p>
+          <router-link to="/menu" class="inline-flex items-center bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+            Browse Menu
+          </router-link>
+        </div>
+        
+        <!-- Favorites grid -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="item in favorites" :key="item.id" class="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
             <div class="relative mb-4">
               <img :src="item.image" :alt="item.name" class="w-full h-48 object-cover rounded-lg">
@@ -281,7 +216,18 @@ const changeAddress = () => {
             View All Menu
           </router-link>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Empty state for today's specials -->
+        <div v-if="todaysSpecials.length === 0" class="bg-white rounded-lg shadow-sm border p-12 text-center">
+          <Star class="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">No specials today</h3>
+          <p class="text-gray-600 mb-6">Our admin hasn't added any special offers for today. Check back later or explore our regular menu!</p>
+          <router-link to="/menu" class="inline-flex items-center bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+            View Full Menu
+          </router-link>
+        </div>
+        
+        <!-- Today's specials grid -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="item in todaysSpecials" :key="item.id" class="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
             <div class="relative mb-4">
               <img :src="item.image" :alt="item.name" class="w-full h-48 object-cover rounded-lg">

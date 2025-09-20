@@ -1,10 +1,17 @@
 # /
 
 <script setup lang="ts">
+
+import { onBeforeUnmount, onMounted, reactive } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import ScrollToTopButton from '@/components/ScrollToTopButton.vue'
 import LandingNavbar from '@/components/LandingNavbar.vue'
 import LandingHero from '@/components/LandingHero.vue'
 import InfoCard from '@/components/InfoCard.vue'
+import LandingFooter from '@/components/LandingFooter.vue'
+import { useSonnerStore } from '@/stores/sonner'
 
+const sonner = useSonnerStore()
 const aboutSection = [
   {
     sectionTitle: 'ABOUT US',
@@ -55,15 +62,20 @@ const features = [
       'Lorem ipsum dolor sit amet consectetur. Felis eget sit sit scelerisque vestibulum. Urna faucibus amet massa lacus lorem. ',
   },
 ]
+
+onMounted(() => sonner.setTheme('dark'))
+onBeforeUnmount(() => sonner.setTheme('light'))
 </script>
 
 <template>
   <div class="min-h-screen w-screen scroll-smooth">
+    <ScrollToTopButton />
     <LandingNavbar />
     <LandingHero />
 
-    <!-- About Us -->
-    <div class="flex flex-col min-h-screen w-screen bg-[#0A1316] p-30 gap-50">
+
+    <!-- About Us Section -->
+    <div id="about" class="flex flex-col min-h-screen w-screen bg-[#0A1316] p-30 pt-20 gap-50">
       <InfoCard
         v-for="(section, index) in aboutSection"
         :key="index"
@@ -77,8 +89,9 @@ const features = [
       />
     </div>
 
-    <!-- Features -->
-    <div class="flex flex-col items-center w-screen bg-[#0A1316] p-30 gap-10">
+
+    <!-- Features Section -->
+    <div class="flex flex-col items-center w-screen bg-[#0A1316] p-30 pt-20 gap-10">
       <div class="flex flex-col text-white items-center gap-2">
         FEATURES
         <span class="h-[1px] w-full bg-primary"></span>
@@ -100,8 +113,9 @@ const features = [
       </div>
     </div>
 
-    <!-- Menu -->
-    <div class="flex flex-col items-center w-screen bg-[#0A1316] p-30 gap-10">
+
+    <!-- Menu Section -->
+    <div id="menu" class="flex flex-col items-center w-screen bg-[#0A1316] p-30 pt-20 gap-10">
       <div class="flex flex-col text-white items-center gap-2">
         MENU
         <span class="h-[1px] w-full bg-primary"></span>
@@ -139,8 +153,9 @@ const features = [
       </div>
     </div>
 
-    <!-- Get In Touch -->
-    <div class="flex flex-col items-center w-screen bg-[#0A1316] p-30 gap-10">
+
+    <!-- Get In Touch Section -->
+    <div id="contact" class="flex flex-col items-center w-screen bg-[#0A1316] p-30 pt-20 gap-10">
       <div class="flex flex-col text-white items-center gap-2">
         GET IN TOUCH
         <span class="h-[1px] w-full bg-primary"></span>
@@ -234,7 +249,7 @@ const features = [
       </div>
     </div>
 
-    <div class="bg-[#121A1D] h-70 w-screen flex flex-col px-30 pt-8 text-[#797B78] justify-between">
+    <div class="bg-[#121A1D] h-65 w-screen flex flex-col px-30 pt-8 text-[#797B78] justify-between">
       <div class="flex w-full justify-between gap-40">
         <div class="w-150 flex flex-col gap-2">
           <div>
@@ -272,14 +287,7 @@ const features = [
         </div>
       </div>
     </div>
-    <div class="bg-[#121A1D] flex justify-between px-30 py-8 text-[#797B78]">
-      <div class="flex w-full justify-between">
-        <div>©2024 ARR, All right reserved</div>
-        <div class="flex gap-8">
-          <button>Privacy Policy</button>
-          <button>Terms of Use</button>
-        </div>
-      </div>
-    </div>
+
+    <LandingFooter />
   </div>
 </template>

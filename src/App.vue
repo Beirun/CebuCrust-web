@@ -1,18 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import 'vue-sonner/style.css'
 import { Toaster } from '@/components/ui/sonner'
-import { useColorMode } from '@vueuse/core'
 
 import { RouterView } from 'vue-router'
+import { useSonnerStore } from './stores/sonner'
 
-const mode = useColorMode({ disableTransition: false })
-
-const toasterTheme = computed(() => (mode.value === 'auto' ? 'light' : mode.value))
+const sonner = useSonnerStore()
 </script>
 
 <template>
-  <Toaster richColors :theme="toasterTheme" />
+  <Toaster richColors :theme="sonner.theme" />
 
   <RouterView />
 </template>
