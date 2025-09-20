@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Landing from '@/views/Landing.vue'
+import Settings from '@/views/User/AccountSettings.vue'
 import SignIn from '@/views/SignIn.vue'
 import SignUp from '@/views/SignUp.vue'
-import Settings from '@/views/Settings.vue'
 import AdminDashboard from '@/views/Admin/Dashboard.vue'
 import AdminMenu from '@/views/Admin/Menu.vue'
 import AdminOrders from '@/views/Admin/Orders.vue'
@@ -10,6 +10,7 @@ import Dashboard from '@/views/User/Dashboard.vue'
 import Favorites from '@/views/User/Favorites.vue'
 import Menu from '@/views/User/Menu.vue'
 import Orders from '@/views/User/Orders.vue'
+import Cart from '@/views/User/Cart.vue'
 import ForgotPassword from '@/views/ForgotPassword.vue'
 import ResetPassword from '@/views/ResetPassword.vue'
 
@@ -90,6 +91,11 @@ const router = createRouter({
       path: '/orders',
       name: 'Orders',
       component: Orders,
+    },
+    {
+      path: '/cart',
+      name: 'Cart',
+      component: Cart,
     },
   ],
 })
