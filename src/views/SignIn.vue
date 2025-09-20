@@ -71,7 +71,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           </div>
 
           <div class="flex w-full justify-end my-3">
-            <button class="text-primary">Forgot Password?</button>
+            <button @click="router.push('/forgot')" class="text-primary">Forgot Password?</button>
           </div>
 
           <button
