@@ -22,7 +22,10 @@ export const useAuthStore = defineStore('auth', () => {
   const userInfo = computed(() => user.value)
 
   const register = async (credentials: {
+    firstName: string
+    lastName: string
     email: string
+    phoneNumber: string
     password: string
     confirmPassword: string
   }) => {
@@ -53,8 +56,9 @@ export const useAuthStore = defineStore('auth', () => {
       } else {
         router.push('/dashboard')
       }
-    } catch (err: any) {
-      sonner.error(err.message)
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred'
+      sonner.error(errorMessage)
     } finally {
       isLoading.value = false
     }
@@ -143,8 +147,9 @@ export const useAuthStore = defineStore('auth', () => {
       } else {
         router.push('/dashboard')
       }
-    } catch (err: any) {
-      sonner.error(err.message)
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred'
+      sonner.error(errorMessage)
     } finally {
       isLoading.value = false
     }
@@ -168,17 +173,19 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       router.push('/')
-    } catch (err: any) {
-      sonner.error(err.message)
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred'
+      sonner.error(errorMessage)
     } finally {
       isLoading.value = false
     }
   }
 
   const update = async (updates: {
-    username?: string
+    firstName?: string
+    lastName?: string
     email?: string
-    dob?: string
+    phoneNumber?: string
     oldPassword?: string
     newPassword?: string
     confirmPassword?: string
@@ -204,8 +211,9 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('user', JSON.stringify(user.value))
       }
       return true
-    } catch (err: any) {
-      sonner.error(err.message)
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred'
+      sonner.error(errorMessage)
       return false
     } finally {
       isLoading.value = false
