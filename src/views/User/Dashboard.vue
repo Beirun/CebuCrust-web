@@ -2,10 +2,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+// import { useAuthStore } from '@/stores/auth'
 import { ShoppingCart, Bell, User, Heart, Star, MapPin, Clock, ChevronDown } from 'lucide-vue-next'
 
-const auth = useAuthStore()
+// const auth = useAuthStore()
 
 // User data
 const user = ref({
@@ -50,11 +50,11 @@ const currentTime = computed(() => {
 })
 
 // Methods
-const toggleFavorite = (item: any) => {
+const toggleFavorite = (item: { isFavorite: boolean }) => {
   item.isFavorite = !item.isFavorite
 }
 
-const addToCart = (item: any) => {
+const addToCart = (item: { name: string; price: number }) => {
   console.log('Added to cart:', item)
 }
 
@@ -73,15 +73,13 @@ const changeAddress = () => {
     <header class="bg-gray-900 shadow-sm border-b">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
-          <!-- Logo -->
           <div class="flex items-center">
             <div class="flex items-center space-x-2">
               <img src="/src/assets/logo.png" alt="Cebu Crust" class="h-8 w-auto">
-              
+
             </div>
           </div>
 
-          <!-- Navigation -->
           <nav class="hidden md:flex space-x-8">
             <router-link to="/dashboard" class="text-orange-500 font-medium">Dashboard</router-link>
             <router-link to="/menu" class="text-white hover:text-orange-500">Menu</router-link>
@@ -89,7 +87,6 @@ const changeAddress = () => {
             <router-link to="/favorites" class="text-white hover:text-orange-500">Favorites</router-link>
           </nav>
 
-          <!-- User Actions -->
           <div class="flex items-center space-x-4">
             <button class="p-2 text-white hover:text-orange-500">
               <ShoppingCart class="w-6 h-6" />
@@ -110,7 +107,6 @@ const changeAddress = () => {
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Welcome Banner -->
       <div class="bg-gray-800 rounded-lg p-8 mb-8 relative overflow-hidden">
         <div class="absolute inset-0 bg-gradient-to-r from-gray-800 to-gray-700 opacity-90"></div>
         <div class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center">
@@ -140,7 +136,6 @@ const changeAddress = () => {
         </div>
       </div>
 
-      <!-- Order Status -->
       <div class="bg-white rounded-lg shadow-sm border border-orange-400 p-6 mb-8">
         <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6">
           <div>
@@ -152,7 +147,6 @@ const changeAddress = () => {
           </button>
         </div>
 
-        <!-- Progress Steps -->
         <div class="flex items-center justify-between mb-4">
           <div v-for="(step, index) in orderSteps" :key="step.id" class="flex items-center">
             <div class="flex flex-col items-center">
@@ -172,7 +166,6 @@ const changeAddress = () => {
         <p class="text-gray-600">Estimated delivery: {{ currentOrder.estimatedDelivery }}</p>
       </div>
 
-      <!-- Order Your Favorites -->
       <section class="mb-12">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-900">Order Your Favorites</h2>
@@ -216,7 +209,6 @@ const changeAddress = () => {
         </div>
       </section>
 
-      <!-- Today's Specials -->
       <section class="mb-12">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-900">Today's Specials</h2>
@@ -265,7 +257,6 @@ const changeAddress = () => {
     <footer class="bg-gray-800 text-white py-12">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <!-- Company Info -->
           <div class="col-span-1 md:col-span-1">
             <div class="flex items-center space-x-2 mb-4">
               <img src="/src/assets/logo.png" alt="Cebu Crust" class="h-8 w-auto">
@@ -276,7 +267,6 @@ const changeAddress = () => {
             </p>
           </div>
 
-          <!-- Opening Hours -->
           <div>
             <h3 class="font-semibold mb-4">Opening Time</h3>
             <div class="space-y-2 text-sm text-gray-400">
@@ -286,7 +276,6 @@ const changeAddress = () => {
             </div>
           </div>
 
-          <!-- User Links -->
           <div>
             <h3 class="font-semibold mb-4">User Link</h3>
             <div class="space-y-2 text-sm">
@@ -296,7 +285,6 @@ const changeAddress = () => {
             </div>
           </div>
 
-          <!-- Contact Info -->
           <div>
             <h3 class="font-semibold mb-4">Contact Us</h3>
             <div class="space-y-2 text-sm text-gray-400">

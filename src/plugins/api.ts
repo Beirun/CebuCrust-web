@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/stores/auth'
 import { useSonnerStore } from '@/stores/sonner'
 let isRefreshing = false
-let url = import.meta.env.VITE_BASE_URL
+const url = import.meta.env.VITE_BASE_URL
 let refreshPromise: Promise<string | null> | null = null
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -24,8 +24,9 @@ async function refreshAccessToken(): Promise<string | null> {
       localStorage.setItem('token', data.token)
       auth.setToken(data.token)
       return data.token
-    } catch (err: any) {
-      sonner.message(err.message, 'Please Log-In again')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred'
+      sonner.message(errorMessage, 'Please Log-In again')
       auth.handleTokenExpiry()
       return null
     } finally {

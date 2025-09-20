@@ -2,10 +2,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+// import { useAuthStore } from '@/stores/auth'
 import { ShoppingCart, Bell, User, Heart, Star, MapPin, Clock, ChevronDown, Search, Filter } from 'lucide-vue-next'
 
-const auth = useAuthStore()
+// const auth = useAuthStore()
 
 // User data
 const user = ref({
@@ -37,22 +37,22 @@ const showFilters = ref(false)
 // Computed properties
 const filteredMenuItems = computed(() => {
   let items = adminMenuItems.value.filter(item => item.isAvailable)
-  
+
   // Filter by category
   if (selectedCategory.value !== 'all') {
     items = items.filter(item => item.category === selectedCategory.value)
   }
-  
+
   // Filter by search query
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    items = items.filter(item => 
+    items = items.filter(item =>
       item.name.toLowerCase().includes(query) ||
       item.description.toLowerCase().includes(query) ||
       item.ingredients.some(ingredient => ingredient.toLowerCase().includes(query))
     )
   }
-  
+
   // Sort items
   switch (sortBy.value) {
     case 'price-low':
@@ -69,7 +69,7 @@ const filteredMenuItems = computed(() => {
       items.sort((a, b) => a.name.localeCompare(b.name))
       break
   }
-  
+
   return items
 })
 
@@ -85,11 +85,11 @@ const selectCategory = (categoryId: string) => {
   }
 }
 
-const toggleFavorite = (item: any) => {
+const toggleFavorite = (item: { isFavorite: boolean }) => {
   item.isFavorite = !item.isFavorite
 }
 
-const addToCart = (item: any) => {
+const addToCart = (item: { name: string; price: number }) => {
   console.log('Added to cart:', item)
 }
 
@@ -151,7 +151,7 @@ onMounted(() => {
         <div class="relative z-10">
           <h1 class="text-4xl font-bold text-white mb-4">Our Menu</h1>
           <p class="text-gray-300 text-lg mb-6">Discover our delicious selection of pizzas, appetizers, drinks, and desserts</p>
-          
+
           <!-- Search and Filter Bar -->
           <div class="flex flex-col lg:flex-row gap-4">
             <div class="flex-1 relative">
@@ -211,8 +211,8 @@ onMounted(() => {
           v-for="category in categories"
           :key="category.id"
           @click="selectCategory(category.id)"
-          :class="category.active 
-            ? 'bg-orange-500 text-white' 
+          :class="category.active
+            ? 'bg-orange-500 text-white'
             : 'bg-white text-gray-700 hover:bg-gray-100'"
           class="px-6 py-3 rounded-lg font-medium transition-colors border border-gray-200"
         >
@@ -228,7 +228,7 @@ onMounted(() => {
             <span class="text-gray-500 text-lg font-normal">({{ filteredMenuItems.length }} items)</span>
           </h2>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <div v-for="item in filteredMenuItems" :key="item.id" class="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
             <div class="relative mb-4">
@@ -240,7 +240,7 @@ onMounted(() => {
                 <span class="text-white font-semibold">Currently Unavailable</span>
               </div>
             </div>
-            
+
             <div class="mb-3">
               <h3 class="font-semibold text-gray-900 mb-1">{{ item.name }}</h3>
               <p class="text-gray-600 text-sm mb-2">{{ item.description }}</p>
@@ -250,7 +250,7 @@ onMounted(() => {
                 <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ item.preparationTime }} min</span>
               </div>
             </div>
-            
+
             <div class="flex items-center justify-between mb-3">
               <span class="text-lg font-bold text-gray-900">₱{{ item.price }}</span>
               <div class="flex items-center">
@@ -258,12 +258,12 @@ onMounted(() => {
                 <span class="text-sm text-gray-600 ml-1">{{ item.rating }} ({{ item.reviewCount }})</span>
               </div>
             </div>
-            
-            <button 
-              @click="addToCart(item)" 
+
+            <button
+              @click="addToCart(item)"
               :disabled="!item.isAvailable"
-              :class="item.isAvailable 
-                ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+              :class="item.isAvailable
+                ? 'bg-orange-500 hover:bg-orange-600 text-white'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'"
               class="w-full py-2 rounded-lg font-medium flex items-center justify-center transition-colors"
             >
@@ -300,7 +300,7 @@ onMounted(() => {
           <p class="text-gray-600 mb-6">
             We couldn't find any menu items matching your search criteria. Try adjusting your filters or search terms.
           </p>
-          <button 
+          <button
             @click="searchQuery = ''; selectedCategory = 'all'"
             class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium"
           >

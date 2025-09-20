@@ -1,4 +1,5 @@
 <script setup lang="ts">
+
 import router from '@/router'
 import { useRoute } from 'vue-router'
 
@@ -38,6 +39,7 @@ async function scrollTo(id: string) {
     </div>
 
     <div class="flex gap-[clamp(20px,10vw,100px)] items-center">
+
       <button
         v-for="link in links"
         :key="link.name"

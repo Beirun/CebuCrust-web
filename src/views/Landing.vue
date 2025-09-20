@@ -1,6 +1,7 @@
 # /
 
 <script setup lang="ts">
+
 import { onBeforeUnmount, onMounted, reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import ScrollToTopButton from '@/components/ScrollToTopButton.vue'
@@ -72,10 +73,12 @@ onBeforeUnmount(() => sonner.setTheme('light'))
     <LandingNavbar />
     <LandingHero />
 
+
     <!-- About Us Section -->
     <div id="about" class="flex flex-col min-h-screen w-screen bg-[#0A1316] p-30 pt-20 gap-50">
       <InfoCard
         v-for="(section, index) in aboutSection"
+        :key="index"
         :section-title="section.sectionTitle"
         :heading="section.heading"
         :description="section.description"
@@ -85,6 +88,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
         :index="index"
       />
     </div>
+
 
     <!-- Features Section -->
     <div class="flex flex-col items-center w-screen bg-[#0A1316] p-30 pt-20 gap-10">
@@ -101,13 +105,14 @@ onBeforeUnmount(() => sonner.setTheme('light'))
         </div>
       </div>
       <div class="flex justify-center gap-20 xl:gap-50 mt-4 px-35 flex-col xl:flex-row">
-        <div v-for="feature in features" class="flex flex-col gap-4 items-center">
+        <div v-for="(feature, index) in features" :key="index" class="flex flex-col gap-4 items-center">
           <span :class="['text-white size-20', feature.icon]"></span>
           <div class="text-white text-2xl font-semibold text-center">{{ feature.header }}</div>
           <div class="text-[#797B78] text-center">{{ feature.description }}</div>
         </div>
       </div>
     </div>
+
 
     <!-- Menu Section -->
     <div id="menu" class="flex flex-col items-center w-screen bg-[#0A1316] p-30 pt-20 gap-10">
@@ -125,7 +130,8 @@ onBeforeUnmount(() => sonner.setTheme('light'))
       </div>
       <div class="flex justify-center gap-10 mt-4 px-35">
         <div
-          v-for="value in [1, 2, 3, 4]"
+          v-for="(value, index) in [1, 2, 3, 4]"
+          :key="index"
           class="flex flex-col items-center bg-[#192124] h-120 w-85 rounded-xl shadow-md shadow-black overflow-hidden"
         >
           <div class="bg-primary w-full h-[calc(50%+20px)]"></div>
@@ -147,6 +153,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
       </div>
     </div>
 
+
     <!-- Get In Touch Section -->
     <div id="contact" class="flex flex-col items-center w-screen bg-[#0A1316] p-30 pt-20 gap-10">
       <div class="flex flex-col text-white items-center gap-2">
@@ -160,7 +167,6 @@ onBeforeUnmount(() => sonner.setTheme('light'))
         </div>
       </div>
       <div class="flex justify-center gap-10 mt-4 px-35 w-full">
-        <!-- Map -->
         <div class="h-200 w-1/2 flex flex-col p-6 bg-[#121A1D] rounded-xl">
           <div class="h-full w-full bg-black/20 rounded-xl"></div>
           <div class="w-full flex justify-center pt-6">
