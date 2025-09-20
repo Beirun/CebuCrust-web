@@ -2,9 +2,12 @@
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { useCartStore } from '@/stores/cart'
+import { ShoppingCart, Bell, User, ChevronDown } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const router = useRouter()
+const cart = useCartStore()
 
 const user = ref({ ...auth.user })
 
@@ -35,16 +38,46 @@ const save = () => {
 
 <template>
   <div class="min-h-screen bg-gray-50">
+    <!-- Header/Navbar (copied from Dashboard.vue) -->
     <header class="bg-gray-900 shadow-sm border-b">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
-          <div class="flex items-center space-x-2">
-            <img src="/src/assets/logo.png" alt="Cebu Crust" class="h-8 w-auto">
+          <!-- Logo -->
+          <div class="flex items-center">
+            <div class="flex items-center space-x-2">
+              <img src="/src/assets/logo.png" alt="Cebu Crust" class="h-8 w-auto">
+            </div>
+          </div>
+
+          <!-- Navigation -->
+          <nav class="hidden md:flex space-x-8">
+            <router-link to="/dashboard" class="text-orange-500 font-medium">Dashboard</router-link>
+            <router-link to="/menu" class="text-white hover:text-orange-500">Menu</router-link>
+            <router-link to="/orders" class="text-white hover:text-orange-500">Orders</router-link>
+            <router-link to="/favorites" class="text-white hover:text-orange-500">Favorites</router-link>
+          </nav>
+
+          <!-- User Actions -->
+          <div class="flex items-center space-x-4">
+            <router-link to="/cart" class="relative p-2 text-white hover:text-orange-500">
+              <ShoppingCart class="w-6 h-6" />
+              <span v-if="cart.itemCount > 0" class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-500 rounded-full">{{ cart.itemCount }}</span>
+            </router-link>
+            <button class="p-2 text-white hover:text-orange-500 relative">
+              <Bell class="w-6 h-6" />
+              <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+            <router-link to="/settings" class="flex items-center space-x-2 text-white hover:text-orange-300">
+              <User class="w-6 h-6 text-white" />
+              <span class="text-white font-medium">{{ displayName }}</span>
+              <ChevronDown class="w-4 h-4 text-white" />
+            </router-link>
           </div>
         </div>
       </div>
     </header>
 
+    <!-- Main Content -->
     <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div class="bg-white rounded-lg shadow p-8">
         <div class="flex items-center gap-6 mb-8">
