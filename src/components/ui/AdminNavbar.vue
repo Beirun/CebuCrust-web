@@ -5,9 +5,9 @@ import { Bell, User, LogOut } from 'lucide-vue-next'
 const auth = useAuthStore()
 
 const navItems = [
-  { name: 'Dashboard', path: '/dashboard/admin', icon: 'dashboard' },
-  { name: 'Menu', path: '/menu/admin', icon: 'menu' },
-  { name: 'Orders', path: '/orders/admin', icon: 'orders' }
+  { name: 'Dashboard', path: '/admin', icon: 'dashboard' },
+  { name: 'Menu', path: '/admin/menu', icon: 'menu' },
+  { name: 'Orders', path: '/admin/orders', icon: 'orders' }
 ]
 </script>
 
