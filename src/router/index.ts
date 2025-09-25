@@ -47,28 +47,19 @@ const router = createRouter({
       name: 'Settings',
       component: Settings,
     },
+    // Admin routes - all prefixed with /admin
     {
-      path: '/dashboard/admin',
+      path: '/admin',
       name: 'AdminDashboard',
       component: AdminDashboard,
     },
     {
-      path: '/admin',
-      name: 'Admin',
-      component: AdminDashboard,
-    },
-    {
-      path: '/menu/admin',
+      path: '/admin/menu',
       name: 'AdminMenu',
       component: AdminMenu,
     },
     {
-      path: '/menu',
-      name: 'AdminMenuDirect',
-      component: AdminMenu,
-    },
-    {
-      path: '/orders/admin',
+      path: '/admin/orders',
       name: 'AdminOrders',
       component: AdminOrders,
     },
