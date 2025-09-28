@@ -49,7 +49,7 @@ const router = createRouter({
     },
     // Admin routes - all prefixed with /admin
     {
-      path: '/admin',
+      path: '/dashboard/admin',
       name: 'AdminDashboard',
       component: AdminDashboard,
     },
