@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useFetch } from '@/plugins/api'
 
 export interface MenuItem {
   id: string
@@ -150,13 +151,26 @@ export const useMenuStore = defineStore('menu', () => {
 
   const fetchMenuItems = async () => {
     try {
-      // TODO: Replace with actual API call
-      // Example API integration:
-      // const response = await fetch('/api/menu/items')
-      // const data = await response.json()
-      // menuItems.value = data.items
+      // Attempt to fetch from the API. The backend is expected to return { items: MenuItem[] }
+      const res = await useFetch(`${import.meta.env.VITE_BASE_URL}/menu/items`, {
+        method: 'GET',
+        credentials: 'include'
+      })
 
-      console.log('Menu items will be fetched from API')
+      if (!res.ok) {
+        console.warn('Failed to fetch menu items from API, using local data')
+        return
+      }
+
+      const data = await res.json()
+      if (Array.isArray(data.items)) {
+        menuItems.value = data.items
+      } else if (Array.isArray(data)) {
+        // Some APIs return the array directly
+        menuItems.value = data
+      } else {
+        console.warn('Unexpected menu items response shape, keeping local sample data')
+      }
     } catch (error) {
       console.error('Error fetching menu items:', error)
     }

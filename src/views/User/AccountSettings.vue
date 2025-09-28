@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
@@ -9,11 +9,27 @@ const auth = useAuthStore()
 const router = useRouter()
 const cart = useCartStore()
 
-const user = ref({ ...auth.user })
+// Use the auth store's user directly so the UI reflects the currently logged in user
+// Make a local editable copy to avoid mutating the store directly until Save is clicked
+const user = ref(auth.user ? { ...auth.user } : {})
 
-const displayName = computed(() => user.value?.name || user.value?.userName || user.value?.username || '')
+const displayName = computed(() => {
+  return (
+    user.value?.name || user.value?.firstName && user.value?.lastName ? `${user.value.firstName} ${user.value.lastName}` : null || user.value?.userName || user.value?.username || user.value?.userEmail || ''
+  )
+})
 
-const preview = ref<string | null>(user.value?.profileImage || null)
+const preview = ref<string | null>(user.value?.profileImage || user.value?.profileImageUrl || null)
+
+// Keep local user in sync if auth.user changes (e.g. login/logout elsewhere)
+watch(
+  () => auth.user,
+  (val) => {
+    user.value = val ? { ...val } : {}
+    preview.value = user.value?.profileImage || user.value?.profileImageUrl || null
+  },
+  { immediate: true },
+)
 
 const onFileChange = (e: Event) => {
   const input = e.target as HTMLInputElement
@@ -22,17 +38,40 @@ const onFileChange = (e: Event) => {
   const reader = new FileReader()
   reader.onload = () => {
     preview.value = reader.result as string
+    // set a preview value and store it on the local user object
     user.value.profileImage = preview.value
   }
   reader.readAsDataURL(file)
 }
 
-const save = () => {
-  // Update auth store and localStorage; replace with API call when available
-  auth.user = { ...auth.user, ...user.value }
-  localStorage.setItem('user', JSON.stringify(auth.user))
-  alert('Profile updated')
-  router.push('/dashboard')
+const save = async () => {
+  // Prepare updates to send to the store / API. Map possible field names used by the backend.
+  const updates: Record<string, any> = {}
+  if (user.value.firstName !== undefined) updates.firstName = user.value.firstName
+  if (user.value.lastName !== undefined) updates.lastName = user.value.lastName
+  if (user.value.email !== undefined) updates.email = user.value.email
+  if (user.value.userEmail !== undefined) updates.email = user.value.userEmail
+  if (user.value.phone !== undefined) updates.phoneNumber = user.value.phone
+  if (user.value.phoneNumber !== undefined) updates.phoneNumber = user.value.phoneNumber
+  if (user.value.address !== undefined) updates.address = user.value.address
+  if (user.value.profileImage !== undefined) updates.profileImage = user.value.profileImage
+
+  // Call auth.update if available to persist changes to backend
+  if (typeof auth.update === 'function') {
+    const success = await auth.update(updates as any)
+    if (success) {
+      // merge returned/local changes into store and localStorage
+      auth.user = { ...auth.user, ...user.value }
+      localStorage.setItem('user', JSON.stringify(auth.user))
+      // navigate back to dashboard after save
+      router.push('/dashboard')
+    }
+  } else {
+    // fallback: update store and localStorage directly
+    auth.user = { ...auth.user, ...user.value }
+    localStorage.setItem('user', JSON.stringify(auth.user))
+    router.push('/dashboard')
+  }
 }
 </script>
 
@@ -51,7 +90,7 @@ const save = () => {
 
           <!-- Navigation -->
           <nav class="hidden md:flex space-x-8">
-            <router-link to="/dashboard" class="text-orange-500 font-medium">Dashboard</router-link>
+            <router-link to="/dashboard" class="text-white hover:text-orange-500">Dashboard</router-link>
             <router-link to="/menu" class="text-white hover:text-orange-500">Menu</router-link>
             <router-link to="/orders" class="text-white hover:text-orange-500">Orders</router-link>
             <router-link to="/favorites" class="text-white hover:text-orange-500">Favorites</router-link>

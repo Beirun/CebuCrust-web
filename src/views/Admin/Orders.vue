@@ -245,7 +245,7 @@ const getTabCountClass = (tabKey: string) => {
 
           <!-- Navigation -->
           <nav class="hidden md:flex space-x-10">
-            <router-link to="/admin" class="text-gray-300 hover:text-white font-medium px-3 py-2">Dashboard</router-link>
+            <router-link to="/dashboard/admin" class="text-gray-300 hover:text-white font-medium px-3 py-2">Dashboard</router-link>
             <router-link to="/admin/menu" class="text-gray-300 hover:text-white font-medium px-3 py-2">Menu</router-link>
             <router-link to="/admin/orders" class="text-orange-400 font-medium px-3 py-2">Orders</router-link>
           </nav>

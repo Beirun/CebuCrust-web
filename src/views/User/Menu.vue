@@ -4,6 +4,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
+import { useMenuStore } from '@/stores/menu'
 import { ShoppingCart, Bell, User, Heart, Star, MapPin, Clock, ChevronDown, Search, Filter } from 'lucide-vue-next'
 
 const auth = useAuthStore()
@@ -17,19 +18,14 @@ const user = ref({
   deliveryTime: '25-30 mins'
 })
 
-// Menu categories
-const categories = ref([
-  { id: 'all', name: 'All Items', active: true },
-  { id: 'pizza', name: 'Pizza', active: false },
-  { id: 'appetizers', name: 'Appetizers', active: false },
-  { id: 'drinks', name: 'Drinks', active: false },
-  { id: 'desserts', name: 'Desserts', active: false }
-])
+// Use menu store (fetches items from API or local sample data)
+const menuStore = useMenuStore()
 
-// Admin-controlled menu data (this would come from an API in a real app)
-const adminMenuItems = ref([
+// Local UI state
+const categories = ref([{ id: 'all', name: 'All Items', active: true }])
 
-])
+// Admin-controlled menu data comes from the store
+const adminMenuItems = computed(() => menuStore.menuItems)
 
 // Search and filter states
 const searchQuery = ref('')
@@ -39,49 +35,55 @@ const showFilters = ref(false)
 
 // Computed properties
 const filteredMenuItems = computed(() => {
-  let items = adminMenuItems.value.filter(item => item.isAvailable)
+  // menuStore.menuItems may be an array of items with different property shapes.
+  let items = (adminMenuItems.value || []).filter((item: any) => item.isAvailable !== false)
 
   // Filter by category
   if (selectedCategory.value !== 'all') {
-    items = items.filter(item => item.category === selectedCategory.value)
+    items = items.filter((item: any) => {
+      // normalize category comparison
+      const cat = (item.category || '').toString().toLowerCase()
+      return cat === selectedCategory.value.toLowerCase()
+    })
   }
 
   // Filter by search query
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    items = items.filter(item =>
-      item.name.toLowerCase().includes(query) ||
-      item.description.toLowerCase().includes(query) ||
-      item.ingredients.some(ingredient => ingredient.toLowerCase().includes(query))
-    )
+    items = items.filter((item: any) => {
+      const name = (item.name || '').toString().toLowerCase()
+      const description = (item.description || '').toString().toLowerCase()
+      const ingredients = Array.isArray(item.ingredients) ? item.ingredients.join(' ').toLowerCase() : ''
+      return name.includes(query) || description.includes(query) || ingredients.includes(query)
+    })
   }
 
   // Sort items
   switch (sortBy.value) {
     case 'price-low':
-      items.sort((a, b) => a.price - b.price)
+      items.sort((a: any, b: any) => (a.price || 0) - (b.price || 0))
       break
     case 'price-high':
-      items.sort((a, b) => b.price - a.price)
+      items.sort((a: any, b: any) => (b.price || 0) - (a.price || 0))
       break
     case 'rating':
-      items.sort((a, b) => b.rating - a.rating)
+      items.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0))
       break
     case 'name':
     default:
-      items.sort((a, b) => a.name.localeCompare(b.name))
+      items.sort((a: any, b: any) => (a.name || '').toString().localeCompare((b.name || '').toString()))
       break
   }
 
   return items
 })
 
-const hasMenuItems = computed(() => adminMenuItems.value.length > 0)
+const hasMenuItems = computed(() => (adminMenuItems.value || []).length > 0)
 
 // Methods
 const selectCategory = (categoryId: string) => {
-  categories.value.forEach(cat => cat.active = false)
-  const selectedCat = categories.value.find(cat => cat.id === categoryId)
+  categories.value.forEach(cat => (cat.active = false))
+  const selectedCat = categories.value.find((cat: any) => cat.id === categoryId)
   if (selectedCat) {
     selectedCat.active = true
     selectedCategory.value = categoryId
@@ -102,8 +104,20 @@ const changeAddress = () => {
 
 // Load menu data on mount
 onMounted(() => {
-  // In a real app, this would fetch menu items from an API
-  // For now, we're using static data that would be controlled by admin
+  // Fetch menu items from the store (store may call API)
+  menuStore.fetchMenuItems()
+
+  // Build category tabs dynamically from the fetched items
+  const uniqueCats = new Set<string>()
+  ;(menuStore.menuItems || []).forEach((it: any) => {
+    if (it.category) uniqueCats.add(it.category.toString())
+  })
+
+  // Reset categories keeping 'all' first
+  categories.value = [{ id: 'all', name: 'All Items', active: selectedCategory.value === 'all' }]
+  Array.from(uniqueCats).forEach((c) => {
+    categories.value.push({ id: c.toString().toLowerCase(), name: c.toString(), active: false })
+  })
 })
 </script>
 <template>
