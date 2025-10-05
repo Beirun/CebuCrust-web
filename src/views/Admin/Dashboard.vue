@@ -1,42 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- Header -->
-    <header class="bg-[#121A1D] text-white">
-      <div class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
-        <div class="flex justify-between items-center h-20 py-4">
-          <!-- Logo -->
-          <div class="flex items-center">
-            <div>
-              <img src="@/assets/logo.png" alt="Cebu Crust" />
-            </div>
-          </div>
-
-          <!-- Navigation -->
-          <nav class="hidden md:flex space-x-10">
-            <router-link to="/dashboard/admin" class="text-orange-300 font-medium px-3 py-2">Dashboard</router-link>
-            <router-link to="/admin/menu" class="text-gray-300 hover:text-white font-medium px-3 py-2">Menu</router-link>
-            <router-link to="/admin/orders" class="text-gray-300 hover:text-white font-medium px-3 py-2">Orders</router-link>
-          </nav>
-
-          <!-- User & Notifications -->
-          <div class="flex items-center space-x-6">
-            <div class="relative">
-              <button class="text-gray-300 hover:text-white relative p-2">
-                <Bell class="h-6 w-6" />
-                <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
-              </button>
-            </div>
-            <div class="flex items-center space-x-3">
-              <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
-                <span class="text-sm font-medium">MS</span>
-              </div>
-              <span class="text-gray-300 font-medium">Maria Santos</span>
-              <ChevronDown class="h-4 w-4 text-gray-400" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
+    <AdminHeader />
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -46,7 +11,9 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-gray-600">Total Orders</p>
-              <p class="text-2xl font-bold text-gray-900">{{ stats.totalOrders.toLocaleString() }}</p>
+              <p class="text-2xl font-bold text-gray-900">
+                {{ stats.totalOrders.toLocaleString() }}
+              </p>
               <div class="flex items-center mt-1">
                 <ArrowUp class="h-4 w-4 text-green-600 mr-1" />
                 <span class="text-green-600 text-sm font-medium">+{{ stats.ordersGrowth }}%</span>
@@ -62,7 +29,9 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p class="text-2xl font-bold text-gray-900">₱{{ stats.totalRevenue.toLocaleString() }}</p>
+              <p class="text-2xl font-bold text-gray-900">
+                ₱{{ stats.totalRevenue.toLocaleString() }}
+              </p>
               <div class="flex items-center mt-1">
                 <ArrowUp class="h-4 w-4 text-green-600 mr-1" />
                 <span class="text-green-600 text-sm font-medium">+{{ stats.revenueGrowth }}%</span>
@@ -78,7 +47,9 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-gray-600">Avg Order Value</p>
-              <p class="text-2xl font-bold text-gray-900">₱{{ stats.avgOrderValue.toLocaleString() }}</p>
+              <p class="text-2xl font-bold text-gray-900">
+                ₱{{ stats.avgOrderValue.toLocaleString() }}
+              </p>
               <div class="flex items-center mt-1">
                 <ArrowDown class="h-4 w-4 text-red-600 mr-1" />
                 <span class="text-red-600 text-sm font-medium">{{ stats.avgOrderGrowth }}%</span>
@@ -129,7 +100,13 @@
                     :src="item.image"
                     :alt="item.name"
                     class="w-12 h-12 rounded-lg object-cover bg-gray-200"
-                    @error="$event.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iI0Y5RjBGMSIvPgo8dGV4dCB4PSIyNCIgeT0iMjgiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+UtTwvdGV4dD4KPC9zdmc+'"
+                    @error="
+                      (e: Event) => {
+                        const img = e.target as HTMLImageElement
+                        img.src =
+                          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iI0Y5RjBGMSIvPgo8dGV4dCB4PSIyNCIgeT0iMjgiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+UtTwvdGV4dD4KPC9zdmc+'
+                      }
+                    "
                   />
                   <div>
                     <p class="font-semibold text-gray-900">{{ item.name }}</p>
@@ -141,7 +118,10 @@
                   <span class="text-gray-400 ml-1">orders</span>
                 </div>
               </div>
-              <div v-if="index < filteredPopularItems.length - 1" class="border-t border-gray-200"></div>
+              <div
+                v-if="index < filteredPopularItems.length - 1"
+                class="border-t border-gray-200"
+              ></div>
             </template>
           </div>
         </div>
@@ -200,33 +180,70 @@
         <div class="px-6 py-4 border-b border-gray-200">
           <div class="flex justify-between items-center">
             <h3 class="text-lg font-semibold text-gray-900">Recent Orders</h3>
-            <a href="#" class="text-sm text-orange-400 hover:text-orange-500 font-medium">View All Orders</a>
+            <a href="#" class="text-sm text-orange-400 hover:text-orange-500 font-medium"
+              >View All Orders</a
+            >
           </div>
         </div>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Time</th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Order ID
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Customer
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Items
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Total
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Status
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Order Time
+                </th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="order in filteredRecentOrders" :key="order.id">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{{ order.id }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ order.customer }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  #{{ order.id }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ order.customer }}
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ order.items }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₱{{ order.total }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  ₱{{ order.total }}
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <span :class="getStatusBadgeClass(order.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                  <span
+                    :class="getStatusBadgeClass(order.status)"
+                    class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+                  >
                     {{ order.status }}
                   </span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.orderTime }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {{ order.orderTime }}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -287,30 +304,30 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { Bell, ChevronDown, ShoppingCart, DollarSign, BarChart3, Utensils, ArrowUp, ArrowDown } from 'lucide-vue-next'
+import { ShoppingCart, DollarSign, BarChart3, Utensils, ArrowUp, ArrowDown } from 'lucide-vue-next'
 import { useDashboardStore } from '@/stores/dashboard'
 import OrdersOverview from '@/components/charts/OrdersOverview.vue'
 import RevenueTrend from '@/components/charts/RevenueTrend.vue'
+import AdminHeader from '@/components/AdminHeader.vue'
 
 const dashboardStore = useDashboardStore()
 const {
   stats,
   filteredPopularItems,
-  orderStatus,
   filteredRecentOrders,
   ordersChartData,
   revenueChartData,
-  fetchDashboardData
+  fetchDashboardData,
 } = dashboardStore
 
 const getStatusBadgeClass = (status: string) => {
   const statusClasses = {
-    'Ready': 'bg-green-100 text-green-800',
-    'Preparing': 'bg-yellow-100 text-yellow-800',
-    'Pending': 'bg-orange-100 text-orange-600',
+    Ready: 'bg-green-100 text-green-800',
+    Preparing: 'bg-yellow-100 text-yellow-800',
+    Pending: 'bg-orange-100 text-orange-600',
     'Out for Delivery': 'bg-purple-100 text-purple-800',
-    'Delivered': 'bg-green-100 text-green-800',
-    'Cancelled': 'bg-red-100 text-red-800'
+    Delivered: 'bg-green-100 text-green-800',
+    Cancelled: 'bg-red-100 text-red-800',
   }
   return statusClasses[status as keyof typeof statusClasses] || 'bg-gray-100 text-gray-800'
 }

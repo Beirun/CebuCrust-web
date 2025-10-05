@@ -1,57 +1,133 @@
+// stores/cart.ts
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
+import { useSonnerStore } from './sonner'
+import { useFetch } from '@/plugins/api'
+import type { Cart } from '@/models/cart'
 
 export const useCartStore = defineStore('cart', () => {
-  const items = ref<Array<any>>(JSON.parse(localStorage.getItem('cart') || '[]'))
+  const sonner = useSonnerStore()
+  const URL = import.meta.env.VITE_BASE_URL ?? 'http://localhost:5135/api'
 
-  const save = () => {
-    localStorage.setItem('cart', JSON.stringify(items.value))
-  }
+  const cart = ref<Cart[]>([])
+  const isLoading = ref(false)
 
-  const itemCount = computed(() => items.value.reduce((s, i) => s + (i.quantity || 1), 0))
-  const subTotal = computed(() => items.value.reduce((s, i) => s + (i.price * (i.quantity || 1)), 0))
-  const deliveryFee = computed(() => (items.value.length > 0 ? 50 : 0))
-  const total = computed(() => subTotal.value + deliveryFee.value)
-
-  const findIndex = (payload: any) => items.value.findIndex(i => i.id === payload.id)
-
-  const addItem = (payload: any) => {
-    const idx = findIndex(payload)
-    if (idx === -1) {
-      items.value.push({ ...payload, quantity: payload.quantity ?? 1 })
-    } else {
-      items.value[idx].quantity = (items.value[idx].quantity || 1) + (payload.quantity ?? 1)
+  const fetchCart = async () => {
+    isLoading.value = true
+    try {
+      const res = await useFetch(`${URL}/cart/user`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) return sonner.error(data.message ?? 'Failed to fetch cart')
+      cart.value = data
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error fetching cart'
+      sonner.error(msg)
+    } finally {
+      isLoading.value = false
     }
-    save()
   }
 
-  const removeItem = (id: any) => {
-    items.value = items.value.filter(i => i.id !== id)
-    save()
+  const addToCart = async (item: { pizzaId: number; quantity: number }) => {
+    isLoading.value = true
+    try {
+      const res = await useFetch(`${URL}/cart`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item),
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) return sonner.error(data.message ?? 'Failed to add to cart')
+      sonner.success('Added to cart')
+      cart.value = [...cart.value, item]
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error adding to cart'
+      sonner.error(msg)
+    } finally {
+      isLoading.value = false
+    }
   }
 
-  const updateQuantity = (id: any, qty: number) => {
-    const idx = items.value.findIndex(i => i.id === id)
-    if (idx === -1) return
-    items.value[idx].quantity = Math.max(0, qty)
-    if (items.value[idx].quantity === 0) removeItem(id)
-    save()
+  const updateCart = async (pizzaId: number, quantity: number) => {
+    isLoading.value = true
+    try {
+      const current = cart.value.find((p) => p.pizzaId === pizzaId)
+      if (!current) throw new Error('Item not found')
+
+      const item = {
+        pizzaId,
+        quantity,
+      }
+
+      const res = await useFetch(`${URL}/cart`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item),
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) return sonner.error(data.message ?? 'Failed to update cart')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error updating cart'
+      sonner.error(msg)
+    } finally {
+      isLoading.value = false
+    }
   }
 
-  const clear = () => {
-    items.value = []
-    save()
+  const removeFromCart = async (pizzaId: number) => {
+    isLoading.value = true
+    try {
+      const res = await useFetch(`${URL}/cart/${pizzaId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        return sonner.error(data.message ?? 'Failed to remove item')
+      }
+      sonner.success('Item removed')
+      cart.value = cart.value.filter((c) => c.pizzaId !== pizzaId)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error removing item'
+      sonner.error(msg)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const clearCart = async () => {
+    isLoading.value = true
+    try {
+      const res = await useFetch(`${URL}/cart`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        return sonner.error(data.message ?? 'Failed to clear cart')
+      }
+      sonner.success('Cart cleared')
+      cart.value = []
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error clearing cart'
+      sonner.error(msg)
+    } finally {
+      isLoading.value = false
+    }
   }
 
   return {
-    items,
-    itemCount,
-    subTotal,
-    deliveryFee,
-    total,
-    addItem,
-    removeItem,
-    updateQuantity,
-    clear,
+    cart,
+    isLoading,
+    fetchCart,
+    addToCart,
+    updateCart,
+    removeFromCart,
+    clearCart,
   }
 })
