@@ -26,8 +26,8 @@ export const useResetStore = defineStore('reset', () => {
 
       sonner.success(data.message)
       return true
-    } catch (err: any) {
-      sonner.error(err.message)
+    } catch (err: unknown) {
+      if (err instanceof Error) sonner.error(err.message)
       return false
     } finally {
       isLoading.value = false
@@ -52,8 +52,8 @@ export const useResetStore = defineStore('reset', () => {
       }
       verified.value = true
       return true
-    } catch (err: any) {
-      sonner.error(err.message)
+    } catch (err: unknown) {
+      if (err instanceof Error) sonner.error(err.message)
       verified.value = false
       return false
     } finally {
@@ -82,8 +82,8 @@ export const useResetStore = defineStore('reset', () => {
 
       sonner.success(data.message)
       return true
-    } catch (err: any) {
-      sonner.error(err.message)
+    } catch (err: unknown) {
+      if (err instanceof Error) sonner.error(err.message)
       return false
     } finally {
       isLoading.value = false
