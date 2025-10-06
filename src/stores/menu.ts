@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useFetch } from '@/plugins/api'
 
 export interface MenuItem {
   id: string

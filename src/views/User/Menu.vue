@@ -121,6 +121,7 @@ onMounted(() => {
 })
 </script>
 <template>
+
   <div class="min-h-screen bg-gray-50">
     <!-- Header -->
     <header class="bg-gray-900 shadow-sm border-b">
