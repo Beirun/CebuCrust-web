@@ -16,6 +16,23 @@ const displayName = computed(() => {
 
 const preview = ref<string | null>(user.value?.profileImage || user.value?.profileImageUrl || null)
 
+// Safely format an image source for <img>.
+// Accepts:
+// - data URLs (returned as-is)
+// - absolute/relative URLs (returned as-is)
+// - raw base64 string (wrapped with data:image/png;base64,)
+const formatImage = (img: string | null) => {
+  if (!img) return null
+  if (typeof img !== 'string') return null
+  const trimmed = img.trim()
+  // already a data URL
+  if (trimmed.startsWith('data:')) return trimmed
+  // probably a full/relative URL
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('/')) return trimmed
+  // otherwise assume it's a raw base64 payload
+  return toBase64(trimmed)
+}
+
 // Keep local user in sync if auth.user changes (e.g. login/logout elsewhere)
 watch(
   () => auth.user,
@@ -67,10 +84,10 @@ watch(
             to="/settings"
             class="flex items-center space-x-2 text-white hover:text-orange-300"
           >
-            <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+            <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
               <img
                 v-if="preview"
-                :src="toBase64(preview)"
+                :src="formatImage(preview)"
                 alt="profile"
                 class="w-full h-full object-cover"
               />

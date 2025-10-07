@@ -1,147 +1,583 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import { toBase64 } from '@/plugins/convert'
+import { Eye, EyeOff, Upload, X } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
+
 const auth = useAuthStore()
 const router = useRouter()
 
-// Use the auth store's user directly so the UI reflects the currently logged in user
-// Make a local editable copy to avoid mutating the store directly until Save is clicked
+// Form state
 const user = ref(auth.user ? { ...auth.user } : {})
-
 const preview = ref<string | null>(user.value?.profileImage || user.value?.profileImageUrl || null)
+const isUploading = ref(false)
+const isSaving = ref(false)
 
-// Keep local user in sync if auth.user changes (e.g. login/logout elsewhere)
+// Password change state
+const passwordForm = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
+const showPasswords = ref({
+  current: false,
+  new: false,
+  confirm: false
+})
+
+// Form validation
+const errors = ref<Record<string, string>>({})
+
+// Keep local user in sync if auth.user changes
 watch(
   () => auth.user,
   (val) => {
     user.value = val ? { ...val } : {}
-    preview.value = user.value?.profileImage || user.value?.profileImageUrl || null
+    // Handle profile image display properly
+    if (user.value?.profileImage) {
+      // If it's already a base64 string, use it directly
+      if (user.value.profileImage.startsWith('data:')) {
+        preview.value = user.value.profileImage
+      } else {
+        // If it's a file path or URL, convert it
+        preview.value = toBase64(user.value.profileImage)
+      }
+    } else {
+      preview.value = null
+    }
   },
   { immediate: true },
 )
 
+// Computed properties
+const displayName = computed(() => {
+  return user.value?.name || (user.value?.firstName && user.value?.lastName)
+    ? `${user.value.firstName} ${user.value.lastName}`
+    : user.value?.userName || user.value?.username || user.value?.userEmail || ''
+})
+
+const hasProfileImage = computed(() => !!preview.value)
+
+// File handling
 const onFileChange = (e: Event) => {
   const input = e.target as HTMLInputElement
   if (!input.files || input.files.length === 0) return
+  
   const file = input.files[0]
+  
+  // Validate file size (2MB max)
+  if (file.size > 2 * 1024 * 1024) {
+    errors.value.profileImage = 'File size must be less than 2MB'
+    return
+  }
+  
+  // Validate file type
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    errors.value.profileImage = 'Only JPG, PNG, and WEBP files are allowed'
+    return
+  }
+  
   const reader = new FileReader()
-  reader.onload = () => {
-    preview.value = reader.result as string
-    // set a preview value and store it on the local user object
-    user.value.profileImage = preview.value
+  reader.onload = async () => {
+    const result = reader.result as string
+    preview.value = result
+    user.value.profileImage = result
+    delete errors.value.profileImage
+    
+    // Show success message for successful image upload
+    const { useSonnerStore } = await import('@/stores/sonner')
+    const sonner = useSonnerStore()
+    sonner.success('Profile picture selected successfully! Click "Save Changes" to update your profile.')
   }
   reader.readAsDataURL(file)
 }
 
-const save = async () => {
-  // Prepare updates to send to the store / API. Map possible field names used by the backend.
-  const updates: Record<string, unknown> = {}
-  if (user.value.firstName !== undefined) updates.firstName = user.value.firstName
-  if (user.value.lastName !== undefined) updates.lastName = user.value.lastName
-  if (user.value.email !== undefined) updates.email = user.value.email
-  if (user.value.userEmail !== undefined) updates.email = user.value.userEmail
-  if (user.value.phone !== undefined) updates.phoneNumber = user.value.phone
-  if (user.value.phoneNumber !== undefined) updates.phoneNumber = user.value.phoneNumber
-  if (user.value.address !== undefined) updates.address = user.value.address
-  if (user.value.profileImage !== undefined) updates.profileImage = user.value.profileImage
+const onDrop = (e: DragEvent) => {
+  e.preventDefault()
+  const files = e.dataTransfer?.files
+  if (files && files.length > 0) {
+    const file = files[0]
+    const fakeEvent = {
+      target: { files: [file] }
+    } as Event
+    onFileChange(fakeEvent)
+  }
+}
 
-  // Call auth.update if available to persist changes to backend
-  if (typeof auth.update === 'function') {
+const onDragOver = (e: DragEvent) => {
+  e.preventDefault()
+}
+
+const removePhoto = () => {
+  preview.value = null
+  user.value.profileImage = null
+  delete errors.value.profileImage
+}
+
+// Password visibility toggle
+const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+  showPasswords.value[field] = !showPasswords.value[field]
+}
+
+// Form validation
+const validateForm = () => {
+  errors.value = {}
+  
+  // Validate personal information
+  if (!user.value.firstName?.trim()) {
+    errors.value.firstName = 'First name is required'
+  }
+  
+  if (!user.value.lastName?.trim()) {
+    errors.value.lastName = 'Last name is required'
+  }
+  
+  if (!user.value.email?.trim()) {
+    errors.value.email = 'Email is required'
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.value.email)) {
+    errors.value.email = 'Please enter a valid email address'
+  }
+  
+  if (!user.value.phoneNo?.trim()) {
+    errors.value.phoneNo = 'Phone number is required'
+  }
+  
+  // Validate password change if any password field is filled
+  const hasPasswordFields = passwordForm.value.currentPassword || 
+                           passwordForm.value.newPassword || 
+                           passwordForm.value.confirmPassword
+  
+  if (hasPasswordFields) {
+    if (!passwordForm.value.currentPassword) {
+      errors.value.currentPassword = 'Current password is required'
+    }
+    
+    if (!passwordForm.value.newPassword) {
+      errors.value.newPassword = 'New password is required'
+    } else if (passwordForm.value.newPassword.length < 6) {
+      errors.value.newPassword = 'Password must be at least 6 characters'
+    }
+    
+    if (!passwordForm.value.confirmPassword) {
+      errors.value.confirmPassword = 'Please confirm your new password'
+    } else if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
+      errors.value.confirmPassword = 'Passwords do not match'
+    }
+  }
+  
+  return Object.keys(errors.value).length === 0
+}
+
+// Save changes
+const save = async () => {
+  if (!validateForm()) return
+  
+  isSaving.value = true
+  
+  try {
+    // Check what has changed
+    const hasProfileImageChanged = user.value.profileImage && 
+      user.value.profileImage !== (auth.user?.profileImage || '')
+    
+    const hasPersonalInfoChanged = 
+      user.value.firstName !== auth.user?.firstName ||
+      user.value.lastName !== auth.user?.lastName ||
+      user.value.email !== auth.user?.email ||
+      user.value.phoneNo !== auth.user?.phoneNo
+    
+    const hasPasswordChanged = passwordForm.value.currentPassword && 
+      passwordForm.value.newPassword && 
+      passwordForm.value.confirmPassword
+    
+    // Prepare updates - use correct field names
+    const updates: Record<string, unknown> = {
+      firstName: user.value.firstName,
+      lastName: user.value.lastName,
+      email: user.value.email,
+      phoneNumber: user.value.phoneNo,
+      phoneNo: user.value.phoneNo  // Try both field names for compatibility
+    }
+    
+    // Add profile image if changed
+    if (hasProfileImageChanged) {
+      updates.profileImage = user.value.profileImage
+    }
+    
+    // Add password change if provided
+    if (hasPasswordChanged) {
+      updates.oldPassword = passwordForm.value.currentPassword
+      updates.newPassword = passwordForm.value.newPassword
+      updates.confirmPassword = passwordForm.value.confirmPassword
+    }
+    
+    console.log('Sending updates:', updates)
+    console.log('Changes detected:', {
+      profileImage: hasProfileImageChanged,
+      personalInfo: hasPersonalInfoChanged,
+      password: hasPasswordChanged
+    })
+    console.log('Phone number values:', {
+      current: user.value.phoneNo,
+      original: auth.user?.phoneNo,
+      changed: hasPersonalInfoChanged
+    })
+    
     const success = await auth.update(updates)
+    
     if (success) {
-      // merge returned/local changes into store and localStorage
-      auth.user = { ...auth.user, ...user.value }
-      localStorage.setItem('user', JSON.stringify(auth.user))
-      // navigate back to dashboard after save
+      // Show specific success messages
+      if (hasProfileImageChanged) {
+        // Use the sonner store directly for profile picture success
+        const { useSonnerStore } = await import('@/stores/sonner')
+        const sonner = useSonnerStore()
+        sonner.success('Profile picture updated successfully!')
+      }
+      
+      if (hasPersonalInfoChanged) {
+        const { useSonnerStore } = await import('@/stores/sonner')
+        const sonner = useSonnerStore()
+        sonner.success('Personal information updated successfully!')
+      }
+      
+      if (hasPasswordChanged) {
+        const { useSonnerStore } = await import('@/stores/sonner')
+        const sonner = useSonnerStore()
+        sonner.success('Password changed successfully!')
+      }
+      
+      // Update the preview to match the stored image
+      if (user.value.profileImage) {
+        preview.value = user.value.profileImage
+      }
+      
+      // Clear password form
+      passwordForm.value = {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }
+      
+      // Navigate back to dashboard
       router.push('/dashboard')
     }
-  } else {
-    // fallback: update store and localStorage directly
-    auth.user = { ...auth.user, ...user.value }
-    localStorage.setItem('user', JSON.stringify(auth.user))
-    router.push('/dashboard')
+  } catch (error) {
+    console.error('Error updating profile:', error)
+  } finally {
+    isSaving.value = false
   }
+}
+
+const cancel = () => {
+  // Reset form to original values
+  user.value = auth.user ? { ...auth.user } : {}
+  preview.value = user.value?.profileImage || user.value?.profileImageUrl || null
+  passwordForm.value = {
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  }
+  errors.value = {}
 }
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Header/Navbar (copied from Dashboard.vue) -->
     <UserHeader />
 
     <!-- Main Content -->
-    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div class="bg-white rounded-lg shadow p-8">
-        <div class="flex items-center gap-6 mb-8">
-          <div
-            class="w-28 h-28 bg-gray-100 rounded-full overflow-hidden flex items-center justify-center"
-          >
-            <img
-              v-if="preview"
-              :src="toBase64(preview)"
-              alt="profile"
-              class="w-full h-full object-cover"
-            />
-            <div v-else class="text-gray-300">No Image</div>
-          </div>
-          <div>
-            <h2 class="text-2xl font-semibold">Account Settings</h2>
-            <p class="text-gray-600">Manage your profile information</p>
-          </div>
-        </div>
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Page Header -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Account Settings</h1>
+        <p class="text-gray-600 mt-2">Manage your personal information.</p>
+      </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="col-span-1">
-            <label class="block text-sm font-medium text-gray-700">First name</label>
-            <input
-              v-model="user.firstName"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
-            />
-          </div>
-          <div class="col-span-1">
-            <label class="block text-sm font-medium text-gray-700">Last name</label>
-            <input
-              v-model="user.lastName"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Email</label>
-            <input
-              v-model="user.email"
-              type="email"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
-            />
-          </div>
+      <div class="bg-white rounded-lg shadow-sm border p-8">
+        <!-- Profile Picture Section -->
+        <div class="mb-8">
+          <h2 class="text-xl font-semibold text-gray-900 mb-6">Profile Picture</h2>
+          
+          <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Current Profile Picture -->
+            <div class="flex flex-col items-center">
+              <div class="w-24 h-24 bg-gray-100 rounded-full overflow-hidden flex items-center justify-center mb-4">
+                <img
+                  v-if="preview"
+                  :src="preview"
+                  alt="profile"
+                  class="w-full h-full object-cover"
+                />
+                <div v-else class="text-gray-400 text-sm">No Image</div>
+              </div>
+              <div class="flex flex-col gap-2">
+                <button
+                  @click="document.getElementById('profile-upload').click()"
+                  class="text-orange-500 hover:text-orange-600 text-sm font-medium"
+                >
+                  Change Photo
+                </button>
+                <button
+                  v-if="hasProfileImage"
+                  @click="removePhoto"
+                  class="text-gray-400 hover:text-gray-600 text-sm"
+                >
+                  Remove Photo
+                </button>
+              </div>
+            </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700">Phone</label>
-            <input
-              v-model="user.phoneNo"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
-            />
-          </div>
-
-          <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700">Profile Picture</label>
-            <div class="mt-2 flex items-center gap-4">
-              <input type="file" accept="image/*" @change="onFileChange" />
+            <!-- Upload Area -->
+            <div class="flex-1">
+              <div
+                @drop="onDrop"
+                @dragover="onDragOver"
+                @dragenter="onDragOver"
+                class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-orange-400 transition-colors cursor-pointer"
+                @click="document.getElementById('profile-upload').click()"
+              >
+                <Upload class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p class="text-gray-600 mb-2">
+                  Drop your image here, or 
+                  <span class="text-orange-500 font-medium">browse</span>
+                </p>
+                <p class="text-sm text-gray-400">Supports: JPG, PNG, WEBP (Max 2MB)</p>
+                <input
+                  id="profile-upload"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  @change="onFileChange"
+                  class="hidden"
+                />
+              </div>
+              <p v-if="errors.profileImage" class="text-red-500 text-sm mt-2">
+                {{ errors.profileImage }}
+              </p>
             </div>
           </div>
         </div>
 
-        <div class="mt-8 flex justify-end">
+        <!-- Personal Information Section -->
+        <div class="mb-8">
+          <h2 class="text-xl font-semibold text-gray-900 mb-6">Personal Information</h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- First Name -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+              <input
+                v-model="user.firstName"
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                :class="{ 'border-red-500': errors.firstName }"
+              />
+              <p v-if="errors.firstName" class="text-red-500 text-sm mt-1">
+                {{ errors.firstName }}
+              </p>
+            </div>
+
+            <!-- Last Name -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+              <input
+                v-model="user.lastName"
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                :class="{ 'border-red-500': errors.lastName }"
+              />
+              <p v-if="errors.lastName" class="text-red-500 text-sm mt-1">
+                {{ errors.lastName }}
+              </p>
+            </div>
+
+            <!-- Email Address -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+              <input
+                v-model="user.email"
+                type="email"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                :class="{ 'border-red-500': errors.email }"
+              />
+              <p v-if="errors.email" class="text-red-500 text-sm mt-1">
+                {{ errors.email }}
+              </p>
+            </div>
+
+            <!-- Phone Number -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+              <input
+                v-model="user.phoneNo"
+                type="tel"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                :class="{ 'border-red-500': errors.phoneNo }"
+              />
+              <p v-if="errors.phoneNo" class="text-red-500 text-sm mt-1">
+                {{ errors.phoneNo }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Change Password Section -->
+        <div class="mb-8">
+          <h2 class="text-xl font-semibold text-gray-900 mb-6">Change Password</h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
+            <!-- Current Password -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+              <div class="relative">
+                <input
+                  v-model="passwordForm.currentPassword"
+                  :type="showPasswords.current ? 'text' : 'password'"
+                  class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  :class="{ 'border-red-500': errors.currentPassword }"
+                />
+                <button
+                  @click="togglePasswordVisibility('current')"
+                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <Eye v-if="!showPasswords.current" class="w-4 h-4" />
+                  <EyeOff v-else class="w-4 h-4" />
+                </button>
+              </div>
+              <p v-if="errors.currentPassword" class="text-red-500 text-sm mt-1">
+                {{ errors.currentPassword }}
+              </p>
+            </div>
+
+            <!-- New Password -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+              <div class="relative">
+                <input
+                  v-model="passwordForm.newPassword"
+                  :type="showPasswords.new ? 'text' : 'password'"
+                  class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  :class="{ 'border-red-500': errors.newPassword }"
+                />
+                <button
+                  @click="togglePasswordVisibility('new')"
+                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <Eye v-if="!showPasswords.new" class="w-4 h-4" />
+                  <EyeOff v-else class="w-4 h-4" />
+                </button>
+              </div>
+              <p v-if="errors.newPassword" class="text-red-500 text-sm mt-1">
+                {{ errors.newPassword }}
+              </p>
+            </div>
+
+            <!-- Confirm Password -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+              <div class="relative">
+                <input
+                  v-model="passwordForm.confirmPassword"
+                  :type="showPasswords.confirm ? 'text' : 'password'"
+                  class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  :class="{ 'border-red-500': errors.confirmPassword }"
+                />
+                <button
+                  @click="togglePasswordVisibility('confirm')"
+                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <Eye v-if="!showPasswords.confirm" class="w-4 h-4" />
+                  <EyeOff v-else class="w-4 h-4" />
+                </button>
+              </div>
+              <p v-if="errors.confirmPassword" class="text-red-500 text-sm mt-1">
+                {{ errors.confirmPassword }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-end gap-4">
+          <button
+            @click="cancel"
+            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
           <button
             @click="save"
-            class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium"
+            :disabled="isSaving"
+            class="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Save Changes
+            {{ isSaving ? 'Saving...' : 'Save Changes' }}
           </button>
         </div>
       </div>
     </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-12 mt-16">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <!-- Company Info -->
+          <div class="col-span-1 md:col-span-1">
+            <div class="flex items-center space-x-2 mb-4">
+              <img src="/src/assets/logo.png" alt="Cebu Crust" class="h-8 w-auto" />
+              <span class="text-xl font-bold">Cebu Crust</span>
+            </div>
+            <p class="text-gray-400 text-sm">
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
+              incididunt ut labore.
+            </p>
+          </div>
+
+          <!-- Opening Hours -->
+          <div>
+            <h3 class="font-semibold mb-4">Opening Time</h3>
+            <div class="space-y-2 text-sm text-gray-400">
+              <p>Mon - Wed: 10:00 AM - 10:00 PM</p>
+              <p>Thu - Sat: 10:00 AM - 11:00 PM</p>
+              <p>Sunday: Closed</p>
+            </div>
+          </div>
+
+          <!-- User Links -->
+          <div>
+            <h3 class="font-semibold mb-4">User Link</h3>
+            <div class="space-y-2 text-sm">
+              <router-link to="/aboutus" class="block text-gray-400 hover:text-white"
+                >About Us</router-link
+              >
+              <router-link to="/contact" class="block text-gray-400 hover:text-white"
+                >Contact Us</router-link
+              >
+              <a href="#" class="block text-gray-400 hover:text-white">Order Delivery</a>
+            </div>
+          </div>
+
+          <!-- Contact Info -->
+          <div>
+            <h3 class="font-semibold mb-4">Contact Us</h3>
+            <div class="space-y-2 text-sm text-gray-400">
+              <p>543 Country Club Ave, NC 27587, London, UK</p>
+              <p>+1257 654020</p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center"
+        >
+          <p class="text-gray-400 text-sm">©2024 ARR. All right reserved</p>
+          <div class="flex space-x-6 mt-4 md:mt-0">
+            <a href="#" class="text-gray-400 hover:text-white text-sm">Privacy Policy</a>
+            <a href="#" class="text-gray-400 hover:text-white text-sm">Terms of Use</a>
+          </div>
+        </div>
+      </div>
+    </footer>
   </div>
 </template>
