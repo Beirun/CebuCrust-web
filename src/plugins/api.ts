@@ -13,7 +13,7 @@ async function refreshAccessToken(): Promise<string | null> {
 
   refreshPromise = (async () => {
     try {
-      const res = await fetch(url + '/accounts/refresh', {
+      const res = await fetch(url + '/account/refresh', {
         method: 'POST',
         credentials: 'include', // send HttpOnly cookie
       })
