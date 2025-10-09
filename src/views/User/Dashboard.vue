@@ -6,7 +6,9 @@ import { ref, computed, onMounted } from 'vue'
 import { ShoppingCart, Heart, Star, MapPin, Clock } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
 import { useFavoriteStore } from '@/stores/favorite'
+import { useOrdersStore } from '@/stores/orders'
 import { usePizzaStore } from '@/stores/pizza'
+import { useAuthStore } from '@/stores/auth'
 import { toBase64 } from '@/plugins/convert'
 // const cart = useCartStore()
 
@@ -19,28 +21,27 @@ const favoritePizzas = computed(() =>
   pizza.pizzas.filter((p) => isFavorite.value.includes(p.pizzaId!)),
 )
 
-// User data
+// User data (seeded from auth store if available)
+const auth = useAuthStore()
 const user = ref({
-  name: 'Maria Santos',
-  address: '123 Lahug Street, Barangay Lahug, Cebu City, 6000',
+  name: auth.user?.firstName ? `${auth.user.firstName} ${auth.user.lastName ?? ''}`.trim() : auth.user?.name ?? 'Guest',
+  // For new accounts keep address empty so UI can show "not set yet"
+  address: auth.user?.address ?? localStorage.getItem('address') ?? '',
   deliveryTime: '25-30 mins',
 })
 
-// Current order status
-const currentOrder = ref({
-  id: 'PZ-2024-0892',
-  items: 2,
-  total: 850.0,
-  status: 'preparing',
-  estimatedDelivery: '20-25 minutes',
-})
+// Orders store
+const ordersStore = useOrdersStore()
 
-// Order status steps
+// Current selected order (first recent order)
+const currentOrder = ref<any>(null)
+
+// Order status steps template
 const orderSteps = ref([
-  { id: 'received', label: 'Received', completed: true, active: false },
-  { id: 'preparing', label: 'Preparing', completed: false, active: true },
+  { id: 'pending', label: 'Received', completed: false, active: false },
+  { id: 'preparing', label: 'Preparing', completed: false, active: false },
   { id: 'ready', label: 'Ready', completed: false, active: false },
-  { id: 'out-for-delivery', label: 'Out for Delivery', completed: false, active: false },
+  { id: 'out_for_delivery', label: 'Out for Delivery', completed: false, active: false },
   { id: 'delivered', label: 'Delivered', completed: false, active: false },
 ])
 
@@ -74,11 +75,94 @@ const currentTime = computed(() => {
 // }
 
 const trackOrder = () => {
+  if (!currentOrder.value) return
   console.log('Tracking order:', currentOrder.value.id)
 }
 
-const changeAddress = () => {
-  console.log('Change address clicked')
+// Change address modal state & logic
+const showAddressModal = ref(false)
+const newAddress = ref('')
+const addressError = ref('')
+const isSavingAddress = ref(false)
+
+// Searchable list of barangays in Cebu City (client-side static list)
+const barangays = [
+  'Amonian', 'Apas', 'Banilad', 'Basak Pardo', 'Basak San Nicolas', 'Basak Tua', 'Bula', 'Camputhaw',
+  'Capitol Site', 'Carmelite', 'Carreta', 'Guadalupe', 'Hipodromo', 'Kalubihan', 'Kinasang-an', 'Labangon',
+  'Lahug', 'Mabolo', 'Magallanes', 'Mambaling', 'Masilaw', 'Minglanilla', 'N. Bacayan', 'Pardo', 'Poblacion',
+  'Sagay', 'San Nicolas Proper', 'San Roque', 'Talamban', 'T. Padilla', 'Tinago'
+]
+
+const searchQuery = ref('')
+const selectedBarangay = ref<string | null>(null)
+
+const filteredBarangays = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return barangays
+  return barangays.filter((b) => b.toLowerCase().includes(q))
+})
+
+const openChangeAddress = () => {
+  // initialize modal state
+  newAddress.value = user.value.address || ''
+  addressError.value = ''
+  searchQuery.value = ''
+  selectedBarangay.value = null
+  showAddressModal.value = true
+}
+
+const validateCebuCity = (addr: string) => {
+  if (!addr || addr.trim().length === 0) return 'Address is required.'
+  // we only accept selections within Cebu City; ensure the string references Cebu
+  const lower = addr.toLowerCase()
+  if (!lower.includes('cebu')) {
+    return 'Delivery is available only within Cebu City.'
+  }
+  return ''
+}
+
+const selectBarangay = (b: string) => {
+  selectedBarangay.value = b
+  // show the composed address for confirmation
+  newAddress.value = `${b}, Cebu City`
+}
+
+const saveAddress = async () => {
+  // If a barangay is selected use it; otherwise validate free text
+  if (selectedBarangay.value) {
+    newAddress.value = `${selectedBarangay.value}, Cebu City`
+  }
+
+  addressError.value = validateCebuCity(newAddress.value)
+  if (addressError.value) return
+  isSavingAddress.value = true
+
+  // Try to update via auth store API if available
+  try {
+    const updates: any = { address: newAddress.value }
+    const ok = await auth.update(updates)
+    if (ok) {
+      // auth.update stores the user into localStorage; sync local state
+      user.value.address = auth.user?.address ?? newAddress.value
+      localStorage.setItem('address', user.value.address)
+      showAddressModal.value = false
+    } else {
+      // Fallback: update local state and persist to localStorage
+      user.value.address = newAddress.value
+      localStorage.setItem('address', user.value.address)
+      showAddressModal.value = false
+    }
+  } catch (err) {
+    // fallback local update
+    user.value.address = newAddress.value
+    localStorage.setItem('address', user.value.address)
+    showAddressModal.value = false
+  } finally {
+    isSavingAddress.value = false
+    // clear selection
+    selectedBarangay.value = null
+    searchQuery.value = ''
+  }
 }
 
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null
@@ -108,6 +192,41 @@ onMounted(async () => {
   await pizza.fetchAll()
   await favorite.fetchFavorites()
   isFavorite.value = favorite.favorites
+  // fetch user orders and set current order if any
+  await ordersStore.fetchOrders()
+  if (ordersStore.orders.length > 0) {
+    // pick the latest order
+    currentOrder.value = ordersStore.orders[0]
+    // map order status to steps
+    updateStepsFromStatus(currentOrder.value.status)
+  }
+})
+
+const updateStepsFromStatus = (status: string) => {
+  const statusOrder = ['pending', 'preparing', 'ready', 'out_for_delivery', 'delivered']
+  const index = statusOrder.indexOf(status)
+  orderSteps.value = orderSteps.value.map((s, i) => ({
+    ...s,
+    completed: i < index,
+    active: i === index,
+  }))
+}
+
+// Simple estimated delivery heuristic based on barangay/address keywords
+const estimatedDelivery = computed(() => {
+  const addr = (user.value.address || '').toLowerCase()
+  if (!addr) return 'TBD'
+
+  const fast = ['lahug', 'capitol', 'mabolo', 'guadalupe', 'poblacion', 'hipodromo']
+  const medium = ['banilad', 'labangon', 'kinalubihan', 'mambaling', 'basak', 'pardo']
+  const slow = ['minglanilla', 'tinago', 'n. bacayan', 'san roque', 'san nicolas']
+
+  for (const k of fast) if (addr.includes(k)) return '15-25 mins'
+  for (const k of medium) if (addr.includes(k)) return '20-35 mins'
+  for (const k of slow) if (addr.includes(k)) return '30-45 mins'
+
+  // default estimate
+  return '25-35 mins'
 })
 </script>
 
@@ -127,78 +246,135 @@ onMounted(async () => {
               {{ currentTime }}, {{ user.name.split(' ')[0] }}!
             </h1>
             <p class="text-gray-300 text-lg mb-4">Ready for another delicious pizza experience?</p>
-            <button
-              class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            <router-link
+              to="/favorites"
+              class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center"
             >
               Order Your Favorite Pizza
-            </button>
+            </router-link>
           </div>
           <div class="bg-white rounded-lg p-6 w-full lg:w-80">
             <div class="flex items-center mb-2">
               <MapPin class="w-5 h-5 text-gray-600 mr-2" />
               <span class="text-gray-600 font-medium">Delivering to:</span>
             </div>
-            <p class="text-gray-800 mb-3">{{ user.address }}</p>
+            <p class="text-gray-800 mb-3">{{ user.address || 'Address not set yet' }}</p>
             <div class="flex items-center justify-between">
               <div class="flex items-center">
                 <Clock class="w-4 h-4 text-gray-600 mr-1" />
-                <span class="text-sm text-gray-600">Est. delivery: {{ user.deliveryTime }}</span>
+                <span class="text-sm text-gray-600">Est. delivery: {{ estimatedDelivery }}</span>
               </div>
               <button
-                @click="changeAddress"
+                @click="openChangeAddress"
                 class="text-orange-500 hover:text-orange-600 text-sm font-medium"
               >
-                Change address
+                {{ user.address ? 'Change address' : 'Set address' }}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm border border-orange-400 p-6 mb-8">
-        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6">
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900">Order #{{ currentOrder.id }}</h3>
-            <p class="text-gray-600">
-              {{ currentOrder.items }} items • ₱{{ currentOrder.total.toFixed(2) }}
-            </p>
-          </div>
-          <button
-            @click="trackOrder"
-            class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium mt-4 lg:mt-0"
-          >
-            Track Order
-          </button>
-        </div>
+      <!-- Change address modal -->
+      <div v-if="showAddressModal" class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="absolute inset-0 bg-black opacity-40" @click="showAddressModal = false"></div>
+        <div class="bg-white rounded-lg shadow-lg z-50 w-full max-w-md p-6">
+          <h3 class="text-lg font-semibold mb-2">Choose your Barangay (Cebu City)</h3>
+          <p class="text-sm text-gray-600 mb-4">Select from the list or search your barangay.</p>
 
-        <div class="flex items-center justify-between mb-4">
-          <div v-for="(step, index) in orderSteps" :key="step.id" class="flex items-center">
-            <div class="flex flex-col items-center">
-              <div
-                class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
-                :class="
-                  step.completed
-                    ? 'bg-green-500 text-white'
-                    : step.active
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-gray-300 text-gray-600'
-                "
+          <div class="mb-3">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search barangay..."
+              class="w-full border rounded-md px-3 py-2"
+            />
+          </div>
+
+          <div class="max-h-44 overflow-auto mb-3 border rounded-md p-2">
+            <ul>
+              <li
+                v-for="b in filteredBarangays"
+                :key="b"
+                @click="selectBarangay(b)"
+                :class="['px-3 py-2 rounded-md cursor-pointer', selectedBarangay === b ? 'bg-orange-100' : 'hover:bg-gray-100']"
               >
-                <span v-if="step.completed">✓</span>
-                <span v-else-if="step.id === 'delivered'">🏠</span>
-                <span v-else>{{ index + 1 }}</span>
-              </div>
-              <span class="text-xs text-gray-600 mt-1 text-center">{{ step.label }}</span>
-            </div>
-            <div
-              v-if="index < orderSteps.length - 1"
-              class="flex-1 h-0.5 mx-2"
-              :class="step.completed ? 'bg-green-500' : 'bg-gray-300'"
-            ></div>
+                {{ b }}
+              </li>
+              <li v-if="filteredBarangays.length === 0" class="text-sm text-gray-500 px-3 py-2">No barangays found.</li>
+            </ul>
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-sm text-gray-700 mb-1">Full Address</label>
+            <input v-model="newAddress" type="text" class="w-full border rounded-md px-3 py-2" placeholder="Optional additional details (street, building)" />
+            <p v-if="addressError" class="text-sm text-red-500 mt-1">{{ addressError }}</p>
+          </div>
+
+          <div class="flex justify-end gap-3">
+            <button class="px-4 py-2 rounded-md" @click="showAddressModal = false">Cancel</button>
+            <button :disabled="isSavingAddress" @click="saveAddress" class="bg-orange-500 text-white px-4 py-2 rounded-md">{{ isSavingAddress ? 'Saving...' : 'Save Address' }}</button>
           </div>
         </div>
+      </div>
 
-        <p class="text-gray-600">Estimated delivery: {{ currentOrder.estimatedDelivery }}</p>
+      <div class="bg-white rounded-lg shadow-sm border border-orange-400 p-6 mb-8">
+        <div v-if="!currentOrder" class="text-center p-8">
+          <div class="text-gray-600 mb-4">You have no orders yet</div>
+          <p class="text-sm text-gray-500 mb-6">Once you place an order it will appear here with tracking details.</p>
+          <router-link
+            to="/menu"
+            class="inline-flex items-center bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            Order Now
+          </router-link>
+        </div>
+
+        <div v-else>
+          <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Order #{{ currentOrder.id }}</h3>
+              <p class="text-gray-600">
+                {{ currentOrder.items?.length ?? currentOrder.items }} items • ₱{{ (currentOrder.total ?? currentOrder.totalAmount ?? currentOrder.totalPrice ?? 0).toFixed(2) }}
+              </p>
+            </div>
+            <button
+              @click="trackOrder"
+              class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium mt-4 lg:mt-0"
+            >
+              Track Order
+            </button>
+          </div>
+
+          <div class="flex items-center justify-between mb-4">
+            <div v-for="(step, index) in orderSteps" :key="step.id" class="flex items-center">
+              <div class="flex flex-col items-center">
+                <div
+                  class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                  :class="
+                    step.completed
+                      ? 'bg-green-500 text-white'
+                      : step.active
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-300 text-gray-600'
+                  "
+                >
+                  <span v-if="step.completed">✓</span>
+                  <span v-else-if="step.id === 'delivered'">🏠</span>
+                  <span v-else>{{ index + 1 }}</span>
+                </div>
+                <span class="text-xs text-gray-600 mt-1 text-center">{{ step.label }}</span>
+              </div>
+              <div
+                v-if="index < orderSteps.length - 1"
+                class="flex-1 h-0.5 mx-2"
+                :class="step.completed ? 'bg-green-500' : 'bg-gray-300'"
+              ></div>
+            </div>
+          </div>
+
+          <p class="text-gray-600">Estimated delivery: {{ currentOrder.estimatedDelivery ?? 'TBD' }}</p>
+        </div>
       </div>
 
       <section class="mb-12">
@@ -338,6 +514,8 @@ onMounted(async () => {
         </div>
       </section>
     </main>
+
+    
 
     <!-- Footer -->
     <footer class="bg-gray-800 text-white py-12">
