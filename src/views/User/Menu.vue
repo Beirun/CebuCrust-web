@@ -129,7 +129,23 @@ onMounted(async () => {
   await pizza.fetchAll()
   await favorite.fetchFavorites()
   isFavorite.value = favorite.favorites
+
+  console.log('Test', isFavorite.value)
+  const uniqueCats = new Set<string>()
+  ;(pizza.pizzas || []).forEach((it: Pizza) => {
+    if (it.pizzaCategory) uniqueCats.add(it.pizzaCategory.toString())
+  })
+
+  // Reset categories keeping 'all' first
+  categories.value = [{ id: 'all', name: 'All Items', active: selectedCategory.value === 'all' }]
+  Array.from(uniqueCats).forEach((c) => {
+    categories.value.push({ id: c.toString().toLowerCase(), name: c.toString(), active: false })
+  })
 })
+
+const inCart = (id: number) => {
+  return cart.cart.some((c) => c.pizzaId === id)
+}
 </script>
 
 <template>
@@ -243,14 +259,26 @@ onMounted(async () => {
               </div>
 
               <!-- Action Buttons -->
-              <button
-                @click="addToCart(item)"
-                class="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-lg font-medium flex items-center justify-center"
-              >
-                <ShoppingCart class="w-4 h-4 mr-2" />
-                Add to Cart
-              </button>
             </div>
+            <button
+              @click="addToCart(item)"
+              :disabled="!item.isAvailable || inCart(item.pizzaId!)"
+              :class="
+                item.isAvailable && !inCart(item.pizzaId!)
+                  ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              "
+              class="w-full py-2 rounded-lg font-medium flex items-center justify-center transition-colors"
+            >
+              <ShoppingCart class="w-4 h-4 mr-2" />
+              {{
+                !item.isAvailable
+                  ? 'Unavailable'
+                  : inCart(item.pizzaId!)
+                    ? 'In Cart'
+                    : 'Add to Cart'
+              }}
+            </button>
           </div>
         </div>
 
