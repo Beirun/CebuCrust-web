@@ -226,7 +226,7 @@ const inCart = (id: number) => {
                   }
                 "
               />
-              <div v-else class="text-6xl">🍕</div>
+              <div v-else class="text-6xl">ðŸ•</div>
               
               <!-- Heart Icon -->
               <button
