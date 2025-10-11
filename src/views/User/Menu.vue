@@ -137,6 +137,10 @@ onMounted(async () => {
     categories.value.push({ id: c.toString().toLowerCase(), name: c.toString(), active: false })
   })
 })
+
+const inCart = (id: number) => {
+  return cart.cart.some((c) => c.pizzaId === id)
+}
 </script>
 <template>
   <div class="min-h-screen bg-gray-50">
@@ -305,16 +309,22 @@ onMounted(async () => {
 
             <button
               @click="addToCart(item)"
-              :disabled="!item.isAvailable"
+              :disabled="!item.isAvailable || inCart(item.pizzaId!)"
               :class="
-                item.isAvailable
+                item.isAvailable && !inCart(item.pizzaId!)
                   ? 'bg-orange-500 hover:bg-orange-600 text-white'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               "
               class="w-full py-2 rounded-lg font-medium flex items-center justify-center transition-colors"
             >
               <ShoppingCart class="w-4 h-4 mr-2" />
-              {{ item.isAvailable ? 'Add to Cart' : 'Unavailable' }}
+              {{
+                !item.isAvailable
+                  ? 'Unavailable'
+                  : inCart(item.pizzaId!)
+                    ? 'In Cart'
+                    : 'Add to Cart'
+              }}
             </button>
           </div>
         </div>
