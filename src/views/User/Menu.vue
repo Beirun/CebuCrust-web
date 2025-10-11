@@ -10,10 +10,12 @@ import type { Pizza } from '@/models/pizza'
 import { toBase64 } from '@/plugins/convert'
 import { useFavoriteStore } from '@/stores/favorite'
 import { useCartStore } from '@/stores/cart'
+import { useRouter } from 'vue-router'
 
 const favorite = useFavoriteStore()
 const pizza = usePizzaStore()
 const cart = useCartStore()
+const router = useRouter()
 
 const isFavorite = ref<number[]>([])
 // Local UI state
@@ -115,6 +117,18 @@ const toggle = (pizzaId: number, delay = 500) => {
   }, delay)
 }
 
+const addToCart = async (item: Pizza) => {
+  const confirmed = window.confirm(`Add ${item.pizzaName} to your cart?`)
+  if (confirmed) {
+    await cart.addToCart({ pizzaId: item.pizzaId!, quantity: 1 })
+  }
+}
+
+const orderNow = (item: Pizza) => {
+  const confirmed = window.confirm(`Would you like to proceed with ordering ${item.pizzaName}?`)
+  if (confirmed) {
+    router.push('/orders')
+  }
 const toggleFavorite = (pizzaId: number) => {
   toggle(pizzaId)
 }
@@ -255,6 +269,34 @@ const inCart = (id: number) => {
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
                 Add to Cart
+              </button>
+            </div>
+
+            <div class="flex gap-2">
+              <button
+                @click="addToCart(item)"
+                :disabled="!item.isAvailable"
+                :class="
+                  item.isAvailable
+                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                "
+                class="flex-1 py-2 rounded-lg font-medium flex items-center justify-center transition-colors"
+              >
+                <ShoppingCart class="w-4 h-4 mr-2" />
+                {{ item.isAvailable ? 'Add to Cart' : 'Unavailable' }}
+              </button>
+              <button
+                @click="orderNow(item)"
+                :disabled="!item.isAvailable"
+                :class="
+                  item.isAvailable
+                    ? 'bg-green-500 hover:bg-green-600 text-white'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                "
+                class="flex-1 py-2 rounded-lg font-medium flex items-center justify-center transition-colors"
+              >
+                Order Now
               </button>
             </div>
           </div>

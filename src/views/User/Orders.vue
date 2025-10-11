@@ -149,57 +149,79 @@ onMounted(() => {
             </p>
 
             <div class="bg-gray-800 rounded-lg p-4">
-              <h3 class="text-white font-semibold mb-4">Your Order</h3>
-              <div
-                v-for="item in cart.cart"
-                :key="item.pizzaId"
-                class="flex items-center justify-between bg-gray-700 p-3 rounded mb-3"
-              >
-                <div class="flex items-center gap-3">
-                  <img
-                    v-if="item.image"
-                    :src="item.image"
-                    class="w-12 h-12 rounded-full object-cover"
-                  />
-                  <div>
-                    <div class="font-medium">{{ item.name || `Pizza ${item.pizzaId}` }}</div>
-                    <div class="text-xs text-gray-200">{{ item.description || '' }}</div>
-                    <div class="flex items-center gap-2 mt-2">
+              <h3 class="text-white font-semibold mb-4">Order Details</h3>
+              <div v-if="cart.cart.length === 0" class="text-center py-6 text-gray-400">
+                <p>Your cart is empty. Please add items from the menu.</p>
+                <router-link to="/menu" class="text-orange-400 hover:text-orange-300 mt-4 inline-block">
+                  Browse Menu
+                </router-link>
+              </div>
+              <div v-else>
+                <!-- Order Items -->
+                <div v-for="item in cart.cart" :key="item.pizzaId"
+                  class="flex items-center justify-between bg-gray-700 p-3 rounded mb-3">
+                  <div class="flex items-center gap-3">
+                    <img v-if="item.image" :src="item.image"
+                      class="w-12 h-12 rounded object-cover bg-gray-600"
+                      :alt="item.name || `Pizza ${item.pizzaId}`"/>
+                    <div class="flex-1">
+                      <div class="font-medium">{{ item.name || `Pizza ${item.pizzaId}` }}</div>
+                      <div class="text-xs text-gray-400 mt-1">
+                        {{ formatCurrency(item.price || 0) }} each
+                      </div>
+                      <div class="flex items-center gap-2 mt-2">
+                        <button
+                          @click="cart.updateCart(item.pizzaId, Math.max((item.quantity || 1) - 1, 1))"
+                          class="bg-orange-500 hover:bg-orange-600 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                          :disabled="(item.quantity || 1) <= 1"
+                        >
+                          -
+                        </button>
+                        <span class="px-2 min-w-[2rem] text-center">{{ item.quantity || 1 }}</span>
+                        <button
+                          @click="cart.updateCart(item.pizzaId, (item.quantity || 1) + 1)"
+                          class="bg-orange-500 hover:bg-orange-600 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="font-semibold text-orange-300">
+                        {{ formatCurrency((item.price || 0) * (item.quantity || 1)) }}
+                      </div>
                       <button
-                        @click="cart.updateCart(item.pizzaId, (item.quantity || 1) - 1)"
-                        class="bg-orange-500 text-white rounded-full w-6 h-6"
+                        @click="cart.removeFromCart(item.pizzaId)"
+                        class="text-red-400 hover:text-red-300 text-sm mt-2 p-1"
+                        title="Remove item"
                       >
-                        -
-                      </button>
-                      <span class="px-2">{{ item.quantity || 1 }}</span>
-                      <button
-                        @click="cart.updateCart(item.pizzaId, (item.quantity || 1) + 1)"
-                        class="bg-orange-500 text-white rounded-full w-6 h-6"
-                      >
-                        +
+                        🗑️
                       </button>
                     </div>
                   </div>
                 </div>
-                <div class="text-right">
-                  <div class="font-semibold">
-                    {{ formatCurrency((item.price || 0) * (item.quantity || 1)) }}
-                  </div>
-                  <button @click="cart.removeFromCart(item.pizzaId)" class="text-red-400 text-sm mt-2">
-                    🗑️
-                  </button>
-                </div>
               </div>
 
-              <div class="mt-4 border-t border-gray-600 pt-4 text-sm">
-                <div class="flex justify-between text-gray-300 mb-2">
-                  <span>Subtotal</span><span>{{ formatCurrency(subtotal) }}</span>
-                </div>
-                <div class="flex justify-between text-gray-300 mb-2">
-                  <span>Delivery Fee</span><span>{{ formatCurrency(deliveryFee) }}</span>
-                </div>
-                <div class="flex justify-between font-semibold text-orange-300 text-lg">
-                  <span>Total Amount</span><span>{{ formatCurrency(total) }}</span>
+              <!-- Order Summary -->
+              <div class="mt-6 border-t border-gray-600 pt-4">
+                <div class="space-y-3">
+                  <div class="flex justify-between text-gray-300 text-sm">
+                    <span>Items Subtotal ({{ cart.cart.reduce((acc, item) => acc + (item.quantity || 1), 0) }} items)</span>
+                    <span>{{ formatCurrency(subtotal) }}</span>
+                  </div>
+                  <div class="flex justify-between text-gray-300 text-sm">
+                    <span>Delivery Fee</span>
+                    <span>{{ formatCurrency(deliveryFee) }}</span>
+                  </div>
+                  <div class="pt-3 border-t border-gray-600">
+                    <div class="flex justify-between font-semibold text-orange-300 text-lg">
+                      <span>Total Amount</span>
+                      <span>{{ formatCurrency(total) }}</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">
+                      By placing your order, you agree to our Terms of Service and Privacy Policy
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

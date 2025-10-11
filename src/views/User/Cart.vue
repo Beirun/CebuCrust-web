@@ -206,6 +206,13 @@ const saveAddress = async () => {
 }
 
 const checkout = async () => {
+  const confirmed = window.confirm(
+    'Would you like to proceed to checkout? You will be redirected to complete your order details.'
+  )
+
+  if (confirmed) {
+    router.push('/orders')
+  }
   router.push('/completeOrder')
 }
 
