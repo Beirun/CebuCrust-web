@@ -4,7 +4,7 @@
     <AdminHeader />
 
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="w-screen px-4 sm:px-8 lg:px-30 py-8">
       <!-- KPI Cards -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
@@ -250,55 +250,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Footer from Landing Page -->
-    <div class="bg-[#121A1D] h-70 w-screen flex flex-col px-30 pt-8 text-[#797B78] justify-between">
-      <div class="flex w-full justify-between gap-40">
-        <div class="w-150 flex flex-col gap-2">
-          <div>
-            <img src="@/assets/logo.png" alt="" />
-          </div>
-          <div>
-            Lorem ipsum dolor sit amet consectetur. Tristique cursus morbi nibh nec et vulputate.
-            Turpis tortor nisi imperdiet quis accumsan. Ligula netus amet leo ultricies. Neque
-            venenatis magnis amet eget sagittis leo enim.
-          </div>
-        </div>
-
-        <div class="flex flex-col w-120 gap-6">
-          <div class="text-white text-xl font-bold">Opening Time</div>
-          <div>Mon - Wed: 09:00am - 10:00pm</div>
-          <div>Thu - Sat: 09:00am - 9:00pm</div>
-          <div>Sun: Closed</div>
-        </div>
-
-        <div class="flex flex-col w-100 gap-6">
-          <div class="text-white text-xl font-bold">User Link</div>
-          <div>About Us</div>
-          <div>Contact Us</div>
-          <div>Order Delivery</div>
-        </div>
-
-        <div class="flex flex-col w-100 gap-6">
-          <div class="text-white text-xl font-bold">Contact Us</div>
-          <div>
-            <div>543 Country Club Ave</div>
-            <div>NC 27587, London, UK</div>
-          </div>
-
-          <div>+1257 6541120</div>
-        </div>
-      </div>
-    </div>
-    <div class="bg-[#121A1D] flex justify-between px-30 py-8 text-[#797B78]">
-      <div class="flex w-full justify-between">
-        <div>©2024 ARR, All right reserved</div>
-        <div class="flex gap-8">
-          <button>Privacy Policy</button>
-          <button>Terms of Use</button>
-        </div>
-      </div>
-    </div>
+    <Footer />
   </div>
 </template>
 
@@ -309,6 +261,7 @@ import { useDashboardStore } from '@/stores/dashboard'
 import OrdersOverview from '@/components/charts/OrdersOverview.vue'
 import RevenueTrend from '@/components/charts/RevenueTrend.vue'
 import AdminHeader from '@/components/AdminHeader.vue'
+import Footer from '@/components/Footer.vue'
 
 const dashboardStore = useDashboardStore()
 const {
