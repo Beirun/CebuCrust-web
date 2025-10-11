@@ -37,30 +37,30 @@ onBeforeUnmount(() => sonner.setTheme('light'))
 <template>
   <div class="min-h-screen w-screen scroll-smooth">
     <LandingNavbar class="bg-[#121A1D] static border-b border-[#D3D3D3]/30" />
-    <div class="bg-[#0A1316] grid place-items-center p-45 py-15">
-      <div class="h-255 w-[63vw] rounded-xl overflow-hidden flex">
-        <div class="relative h-full w-1/2">
+    <div class="bg-[#0A1316] grid place-items-center p-4 sm:p-8 lg:p-45 py-8 sm:py-12 lg:py-15 min-h-screen">
+      <div class="h-auto min-h-[135vh] lg:h-[135vh] w-full max-w-6xl mx-auto rounded-xl overflow-hidden flex flex-col lg:flex-row">
+        <div class="relative h-64 sm:h-80 lg:h-full w-full lg:w-1/2 min-h-64">
           <div class="absolute inset-0 bg-[url('@/assets/sign-bg.png')] bg-cover bg-center"></div>
           <div class="absolute inset-0 bg-black/50"></div>
         </div>
         <div
-          class="flex flex-col justify-center items-center h-full w-1/2 bg-[#192327] text-lg px-16"
+          class="flex flex-col justify-center items-center h-auto lg:h-full w-full lg:w-1/2 bg-[#192124] text-lg px-4 sm:px-8 lg:px-16 py-8 lg:py-8"
         >
           <div class="flex flex-col items-center gap-2 my-3">
-            <div class="text-white font-bold text-3xl">Create Your Account</div>
+            <div class="text-white font-bold text-2xl sm:text-3xl">Create Your Account</div>
             <div class="text-[#797B78] text-base">
               Join Cebu Crust and get your pizza delivered hot and fresh.
             </div>
           </div>
 
-          <div class="w-full flex justify-between my-3 gap-6">
+          <div class="w-full flex flex-col sm:flex-row my-3 gap-4 sm:gap-6">
             <div class="flex flex-col w-full gap-2 text-base">
               <label class="text-white">First Name</label>
               <input
                 v-model="form.firstName"
                 type="text"
                 placeholder="Enter your First Name"
-                class="placeholder:text-[#ADAEBC] text-[#ADAEBC] focus:text-white rounded-md border border-[#D3D3D3]/30 p-3"
+                class="w-full placeholder:text-[#D1D5DB] text-[#D1D5DB] focus:text-white bg-[#121A1D] rounded-md border border-[#D3D3D3]/30 p-3"
               />
             </div>
             <div class="flex flex-col w-full gap-2 text-base">
@@ -69,7 +69,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
                 v-model="form.lastName"
                 type="text"
                 placeholder="Enter your Last Name"
-                class="placeholder:text-[#ADAEBC] text-[#ADAEBC] focus:text-white rounded-md border border-[#D3D3D3]/30 p-3"
+                class="w-full placeholder:text-[#D1D5DB] text-[#D1D5DB] focus:text-white bg-[#121A1D] rounded-md border border-[#D3D3D3]/30 p-3"
               />
             </div>
           </div>
@@ -80,7 +80,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
               v-model="form.email"
               type="text"
               placeholder="Enter your Email"
-              class="placeholder:text-[#ADAEBC] text-[#ADAEBC] focus:text-white rounded-md border border-[#D3D3D3]/30 p-3"
+              class="placeholder:text-[#D1D5DB] text-[#D1D5DB] focus:text-white bg-[#121A1D] rounded-md border border-[#D3D3D3]/30 p-3"
             />
           </div>
 
@@ -90,7 +90,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
               v-model="form.phoneNumber"
               type="text"
               placeholder="Enter your Phone Number"
-              class="placeholder:text-[#ADAEBC] text-[#ADAEBC] focus:text-white rounded-md border border-[#D3D3D3]/30 p-3"
+              class="placeholder:text-[#D1D5DB] text-[#D1D5DB] focus:text-white bg-[#121A1D] rounded-md border border-[#D3D3D3]/30 p-3"
             />
           </div>
 
@@ -101,17 +101,17 @@ onBeforeUnmount(() => sonner.setTheme('light'))
                 v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
                 placeholder="Create a Password"
-                class="w-full placeholder:text-[#ADAEBC] text-[#ADAEBC] focus:text-white rounded-md border border-[#D3D3D3]/30 p-3"
+                class="w-full placeholder:text-[#D1D5DB] text-[#D1D5DB] focus:text-white bg-[#121A1D] rounded-md border border-[#D3D3D3]/30 p-3"
               />
               <span
                 @click="togglePassword"
                 v-if="showPassword"
-                class="icon-[fa7-solid--eye-slash] absolute right-4 bottom-4 text-[#ADAEBC]"
+                class="icon-[fa7-solid--eye-slash] absolute right-4 bottom-4 text-[#D1D5DB]"
               ></span>
               <span
                 v-else
                 @click="togglePassword"
-                class="icon-[fa7-solid--eye] absolute right-4 bottom-4 text-[#ADAEBC]"
+                class="icon-[fa7-solid--eye] absolute right-4 bottom-4 text-[#D1D5DB]"
               ></span>
             </div>
           </div>
@@ -122,18 +122,18 @@ onBeforeUnmount(() => sonner.setTheme('light'))
               <input
                 v-model="form.confirmPassword"
                 :type="showConfirmPassword ? 'text' : 'password'"
-                placeholder="Enter your Confirm Password"
-                class="w-full placeholder:text-[#ADAEBC] text-[#ADAEBC] focus:text-white rounded-md border border-[#D3D3D3]/30 p-3"
+                placeholder="Confirm your Password"
+                class="w-full placeholder:text-[#D1D5DB] text-[#D1D5DB] focus:text-white bg-[#121A1D] rounded-md border border-[#D3D3D3]/30 p-3"
               />
               <span
                 @click="toggleConfirmPassword"
                 v-if="showConfirmPassword"
-                class="icon-[fa7-solid--eye-slash] absolute right-4 bottom-4 text-[#ADAEBC]"
+                class="icon-[fa7-solid--eye-slash] absolute right-4 bottom-4 text-[#D1D5DB]"
               ></span>
               <span
                 @click="toggleConfirmPassword"
                 v-else
-                class="icon-[fa7-solid--eye] absolute right-4 bottom-4 text-[#ADAEBC]"
+                class="icon-[fa7-solid--eye] absolute right-4 bottom-4 text-[#D1D5DB]"
               ></span>
             </div>
           </div>

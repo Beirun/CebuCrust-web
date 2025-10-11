@@ -23,18 +23,18 @@ onBeforeUnmount(() => sonner.setTheme('light'))
 <template>
   <div class="min-h-screen w-screen scroll-smooth">
     <LandingNavbar class="bg-[#121A1D] static border-b border-[#D3D3D3]/30" />
-    <div class="bg-[#0A1316] grid place-items-center p-45 py-15">
-      <div class="h-[78vh] w-[63vw] rounded-xl overflow-hidden flex">
-        <div class="relative h-full w-1/2">
+    <div class="bg-[#0A1316] grid place-items-center p-4 sm:p-8 lg:p-45 py-8 sm:py-12 lg:py-15 min-h-screen">
+      <div class="h-auto min-h-[90vh] lg:h-[90vh] w-full max-w-6xl mx-auto rounded-xl overflow-hidden flex flex-col lg:flex-row">
+        <div class="relative h-64 sm:h-80 lg:h-full w-full lg:w-1/2 min-h-64">
           <div class="absolute inset-0 bg-[url('@/assets/sign-bg.png')] bg-cover bg-center"></div>
           <div class="absolute inset-0 bg-black/50"></div>
         </div>
 
         <div
-          class="flex flex-col justify-center items-center h-full w-1/2 bg-[#192327] text-lg px-16"
+          class="flex flex-col justify-center items-center h-auto lg:h-full w-full lg:w-1/2 bg-[#192124] text-lg px-4 sm:px-8 lg:px-16 py-8 lg:py-8"
         >
           <div class="flex flex-col items-center gap-2 my-3">
-            <div class="text-white font-bold text-3xl">Welcome Back</div>
+            <div class="text-white font-bold text-2xl sm:text-3xl">Welcome Back</div>
             <div class="text-[#797B78] text-base">Sign in to continue your pizza journey</div>
           </div>
 
@@ -44,7 +44,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
               v-model="form.email"
               type="text"
               placeholder="Enter your Email"
-              class="placeholder:text-[#ADAEBC] text-[#ADAEBC] focus:text-white rounded-md border border-[#D3D3D3]/30 p-3"
+              class="placeholder:text-[#D1D5DB] text-[#D1D5DB] focus:text-white bg-[#121A1D] rounded-md border border-[#D3D3D3]/30 p-3"
             />
           </div>
 
@@ -55,22 +55,30 @@ onBeforeUnmount(() => sonner.setTheme('light'))
                 v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
                 placeholder="Enter your Password"
-                class="w-full placeholder:text-[#ADAEBC] text-[#ADAEBC] focus:text-white rounded-md border border-[#D3D3D3]/30 p-3"
+                class="w-full placeholder:text-[#D1D5DB] text-[#D1D5DB] focus:text-white bg-[#121A1D] rounded-md border border-[#D3D3D3]/30 p-3"
               />
               <span
                 @click="togglePassword"
                 v-if="showPassword"
-                class="icon-[fa7-solid--eye-slash] absolute right-4 bottom-4 text-[#ADAEBC]"
+                class="icon-[fa7-solid--eye-slash] absolute right-4 bottom-4 text-[#D1D5DB]"
               ></span>
               <span
                 v-else
                 @click="togglePassword"
-                class="icon-[fa7-solid--eye] absolute right-4 bottom-4 text-[#ADAEBC]"
+                class="icon-[fa7-solid--eye] absolute right-4 bottom-4 text-[#D1D5DB]"
               ></span>
             </div>
           </div>
 
-          <div class="flex w-full justify-end my-3">
+          <div class="flex w-full justify-between items-center my-3">
+            <div class="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="remember"
+                class="w-4 h-4 text-primary bg-[#121A1D] border-[#D3D3D3]/30 rounded focus:ring-primary focus:ring-2"
+              />
+              <label for="remember" class="text-white text-sm">Remember me</label>
+            </div>
             <button @click="router.push('/forgot')" class="text-primary">Forgot Password?</button>
           </div>
 
