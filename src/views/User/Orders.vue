@@ -5,7 +5,7 @@ import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { useOrdersStore } from '@/stores/orders'
 import UserHeader from '@/components/UserHeader.vue'
-import type { Order } from '@/models/order'
+import Footer from '@/components/Footer.vue'
 const cart = useCartStore()
 const auth = useAuthStore()
 const orders = useOrdersStore()
@@ -139,7 +139,7 @@ onMounted(() => {
     <UserHeader />
 
     <div class="py-8">
-      <div class="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="w-screen px-4 sm:px-8 lg:px-30 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left: Order summary -->
         <div class="lg:col-span-1">
           <div class="bg-gray-900 text-white rounded-lg p-6 shadow">
@@ -294,5 +294,6 @@ onMounted(() => {
         </div>
       </div>
     </div>
+    <Footer />
   </div>
 </template>

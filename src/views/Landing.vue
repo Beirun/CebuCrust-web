@@ -10,6 +10,7 @@ import LandingNavbar from '@/components/LandingNavbar.vue'
 import LandingHero from '@/components/LandingHero.vue'
 import InfoCard from '@/components/InfoCard.vue'
 import LandingFooter from '@/components/LandingFooter.vue'
+import Footer from '@/components/Footer.vue'
 import { useSonnerStore } from '@/stores/sonner'
 import { toBase64 } from '@/plugins/convert'
 
@@ -297,44 +298,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
       </div>
     </div>
 
-    <div class="bg-[#121A1D] h-auto sm:h-65 w-screen flex flex-col px-4 sm:px-8 lg:px-30 py-6 sm:py-8 text-[#797B78] justify-between">
-      <div class="flex w-full justify-between gap-8 sm:gap-16 lg:gap-40 flex-col sm:flex-row">
-        <div class="w-full sm:w-150 flex flex-col gap-2">
-          <div>
-            <img src="@/assets/logo.png" alt="" class="w-40 sm:w-45 lg:w-55" />
-          </div>
-          <div class="text-sm sm:text-base">
-            Cebu Crust brings authentic Italian pizza to Cebu City. We use traditional wood-fired ovens and premium ingredients to create the perfect pizza experience. Located near University of Cebu Main Campus, we're your go-to destination for delicious, fresh pizza made with passion and expertise.
-          </div>
-        </div>
-
-        <div class="flex flex-col w-full sm:w-120 gap-4 sm:gap-6">
-          <div class="text-white text-lg sm:text-xl font-bold">Opening Time</div>
-          <div class="text-sm sm:text-base">Mon - Wed: 09:00am - 10:00pm</div>
-          <div class="text-sm sm:text-base">Thu - Sat: 09:00am - 9:00pm</div>
-          <div class="text-sm sm:text-base">Sun: Closed</div>
-        </div>
-
-        <div class="flex flex-col w-full sm:w-100 gap-4 sm:gap-6">
-          <div class="text-white text-lg sm:text-xl font-bold">User Link</div>
-          <div class="text-sm sm:text-base hover:text-white transition-colors cursor-pointer">About Us</div>
-          <div class="text-sm sm:text-base hover:text-white transition-colors cursor-pointer">Contact Us</div>
-          <div class="text-sm sm:text-base hover:text-white transition-colors cursor-pointer">Order Delivery</div>
-        </div>
-
-        <div class="flex flex-col w-full sm:w-100 gap-4 sm:gap-6">
-          <div class="text-white text-lg sm:text-xl font-bold">Contact Us</div>
-          <div class="text-sm sm:text-base">
-            <div>University of Cebu Main Campus</div>
-            <div>Sanciangko Street, Cebu City</div>
-          </div>
-
-          <div class="text-sm sm:text-base">+1257 6541120</div>
-        </div>
-      </div>
-    </div>
-
-    <LandingFooter />
+    <Footer />
   </div>
 </template>
 

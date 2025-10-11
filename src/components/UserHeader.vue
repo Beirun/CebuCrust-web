@@ -2,10 +2,14 @@
 import { toBase64 } from '@/plugins/convert'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
-import { ShoppingCart, Bell, ChevronDown } from 'lucide-vue-next'
+import { ShoppingCart, Bell, ChevronDown, User, LogOut, X, Home, Utensils, Package, Heart } from 'lucide-vue-next'
 import { ref, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
 const auth = useAuthStore()
 const cart = useCartStore()
+const route = useRoute()
+const router = useRouter()
 const user = ref(auth.user ? { ...auth.user } : {})
 
 const displayName = computed(() => {
@@ -16,11 +20,25 @@ const displayName = computed(() => {
 
 const preview = ref<string | null>(user.value?.profileImage || user.value?.profileImageUrl || null)
 
+// Dropdown states
+const isProfileDropdownOpen = ref(false)
+const isMobileMenuOpen = ref(false)
+
+// Navigation links
+const navLinks = [
+  { to: '/dashboard', name: 'Dashboard', icon: Home },
+  { to: '/menu', name: 'Menu', icon: Utensils },
+  { to: '/orders', name: 'Orders', icon: Package },
+  { to: '/favorites', name: 'Favorites', icon: Heart },
+]
+
+// Profile dropdown items
+const profileItems = [
+  { name: 'Profile', icon: User, action: () => router.push('/settings') },
+  { name: 'Logout', icon: LogOut, action: () => handleLogout() },
+]
+
 // Safely format an image source for <img>.
-// Accepts:
-// - data URLs (returned as-is)
-// - absolute/relative URLs (returned as-is)
-// - raw base64 string (wrapped with data:image/png;base64,)
 const formatImage = (img: string | null) => {
   if (!img) return null
   if (typeof img !== 'string') return null
@@ -33,6 +51,22 @@ const formatImage = (img: string | null) => {
   return toBase64(trimmed)
 }
 
+// Handle logout
+const handleLogout = async () => {
+  try {
+    await auth.logout()
+    router.push('/')
+  } catch (error) {
+    console.error('Logout failed:', error)
+  }
+}
+
+// Close dropdowns when clicking outside
+const closeDropdowns = () => {
+  isProfileDropdownOpen.value = false
+  isMobileMenuOpen.value = false
+}
+
 // Keep local user in sync if auth.user changes (e.g. login/logout elsewhere)
 watch(
   () => auth.user,
@@ -43,58 +77,207 @@ watch(
   { immediate: true },
 )
 </script>
+
 <template>
-  <header class="bg-gray-900 shadow-sm border-b">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center h-16">
+  <header class="bg-[#121A1D] static border-b border-[#D3D3D3]/30">
+    <div class="w-screen px-4 sm:px-8 lg:px-30">
+      <div class="flex justify-between items-center h-20 py-4">
         <!-- Logo -->
         <div class="flex items-center">
-          <div class="flex items-center space-x-2">
-            <img src="/src/assets/logo.png" alt="Cebu Crust" class="h-8 w-auto" />
+          <div>
+            <img src="@/assets/logo.png" alt="Cebu Crust" class="h-8 w-auto" />
           </div>
         </div>
 
-        <!-- Navigation -->
-        <nav class="hidden md:flex space-x-8">
-          <router-link to="/dashboard" class="text-white hover:text-orange-500"
-            >Dashboard</router-link
+        <!-- Desktop Navigation -->
+        <nav class="hidden lg:flex space-x-10">
+          <router-link
+            v-for="link in navLinks"
+            :key="link.name"
+            :to="link.to"
+            class="relative group font-medium px-3 py-2 transition-colors duration-300"
+            :class="[
+              route.path === link.to
+                ? 'text-primary'
+                : 'text-gray-300 hover:text-white'
+            ]"
           >
-          <router-link to="/menu" class="text-white hover:text-orange-500">Menu</router-link>
-          <router-link to="/orders" class="text-white hover:text-orange-500">Orders</router-link>
-          <router-link to="/favorites" class="text-white hover:text-orange-500"
-            >Favorites</router-link
-          >
+            {{ link.name }}
+            <!-- Orange underline for active link -->
+            <span
+              v-if="route.path === link.to"
+              class="absolute left-1/2 -translate-x-1/2 -bottom-0.5 h-[2px] w-full bg-primary"
+            ></span>
+            <!-- Hover underline effect -->
+            <span
+              v-else
+              class="absolute left-1/2 -translate-x-1/2 -bottom-0.5 h-[2px] w-full bg-primary origin-center scale-x-0 transition-transform duration-300 group-hover:scale-x-100"
+            ></span>
+          </router-link>
         </nav>
 
-        <!-- User Actions -->
-        <div class="flex items-center space-x-4">
-          <router-link to="/cart" class="relative p-2 text-white hover:text-orange-500">
+        <!-- Desktop User Actions -->
+        <div class="hidden lg:flex items-center space-x-6">
+          <!-- Cart -->
+          <router-link to="/cart" class="relative p-2 text-gray-300 hover:text-white transition-colors">
             <ShoppingCart class="w-6 h-6" />
             <span
               v-if="cart.cart.length > 0"
-              class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-500 rounded-full"
+              class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-primary rounded-full"
               >{{ cart.cart.length }}</span
             >
           </router-link>
-          <button class="p-2 text-white hover:text-orange-500 relative">
+
+          <!-- Notifications -->
+          <button class="relative p-2 text-gray-300 hover:text-white transition-colors">
             <Bell class="w-6 h-6" />
-            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            <span class="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
           </button>
-          <router-link
-            to="/settings"
-            class="flex items-center space-x-2 text-white hover:text-orange-300"
-          >
-            <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
-              <img
-                v-if="preview"
-                :src="formatImage(preview)"
-                alt="profile"
-                class="w-full h-full object-cover"
+
+          <!-- User Profile Dropdown -->
+          <div class="relative">
+            <button
+              @click="isProfileDropdownOpen = !isProfileDropdownOpen"
+              class="flex items-center space-x-3 text-gray-300 hover:text-white transition-colors"
+            >
+              <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                <img
+                  v-if="preview"
+                  :src="formatImage(preview)"
+                  alt="profile"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+              <span class="font-medium">{{ displayName }}</span>
+              <ChevronDown 
+                class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                :class="{ 'rotate-180': isProfileDropdownOpen }"
               />
+            </button>
+
+            <!-- Profile Dropdown Menu -->
+            <div
+              v-if="isProfileDropdownOpen"
+              class="absolute right-0 mt-2 w-48 bg-[#192124] rounded-lg shadow-lg border border-[#D3D3D3]/30 py-2 z-50"
+            >
+              <button
+                v-for="item in profileItems"
+                :key="item.name"
+                @click="item.action(); isProfileDropdownOpen = false"
+                class="w-full flex items-center space-x-3 px-4 py-2 text-gray-300 hover:text-white hover:bg-[#121A1D] transition-colors"
+              >
+                <component :is="item.icon" class="w-4 h-4" />
+                <span>{{ item.name }}</span>
+              </button>
             </div>
-            <span class="text-white font-medium">{{ displayName }}</span>
-            <ChevronDown class="w-4 h-4 text-white" />
+          </div>
+        </div>
+
+        <!-- Mobile Menu Button -->
+        <button
+          @click="isMobileMenuOpen = !isMobileMenuOpen"
+          class="lg:hidden flex flex-col justify-center items-center w-8 h-8 space-y-1"
+        >
+          <span
+            :class="[
+              'block w-6 h-0.5 bg-white transition-all duration-300',
+              isMobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''
+            ]"
+          ></span>
+          <span
+            :class="[
+              'block w-6 h-0.5 bg-white transition-all duration-300',
+              isMobileMenuOpen ? 'opacity-0' : ''
+            ]"
+          ></span>
+          <span
+            :class="[
+              'block w-6 h-0.5 bg-white transition-all duration-300',
+              isMobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''
+            ]"
+          ></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Menu Overlay -->
+    <div
+      v-if="isMobileMenuOpen"
+      class="fixed inset-0 bg-black/50 z-40 lg:hidden"
+      @click="closeDropdowns"
+    ></div>
+
+    <!-- Mobile Menu -->
+    <div
+      :class="[
+        'fixed top-0 right-0 h-full w-80 bg-[#121A1D] z-50 transform transition-transform duration-300 lg:hidden',
+        isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+      ]"
+    >
+      <div class="flex flex-col h-full p-6">
+        <!-- Close Button -->
+        <div class="flex justify-end mb-8">
+          <button @click="closeDropdowns" class="text-white text-2xl">
+            <X class="w-6 h-6" />
+          </button>
+        </div>
+
+        <!-- Mobile Navigation Links -->
+        <div class="flex flex-col gap-6 mb-8">
+          <router-link
+            v-for="link in navLinks"
+            :key="link.name"
+            :to="link.to"
+            @click="closeDropdowns"
+            class="flex items-center space-x-3 text-white text-xl hover:text-primary transition-colors"
+            :class="{ 'text-primary': route.path === link.to }"
+          >
+            <component :is="link.icon" class="w-5 h-5" />
+            <span>{{ link.name }}</span>
           </router-link>
+        </div>
+
+        <!-- Mobile User Actions -->
+        <div class="flex flex-col gap-4 mb-8">
+          <!-- Cart -->
+          <router-link
+            to="/cart"
+            @click="closeDropdowns"
+            class="flex items-center space-x-3 text-white text-xl hover:text-primary transition-colors"
+          >
+            <ShoppingCart class="w-5 h-5" />
+            <span>Cart</span>
+            <span
+              v-if="cart.cart.length > 0"
+              class="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-primary rounded-full"
+              >{{ cart.cart.length }}</span
+            >
+          </router-link>
+
+          <!-- Notifications -->
+          <button class="flex items-center space-x-3 text-white text-xl hover:text-primary transition-colors">
+            <Bell class="w-5 h-5" />
+            <span>Notifications</span>
+            <span class="ml-auto w-2 h-2 bg-primary rounded-full"></span>
+          </button>
+        </div>
+
+        <!-- Mobile Profile Actions -->
+        <div class="mt-auto flex flex-col gap-4">
+          <button
+            @click="router.push('/settings'); closeDropdowns()"
+            class="flex items-center space-x-3 text-white text-xl hover:text-primary transition-colors"
+          >
+            <User class="w-5 h-5" />
+            <span>Profile</span>
+          </button>
+          <button
+            @click="handleLogout"
+            class="flex items-center space-x-3 text-white text-xl hover:text-primary transition-colors"
+          >
+            <LogOut class="w-5 h-5" />
+            <span>Logout</span>
+          </button>
         </div>
       </div>
     </div>

@@ -11,6 +11,7 @@ import {
   ChevronRight,
 } from 'lucide-vue-next'
 import AdminHeader from '@/components/AdminHeader.vue'
+import Footer from '@/components/Footer.vue'
 import { usePizzaStore } from '@/stores/pizza'
 import type { Pizza } from '@/models/pizza'
 import { toBase64 } from '@/plugins/convert'
@@ -152,7 +153,7 @@ onMounted(async () => {
     <AdminHeader />
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-8">
+    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8">
       <!-- Page Header -->
       <div class="flex justify-between items-center mb-8">
         <div>
@@ -347,55 +348,6 @@ onMounted(async () => {
         </button>
       </div>
     </main>
-
-    <!-- Footer from Landing Page -->
-    <div class="bg-[#121A1D] h-70 w-screen flex flex-col px-30 pt-8 text-[#797B78] justify-between">
-      <div class="flex w-full justify-between gap-40">
-        <div class="w-150 flex flex-col gap-2">
-          <div>
-            <img src="@/assets/logo.png" alt="" />
-          </div>
-          <div>
-            Lorem ipsum dolor sit amet consectetur. Tristique cursus morbi nibh nec et vulputate.
-            Turpis tortor nisi imperdiet quis accumsan. Ligula netus amet leo ultricies. Neque
-            venenatis magnis amet eget sagittis leo enim.
-          </div>
-        </div>
-
-        <div class="flex flex-col w-120 gap-6">
-          <div class="text-white text-xl font-bold">Opening Time</div>
-          <div>Mon - Wed: 09:00am - 10:00pm</div>
-          <div>Thu - Sat: 09:00am - 9:00pm</div>
-          <div>Sun: Closed</div>
-        </div>
-
-        <div class="flex flex-col w-100 gap-6">
-          <div class="text-white text-xl font-bold">User Link</div>
-          <div>About Us</div>
-          <div>Contact Us</div>
-          <div>Order Delivery</div>
-        </div>
-
-        <div class="flex flex-col w-100 gap-6">
-          <div class="text-white text-xl font-bold">Contact Us</div>
-          <div>
-            <div>543 Country Club Ave</div>
-            <div>NC 27587, London, UK</div>
-          </div>
-
-          <div>+1257 6541120</div>
-        </div>
-      </div>
-    </div>
-    <div class="bg-[#121A1D] flex justify-between px-30 py-8 text-[#797B78]">
-      <div class="flex w-full justify-between">
-        <div>©2024 ARR, All right reserved</div>
-        <div class="flex gap-8">
-          <button>Privacy Policy</button>
-          <button>Terms of Use</button>
-        </div>
-      </div>
-    </div>
 
     <!-- Add New Pizza Modal -->
     <div
@@ -724,6 +676,7 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+    <Footer />
   </div>
 </template>
 

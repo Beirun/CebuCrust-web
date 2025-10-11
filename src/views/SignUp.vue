@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import LandingFooter from '@/components/LandingFooter.vue'
 import LandingNavbar from '@/components/LandingNavbar.vue'
+import Footer from '@/components/Footer.vue'
 import router from '@/router'
 import Checkbox from '@/components/ui/checkbox/Checkbox.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -195,6 +196,6 @@ onBeforeUnmount(() => sonner.setTheme('light'))
         </div>
       </div>
     </div>
-    <LandingFooter />
+    <Footer :copyright-only="true" />
   </div>
 </template>
