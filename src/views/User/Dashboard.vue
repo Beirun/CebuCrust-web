@@ -378,8 +378,8 @@ const estimatedDelivery = computed(() => {
           class="text-center p-12"
         >
           <Heart class="w-16 h-16 text-[#797B78] mx-auto mb-4" />
-          <h3 class="text-lg font-semibold text-white mb-2">You have no favorites yet</h3>
-          <p class="text-[#D1D5DB] mb-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">You have no favorites yet</h3>
+          <p class="text-gray-600 mb-6">
             Start exploring our menu and add your favorite pizzas to see them here!
           </p>
           <router-link
@@ -434,7 +434,9 @@ const estimatedDelivery = computed(() => {
                 <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
                 <div class="flex items-center">
                   <Star class="w-4 h-4 text-yellow-400 fill-current" />
-                  <span class="text-sm text-[#D1D5DB] ml-1">4.8 (124)</span>
+                  <span class="text-sm text-[#D1D5DB] ml-1">
+                    {{ item.averageRating && item.averageRating > 0 ? `${item.averageRating} (${item.totalRatings})` : '0 (0)' }}
+                  </span>
                 </div>
               </div>
               <button
@@ -519,7 +521,9 @@ const estimatedDelivery = computed(() => {
                 <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
                 <div class="flex items-center">
                   <Star class="w-4 h-4 text-yellow-400 fill-current" />
-                  <span class="text-sm text-[#D1D5DB] ml-1">4.8 (124)</span>
+                  <span class="text-sm text-[#D1D5DB] ml-1">
+                    {{ item.averageRating && item.averageRating > 0 ? `${item.averageRating} (${item.totalRatings})` : '0 (0)' }}
+                  </span>
                 </div>
               </div>
               <button

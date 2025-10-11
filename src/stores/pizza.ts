@@ -5,10 +5,12 @@ import { useSonnerStore } from './sonner'
 import { useAuthStore } from './auth'
 import { useFetch } from '@/plugins/api'
 import type { Pizza } from '@/models/pizza'
+import { useRatingStore } from './rating'
 
 export const usePizzaStore = defineStore('pizza', () => {
   const sonner = useSonnerStore()
   const auth = useAuthStore()
+  const ratingStore = useRatingStore()
   const URL = import.meta.env.VITE_BASE_URL ?? 'http://localhost:5135/api'
 
   const pizzas = ref<Pizza[]>([])
@@ -24,7 +26,23 @@ export const usePizzaStore = defineStore('pizza', () => {
       })
       const data = await res.json()
       if (!res.ok) return sonner.error(data.message ?? 'Failed to fetch pizzas')
-      pizzas.value = data
+      
+      // Fetch ratings for each pizza
+      const pizzasWithRatings = await Promise.all(
+        data.map(async (pizza: Pizza) => {
+          if (pizza.pizzaId) {
+            const pizzaRating = await ratingStore.fetchRatingsByPizzaId(pizza.pizzaId)
+            return {
+              ...pizza,
+              averageRating: pizzaRating?.averageRating || 0,
+              totalRatings: pizzaRating?.totalRatings || 0
+            }
+          }
+          return pizza
+        })
+      )
+      
+      pizzas.value = pizzasWithRatings
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error fetching pizzas'
       sonner.error(msg)
