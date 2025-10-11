@@ -101,7 +101,7 @@ const loadMore = () => {
   console.log('Load more clicked')
 }
 
-let debounceTimeout: NodeJS.Timeout | null = null
+let debounceTimeout: ReturnType<typeof setTimeout> | null = null
 
 const toggle = (pizzaId: number, delay = 500) => {
   if (debounceTimeout) clearTimeout(debounceTimeout)
@@ -241,7 +241,9 @@ const inCart = (id: number) => {
               <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center gap-1">
                   <Star class="h-4 w-4 text-yellow-400 fill-current" />
-                  <span class="text-white text-sm">4.8 (124)</span>
+                  <span class="text-white text-sm">
+                    {{ item.averageRating && item.averageRating > 0 ? `${item.averageRating} (${item.totalRatings})` : '0 (0)' }}
+                  </span>
                 </div>
                 <span class="text-xl font-bold text-primary">₱{{ item.pizzaPrice }}</span>
               </div>

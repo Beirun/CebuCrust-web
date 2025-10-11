@@ -183,7 +183,7 @@ onMounted(async () => {
               <div class="flex items-center">
                 <Star class="w-4 h-4 text-yellow-400 fill-current" />
                 <span class="text-sm text-gray-600 ml-1">
-                  <!-- Rating placeholder -->
+                  {{ item.averageRating && item.averageRating > 0 ? `${item.averageRating} (${item.totalRatings})` : '0 (0)' }}
                 </span>
               </div>
             </div>
