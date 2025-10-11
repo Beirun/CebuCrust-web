@@ -11,6 +11,7 @@ import Favorites from '@/views/User/Favorites.vue'
 import Menu from '@/views/User/Menu.vue'
 import Orders from '@/views/User/Orders.vue'
 import Cart from '@/views/User/Cart.vue'
+import CompleteOrder from '@/views/User/CompleteOrder.vue'
 import ForgotPassword from '@/views/ForgotPassword.vue'
 import ResetPassword from '@/views/ResetPassword.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -91,6 +92,11 @@ const router = createRouter({
       path: '/cart',
       name: 'Cart',
       component: Cart,
+    },
+    {
+      path: '/completeOrder',
+      name: 'CompleteOrder',
+      component: CompleteOrder,
     },
   ],
 })

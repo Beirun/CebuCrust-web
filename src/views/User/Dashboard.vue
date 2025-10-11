@@ -2,15 +2,17 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-// import { useCartStore } from '@/stores/cart'
+import { useCartStore } from '@/stores/cart'
 import { ShoppingCart, Heart, Star, MapPin, Clock } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
+import Footer from '@/components/Footer.vue'
 import { useFavoriteStore } from '@/stores/favorite'
 import { useOrdersStore } from '@/stores/orders'
 import { usePizzaStore } from '@/stores/pizza'
 import { useAuthStore } from '@/stores/auth'
 import { toBase64 } from '@/plugins/convert'
-// const cart = useCartStore()
+
+const cart = useCartStore()
 
 const favorite = useFavoriteStore()
 const pizza = usePizzaStore()
@@ -65,14 +67,10 @@ const currentTime = computed(() => {
   return 'Good Evening'
 })
 
-// // Methods
-// const toggleFavorite = (item: { isFavorite: boolean }) => {
-//   item.isFavorite = !item.isFavorite
-// }
-
-// const addToCart = (item: any) => {
-//   cart.addItem(item)
-// }
+// Methods
+const addToCart = (item: any) => {
+  cart.addToCart({ pizzaId: item.pizzaId!, quantity: 1 })
+}
 
 const trackOrder = () => {
   if (!currentOrder.value) return
@@ -235,9 +233,10 @@ const estimatedDelivery = computed(() => {
     <UserHeader />
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="bg-gray-800 rounded-lg p-8 mb-8 relative overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-r from-gray-800 to-gray-700 opacity-90"></div>
+    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8">
+      <div class="bg-[#121A1D] rounded-lg p-8 mb-8 relative overflow-hidden">
+        <div class="absolute inset-0 bg-[url('@/assets/banner-dashboard.png')] bg-cover bg-center"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-[#121A1D] to-[#192124] opacity-90"></div>
         <div
           class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center"
         >
@@ -245,28 +244,28 @@ const estimatedDelivery = computed(() => {
             <h1 class="text-3xl font-bold text-white mb-2">
               {{ currentTime }}, {{ user.name.split(' ')[0] }}!
             </h1>
-            <p class="text-gray-300 text-lg mb-4">Ready for another delicious pizza experience?</p>
+            <p class="text-[#D1D5DB] text-lg mb-4">Ready for another delicious pizza experience?</p>
             <router-link
               to="/favorites"
-              class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center"
+              class="bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center"
             >
               Order Your Favorite Pizza
             </router-link>
           </div>
-          <div class="bg-white rounded-lg p-6 w-full lg:w-80">
+          <div class="bg-[#192124] rounded-lg p-6 w-full lg:w-80">
             <div class="flex items-center mb-2">
-              <MapPin class="w-5 h-5 text-gray-600 mr-2" />
-              <span class="text-gray-600 font-medium">Delivering to:</span>
+              <MapPin class="w-5 h-5 text-[#D1D5DB] mr-2" />
+              <span class="text-[#D1D5DB] font-medium">Delivering to:</span>
             </div>
-            <p class="text-gray-800 mb-3">{{ user.address || 'Address not set yet' }}</p>
+            <p class="text-white mb-3">{{ user.address || 'Address not set yet' }}</p>
             <div class="flex items-center justify-between">
               <div class="flex items-center">
-                <Clock class="w-4 h-4 text-gray-600 mr-1" />
-                <span class="text-sm text-gray-600">Est. delivery: {{ estimatedDelivery }}</span>
+                <Clock class="w-4 h-4 text-[#D1D5DB] mr-1" />
+                <span class="text-sm text-[#D1D5DB]">Est. delivery: {{ estimatedDelivery }}</span>
               </div>
               <button
                 @click="openChangeAddress"
-                class="text-orange-500 hover:text-orange-600 text-sm font-medium"
+                class="text-primary hover:text-primary/80 text-sm font-medium"
               >
                 {{ user.address ? 'Change address' : 'Set address' }}
               </button>
@@ -318,29 +317,18 @@ const estimatedDelivery = computed(() => {
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm border border-orange-400 p-6 mb-8">
-        <div v-if="!currentOrder" class="text-center p-8">
-          <div class="text-gray-600 mb-4">You have no orders yet</div>
-          <p class="text-sm text-gray-500 mb-6">Once you place an order it will appear here with tracking details.</p>
-          <router-link
-            to="/menu"
-            class="inline-flex items-center bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-          >
-            Order Now
-          </router-link>
-        </div>
-
-        <div v-else>
+      <div v-if="currentOrder" class="mb-8">
+        <div class="bg-[#121A1D] rounded-lg p-6">
           <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6">
             <div>
-              <h3 class="text-lg font-semibold text-gray-900">Order #{{ currentOrder.id }}</h3>
-              <p class="text-gray-600">
+              <h3 class="text-lg font-semibold text-white">Order #{{ currentOrder.id }}</h3>
+              <p class="text-[#D1D5DB]">
                 {{ currentOrder.items?.length ?? currentOrder.items }} items • ₱{{ (currentOrder.total ?? currentOrder.totalAmount ?? currentOrder.totalPrice ?? 0).toFixed(2) }}
               </p>
             </div>
             <button
               @click="trackOrder"
-              class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium mt-4 lg:mt-0"
+              class="bg-primary hover:bg-primary/80 text-white px-4 py-2 rounded-lg font-medium mt-4 lg:mt-0"
             >
               Track Order
             </button>
@@ -355,48 +343,48 @@ const estimatedDelivery = computed(() => {
                     step.completed
                       ? 'bg-green-500 text-white'
                       : step.active
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-300 text-gray-600'
+                        ? 'bg-primary text-white'
+                        : 'bg-[#797B78] text-white'
                   "
                 >
                   <span v-if="step.completed">✓</span>
                   <span v-else-if="step.id === 'delivered'">🏠</span>
                   <span v-else>{{ index + 1 }}</span>
                 </div>
-                <span class="text-xs text-gray-600 mt-1 text-center">{{ step.label }}</span>
+                <span class="text-xs text-[#D1D5DB] mt-1 text-center">{{ step.label }}</span>
               </div>
               <div
                 v-if="index < orderSteps.length - 1"
                 class="flex-1 h-0.5 mx-2"
-                :class="step.completed ? 'bg-green-500' : 'bg-gray-300'"
+                :class="step.completed ? 'bg-green-500' : 'bg-[#797B78]'"
               ></div>
             </div>
           </div>
 
-          <p class="text-gray-600">Estimated delivery: {{ currentOrder.estimatedDelivery ?? 'TBD' }}</p>
+          <p class="text-[#D1D5DB]">Estimated delivery: {{ currentOrder.estimatedDelivery ?? 'TBD' }}</p>
         </div>
       </div>
 
       <section class="mb-12">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-900">Order Your Favorites</h2>
-          <router-link to="/favorites" class="text-orange-500 hover:text-orange-600 font-medium">
+          <router-link to="/favorites" class="text-primary hover:text-primary/80 font-medium">
             View All Favorites
           </router-link>
         </div>
         <!-- Empty state for favorites -->
         <div
           v-if="isFavorite.length === 0"
-          class="bg-white rounded-lg shadow-sm border p-12 text-center"
+          class="text-center p-12"
         >
-          <Heart class="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">You have no favorites yet</h3>
-          <p class="text-gray-600 mb-6">
+          <Heart class="w-16 h-16 text-[#797B78] mx-auto mb-4" />
+          <h3 class="text-lg font-semibold text-white mb-2">You have no favorites yet</h3>
+          <p class="text-[#D1D5DB] mb-6">
             Start exploring our menu and add your favorite pizzas to see them here!
           </p>
           <router-link
             to="/menu"
-            class="inline-flex items-center bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            class="inline-flex items-center bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             Browse Menu
           </router-link>
@@ -407,14 +395,23 @@ const estimatedDelivery = computed(() => {
           <div
             v-for="item in favoritePizzas"
             :key="item.pizzaId!"
-            class="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow"
+            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
           >
-            <div class="relative mb-4">
+            <div class="h-48 bg-gray-700 flex items-center justify-center relative">
               <img
+                v-if="item.pizzaImage"
                 :src="toBase64(item.pizzaImage as string)"
                 :alt="item.pizzaName"
-                class="w-full h-48 object-cover rounded-lg"
+                class="w-full h-full object-cover"
+                @error="
+                  (e: Event) => {
+                    const img = e.target as HTMLImageElement
+                    img.src =
+                      'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMzc0MTUxIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IiM5Q0EzQUYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfkLU8L3RleHQ+Cjwvc3ZnPg=='
+                  }
+                "
               />
+              <div v-else class="text-6xl">🍕</div>
               <button
                 class="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg"
                 @click="toggleFavorite(item.pizzaId!)"
@@ -429,22 +426,25 @@ const estimatedDelivery = computed(() => {
                 />
               </button>
             </div>
-            <h3 class="font-semibold text-gray-900 mb-2">{{ item.pizzaName }}</h3>
-            <p class="text-gray-600 text-sm mb-3">{{ item.pizzaDescription }}</p>
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-lg font-bold text-gray-900">₱{{ item.pizzaPrice }}</span>
-              <div class="flex items-center">
-                <Star class="w-4 h-4 text-yellow-400 fill-current" />
-                <span class="text-sm text-gray-600 ml-1">0 (0)</span>
+
+            <div class="p-4">
+              <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
+              <p class="text-[#D1D5DB] text-sm mb-3 line-clamp-2">{{ item.pizzaDescription }}</p>
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
+                <div class="flex items-center">
+                  <Star class="w-4 h-4 text-yellow-400 fill-current" />
+                  <span class="text-sm text-[#D1D5DB] ml-1">4.8 (124)</span>
+                </div>
               </div>
+              <button
+                @click="addToCart(item)"
+                class="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-lg font-medium flex items-center justify-center"
+              >
+                <ShoppingCart class="w-4 h-4 mr-2" />
+                Add to Cart
+              </button>
             </div>
-            <button
-              class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-medium flex items-center justify-center"
-            >
-              <!-- @click="addToCart(item)" -->
-              <ShoppingCart class="w-4 h-4 mr-2" />
-              Order Now
-            </button>
           </div>
         </div>
       </section>
@@ -452,24 +452,24 @@ const estimatedDelivery = computed(() => {
       <section class="mb-12">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-900">Today's Specials</h2>
-          <router-link to="/menu" class="text-orange-500 hover:text-orange-600 font-medium">
+          <router-link to="/menu" class="text-primary hover:text-primary/80 font-medium">
             View All Menu
           </router-link>
         </div>
         <!-- Empty state for today's specials -->
         <div
-          v-if="todaysSpecials.length === 0"
-          class="bg-white rounded-lg shadow-sm border p-12 text-center"
+          v-if="pizza.pizzas.length === 0"
+          class="text-center p-12"
         >
-          <Star class="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">No specials today</h3>
-          <p class="text-gray-600 mb-6">
+          <Star class="w-16 h-16 text-[#797B78] mx-auto mb-4" />
+          <h3 class="text-lg font-semibold text-white mb-2">No specials today</h3>
+          <p class="text-[#D1D5DB] mb-6">
             Our admin hasn't added any special offers for today. Check back later or explore our
             regular menu!
           </p>
           <router-link
             to="/menu"
-            class="inline-flex items-center bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            class="inline-flex items-center bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             View Full Menu
           </router-link>
@@ -478,38 +478,58 @@ const estimatedDelivery = computed(() => {
         <!-- Today's specials grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div
-            v-for="item in todaysSpecials"
-            :key="item.id"
-            class="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow"
+            v-for="item in pizza.pizzas.slice(0, 4)"
+            :key="item.pizzaId!"
+            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
           >
-            <div class="relative mb-4">
-              <img :src="item.image" :alt="item.name" class="w-full h-48 object-cover rounded-lg" />
+            <div class="h-48 bg-gray-700 flex items-center justify-center relative">
+              <img
+                v-if="item.pizzaImage"
+                :src="toBase64(item.pizzaImage as string)"
+                :alt="item.pizzaName"
+                class="w-full h-full object-cover"
+                @error="
+                  (e: Event) => {
+                    const img = e.target as HTMLImageElement
+                    img.src =
+                      'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMzc0MTUxIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IiM5Q0EzQUYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfkLU8L3RleHQ+Cjwvc3ZnPg=='
+                  }
+                "
+              />
+              <div v-else class="text-6xl">🍕</div>
               <button
                 class="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg"
+                @click="toggleFavorite(item.pizzaId!)"
               >
-                <!-- @click="toggleFavorite(item)" -->
-                <Heart class="w-5 h-5 text-gray-400" />
-                <!-- :class="item.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'" -->
+                <Heart
+                  class="w-5 h-5"
+                  :class="
+                    isFavorite.includes(item.pizzaId!)
+                      ? 'fill-red-500 text-red-500'
+                      : 'text-gray-400'
+                  "
+                />
               </button>
             </div>
-            <h3 class="font-semibold text-gray-900 mb-2">{{ item.name }}</h3>
-            <p class="text-gray-600 text-sm mb-3">{{ item.description }}</p>
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-lg font-bold text-gray-900">₱{{ item.price }}</span>
-              <div class="flex items-center">
-                <Star class="w-4 h-4 text-yellow-400 fill-current" />
-                <span class="text-sm text-gray-600 ml-1"
-                  >{{ item.rating }} ({{ item.reviewCount }})</span
-                >
+
+            <div class="p-4">
+              <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
+              <p class="text-[#D1D5DB] text-sm mb-3 line-clamp-2">{{ item.pizzaDescription }}</p>
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
+                <div class="flex items-center">
+                  <Star class="w-4 h-4 text-yellow-400 fill-current" />
+                  <span class="text-sm text-[#D1D5DB] ml-1">4.8 (124)</span>
+                </div>
               </div>
+              <button
+                @click="addToCart(item)"
+                class="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-lg font-medium flex items-center justify-center"
+              >
+                <ShoppingCart class="w-4 h-4 mr-2" />
+                Add to Cart
+              </button>
             </div>
-            <button
-              class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-medium flex items-center justify-center"
-            >
-              <!-- @click="addToCart(item)" -->
-              <ShoppingCart class="w-4 h-4 mr-2" />
-              Order Now
-            </button>
           </div>
         </div>
       </section>
@@ -517,62 +537,15 @@ const estimatedDelivery = computed(() => {
 
     
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-12">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div class="col-span-1 md:col-span-1">
-            <div class="flex items-center space-x-2 mb-4">
-              <img src="/src/assets/logo.png" alt="Cebu Crust" class="h-8 w-auto" />
-              <span class="text-xl font-bold">Cebu Crust</span>
-            </div>
-            <p class="text-gray-400 text-sm">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
-              incididunt ut labore.
-            </p>
-          </div>
-
-          <div>
-            <h3 class="font-semibold mb-4">Opening Time</h3>
-            <div class="space-y-2 text-sm text-gray-400">
-              <p>Mon - Wed: 10:00 AM - 10:00 PM</p>
-              <p>Thu - Sat: 10:00 AM - 11:00 PM</p>
-              <p>Sunday: Closed</p>
-            </div>
-          </div>
-
-          <div>
-            <h3 class="font-semibold mb-4">User Link</h3>
-            <div class="space-y-2 text-sm">
-              <router-link to="/aboutus" class="block text-gray-400 hover:text-white"
-                >About Us</router-link
-              >
-              <router-link to="/contact" class="block text-gray-400 hover:text-white"
-                >Contact Us</router-link
-              >
-              <a href="#" class="block text-gray-400 hover:text-white">Order Delivery</a>
-            </div>
-          </div>
-
-          <div>
-            <h3 class="font-semibold mb-4">Contact Us</h3>
-            <div class="space-y-2 text-sm text-gray-400">
-              <p>543 Country Club Ave, NC 27587, London, UK</p>
-              <p>+1257 654020</p>
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center"
-        >
-          <p class="text-gray-400 text-sm">©2024 ARR. All right reserved</p>
-          <div class="flex space-x-6 mt-4 md:mt-0">
-            <a href="#" class="text-gray-400 hover:text-white text-sm">Privacy Policy</a>
-            <a href="#" class="text-gray-400 hover:text-white text-sm">Terms of Use</a>
-          </div>
-        </div>
-      </div>
-    </footer>
+    <Footer />
   </div>
 </template>
+
+<style scoped>
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>
