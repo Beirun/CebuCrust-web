@@ -5,6 +5,7 @@ import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { useOrdersStore } from '@/stores/orders'
 import UserHeader from '@/components/UserHeader.vue'
+import type { Order } from '@/models/order'
 const cart = useCartStore()
 const auth = useAuthStore()
 const orders = useOrdersStore()
@@ -19,17 +20,12 @@ const selectedAddressId = ref<string | null>(
 )
 const instructions = ref('')
 
-// Helpers to safely unwrap Pinia/Vue nested refs
-const unwrap = (v: any) => {
-  if (v == null) return v
-  // ref-like
-  if (typeof v === 'object' && 'value' in v) return v.value
-  return v
-}
-
-const subtotal = computed(() => Number(unwrap(cart.subTotal) ?? 0))
-const deliveryFee = computed(() => Number(unwrap(cart.deliveryFee) ?? 0))
-const total = computed(() => Number(unwrap(cart.total) ?? 0))
+const subtotal = computed(() => {
+  const items = cart.cart || []
+  return items.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 1)), 0)
+})
+const deliveryFee = computed(() => 50) // Fixed delivery fee of 50 pesos
+const total = computed(() => subtotal.value + deliveryFee.value)
 
 const formatCurrency = (v: number) => `₱${v.toLocaleString()}`
 
@@ -88,20 +84,24 @@ const submitAddress = () => {
 }
 
 const placeOrder = () => {
-  if (!cart.items.length) return alert('Your cart is empty')
+  if (!cart.cart.length) return alert('Your cart is empty')
   if (!selectedAddressId.value) return alert('Please select a delivery address or add one')
 
   const addr = addresses.value.find((a) => a.id === selectedAddressId.value)!
-  const cartArr = Array.isArray(cart.items) ? cart.items : (unwrap(cart.items) ?? [])
+  const cartArr = cart.cart
 
-  const order = {
+  const order: Order = {
     id: 'ORD-' + Date.now(),
     customerName: auth.user?.name || auth.user?.userName || 'Guest',
     phone: auth.user?.phone || auth.user?.phoneNumber || '',
     dateTime: new Date().toISOString(),
     address: addr.address,
     instructions: instructions.value,
-    items: cartArr.map((i: any) => ({ name: i.name, quantity: i.quantity ?? 1, price: i.price })),
+    items: cartArr.map((i) => ({
+      name: i.name || `Pizza ${i.pizzaId}`,
+      quantity: i.quantity || 1,
+      price: i.price || 0
+    })),
     subtotal: subtotal.value,
     deliveryFee: deliveryFee.value,
     total: total.value,
@@ -111,10 +111,13 @@ const placeOrder = () => {
   }
 
   // push to orders store and persist in localStorage as simple implementation
-  orders.orders.push(order as any)
+  orders.orders.push(order)
   localStorage.setItem('orders', JSON.stringify(orders.orders))
 
-  cart.clear()
+  // Clear cart by removing all items
+  for (const item of cart.cart) {
+    cart.removeFromCart(item.pizzaId)
+  }
   alert('Order placed successfully')
   router.push('/dashboard')
 }
@@ -148,8 +151,8 @@ onMounted(() => {
             <div class="bg-gray-800 rounded-lg p-4">
               <h3 class="text-white font-semibold mb-4">Your Order</h3>
               <div
-                v-for="item in cart.items"
-                :key="item.id"
+                v-for="item in cart.cart"
+                :key="item.pizzaId"
                 class="flex items-center justify-between bg-gray-700 p-3 rounded mb-3"
               >
                 <div class="flex items-center gap-3">
@@ -159,18 +162,18 @@ onMounted(() => {
                     class="w-12 h-12 rounded-full object-cover"
                   />
                   <div>
-                    <div class="font-medium">{{ item.name }}</div>
+                    <div class="font-medium">{{ item.name || `Pizza ${item.pizzaId}` }}</div>
                     <div class="text-xs text-gray-200">{{ item.description || '' }}</div>
                     <div class="flex items-center gap-2 mt-2">
                       <button
-                        @click="cart.updateQuantity(item.id, (item.quantity || 1) - 1)"
+                        @click="cart.updateCart(item.pizzaId, (item.quantity || 1) - 1)"
                         class="bg-orange-500 text-white rounded-full w-6 h-6"
                       >
                         -
                       </button>
                       <span class="px-2">{{ item.quantity || 1 }}</span>
                       <button
-                        @click="cart.updateQuantity(item.id, (item.quantity || 1) + 1)"
+                        @click="cart.updateCart(item.pizzaId, (item.quantity || 1) + 1)"
                         class="bg-orange-500 text-white rounded-full w-6 h-6"
                       >
                         +
@@ -180,9 +183,9 @@ onMounted(() => {
                 </div>
                 <div class="text-right">
                   <div class="font-semibold">
-                    {{ formatCurrency(item.price * (item.quantity || 1)) }}
+                    {{ formatCurrency((item.price || 0) * (item.quantity || 1)) }}
                   </div>
-                  <button @click="cart.removeItem(item.id)" class="text-red-400 text-sm mt-2">
+                  <button @click="cart.removeFromCart(item.pizzaId)" class="text-red-400 text-sm mt-2">
                     🗑️
                   </button>
                 </div>
