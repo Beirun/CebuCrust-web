@@ -14,22 +14,22 @@ console.log(props.imageSrc)
 
 <template>
   <div
-    class="w-full flex flex-col justify-between gap-35 lg:flex-col xl:flex-row"
+    class="w-full flex flex-col justify-between gap-8 sm:gap-12 lg:gap-30 lg:flex-col xl:flex-row"
     :class="index % 2 === 1 ? 'xl:flex-row-reverse' : ''"
   >
-    <div class="flex flex-col justify-between text-lg gap-10">
+    <div class="flex flex-col justify-between gap-6 sm:gap-7 lg:gap-8">
       <div class="text-white flex flex-col gap-2">
         {{ sectionTitle }}
         <span class="h-[1px] w-15 bg-primary"></span>
       </div>
-      <div class="text-white text-6xl md:text-2xl lg:text-3xl 2xl:text-6xl font-bold">
+      <div class="text-white text-3xl sm:text-4xl lg:text-5xl md:text-3xl lg:text-4xl 2xl:text-5xl font-bold">
         {{ heading }}
       </div>
-      <div class="text-[#797B78] text-base xl:text-sm 2xl:text-lg">
+      <div class="text-[#797B78] text-sm sm:text-base xl:text-base 2xl:text-lg">
         {{ description }}
       </div>
       <div>
-        <button class="bg-primary text-white p-4 rounded-sm" @click="$emit('action')">
+        <button class="bg-primary text-white p-3 sm:p-4 rounded-sm" @click="$emit('action')">
           {{ buttonText }}
         </button>
       </div>
@@ -38,7 +38,7 @@ console.log(props.imageSrc)
     <div class="w-full flex justify-center">
       <div
         :style="{ backgroundImage: `url(${imageSrc})` }"
-        :class="['bg-cover w-150 xl:w-100 2xl:w-200 aspect-3/2']"
+        :class="['bg-cover w-full sm:w-80 lg:w-120 xl:w-100 2xl:w-120 aspect-3/2']"
       ></div>
     </div>
   </div>

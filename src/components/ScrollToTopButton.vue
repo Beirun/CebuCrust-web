@@ -19,7 +19,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   <button
     v-if="show"
     @click="scrollToTop"
-    class="fixed size-12 bottom-8 right-8 z-50 bg-primary text-white grid place-items-center rounded-full shadow-lg hover:bg-primary/80 transition"
+    class="fixed size-12 bottom-24 right-8 z-50 bg-primary text-white grid place-items-center rounded-full shadow-lg hover:bg-primary/80 transition"
   >
     <span class="icon-[material-symbols--arrow-upward-rounded] size-8"></span>
   </button>
