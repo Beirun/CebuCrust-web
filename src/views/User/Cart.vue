@@ -47,9 +47,13 @@ const removeCount = (pizzaId: number, delay = 500) => {
 }
 
 const checkout = async () => {
-  // placeholder - in real app you'd call API
-  await cart.clearCart()
-  router.push('/dashboard')
+  const confirmed = window.confirm(
+    'Would you like to proceed to checkout? You will be redirected to complete your order details.'
+  )
+
+  if (confirmed) {
+    router.push('/orders')
+  }
 }
 
 const hasItems = computed(() => cart.cart.length > 0)
