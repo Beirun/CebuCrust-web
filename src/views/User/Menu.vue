@@ -130,6 +130,10 @@ onMounted(async () => {
   await favorite.fetchFavorites()
   isFavorite.value = favorite.favorites
 })
+
+const inCart = (id: number) => {
+  return cart.cart.some((c) => c.pizzaId === id)
+}
 </script>
 
 <template>

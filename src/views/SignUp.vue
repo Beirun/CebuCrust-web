@@ -7,6 +7,7 @@ import router from '@/router'
 import Checkbox from '@/components/ui/checkbox/Checkbox.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useSonnerStore } from '@/stores/sonner'
+import { googleTokenLogin } from 'vue3-google-login'
 
 const auth = useAuthStore()
 const sonner = useSonnerStore()
@@ -28,18 +29,37 @@ const submitClick = () => {
   auth.register(form)
 }
 
+async function google() {
+  const object = await googleTokenLogin()
+  auth.continueWithGoogle(object)
+}
+
 const togglePassword = () => (showPassword.value = !showPassword.value)
 const toggleConfirmPassword = () => (showConfirmPassword.value = !showConfirmPassword.value)
 
-onMounted(() => sonner.setTheme('dark'))
+onMounted(() => {
+  sonner.setTheme('dark')
+
+  form.email = localStorage.getItem('email') ?? ''
+  form.firstName = localStorage.getItem('firstname') ?? ''
+  form.lastName = localStorage.getItem('lastname') ?? ''
+
+  localStorage.removeItem('email')
+  localStorage.removeItem('firstname')
+  localStorage.removeItem('lastname')
+})
 onBeforeUnmount(() => sonner.setTheme('light'))
 </script>
 
 <template>
   <div class="min-h-screen w-screen scroll-smooth">
     <LandingNavbar class="bg-[#121A1D] static border-b border-[#D3D3D3]/30" />
-    <div class="bg-[#0A1316] grid place-items-center p-4 sm:p-8 lg:p-45 py-8 sm:py-12 lg:py-15 min-h-screen">
-      <div class="h-auto min-h-[135vh] lg:h-[135vh] w-full max-w-6xl mx-auto rounded-xl overflow-hidden flex flex-col lg:flex-row">
+    <div
+      class="bg-[#0A1316] grid place-items-center p-4 sm:p-8 lg:p-45 py-8 sm:py-12 lg:py-15 min-h-screen"
+    >
+      <div
+        class="h-auto min-h-[135vh] lg:h-[135vh] w-full max-w-6xl mx-auto rounded-xl overflow-hidden flex flex-col lg:flex-row"
+      >
         <div class="relative h-64 sm:h-80 lg:h-full w-full lg:w-1/2 min-h-64">
           <div class="absolute inset-0 bg-[url('@/assets/sign-bg.png')] bg-cover bg-center"></div>
           <div class="absolute inset-0 bg-black/50"></div>
@@ -162,6 +182,8 @@ onBeforeUnmount(() => sonner.setTheme('light'))
 
           <button
             class="w-full border border-slate-400/30 bg-[#1F2937] my-3 p-3 text-white rounded-md flex items-center justify-center gap-2"
+            @click="google"
+            :disabled="auth.isLoading"
           >
             <span class="icon-[ri--google-fill] size-6 text-white"></span>
             Continue with Google

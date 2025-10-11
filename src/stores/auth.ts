@@ -4,8 +4,8 @@ import { ref, computed } from 'vue'
 import { jwtDecode } from 'jwt-decode'
 import router from '@/router'
 import { useSonnerStore } from './sonner'
-import { useFetch } from '@/plugins/api' // <-- your custom fetch wrapper
-// import type { CallbackTypes } from 'vue3-google-login';
+import { useFetch } from '@/plugins/api'
+import type { CallbackTypes } from 'vue3-google-login'
 // import { useNotificationStore } from "./notification"
 export const useAuthStore = defineStore('auth', () => {
   const sonner = useSonnerStore()
@@ -64,57 +64,62 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  //   const continueWithGoogle = async(object : CallbackTypes.TokenPopupResponse) =>{
-  //     isLoading.value = true
-  //     try {
-  //       const result = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-  //         headers: {
-  //           Authorization: `Bearer ${object.access_token}`
-  //         }
-  //       })
-  //       const fetchedUser = await result.json();
+  const continueWithGoogle = async (object: CallbackTypes.TokenPopupResponse) => {
+    isLoading.value = true
+    try {
+      const result = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: {
+          Authorization: `Bearer ${object.access_token}`,
+        },
+      })
+      const fetchedUser = await result.json()
 
-  //       const credentials = {
-  //         email: fetchedUser.email,
-  //         username: fetchedUser.name
-  //       }
+      console.log('fetchedUser', fetchedUser)
+      const credentials = {
+        email: fetchedUser.email,
+        password: 'password',
+      }
 
-  //       const res = await useFetch(URL + "/accounts/google", {
-  //         method: "POST",
-  //         headers: { "Content-Type": "application/json" },
-  //         body: JSON.stringify(credentials),
-  //         credentials: "include",
-  //       })
-  //       const data = await res.json()
-  //       if (!res.ok) return sonner.error(data.message)
-  //       console.log("user before", user.value)
-  //       sonner.success(data.message)
-  //       token.value = data.token
-  //       user.value = data.user
+      const res = await useFetch(URL + '/account/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (data.isSignedUp === false) {
+        localStorage.setItem('email', fetchedUser.email)
+        localStorage.setItem('firstname', fetchedUser.given_name)
+        localStorage.setItem('lastname', fetchedUser.family_name)
+        sonner.message(`You're Almost There`, data.message)
+        router.push('/signup')
+        return
+      }
+      sonner.success(data.message)
+      token.value = data.token
+      user.value = data.user
 
-  //       await notification.fetchNotifications(user.value.userId)
-  //       console.log("user after", user.value)
-  //       localStorage.setItem("token", data.token)
-  //       localStorage.setItem("user", JSON.stringify(data.user))
+      // await notification.fetchNotifications(user.value.userId)
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
 
-  //       const redirectPath = sessionStorage.getItem("redirectAfterLogin")
-  //       sessionStorage.removeItem("redirectAfterLogin")
+      const redirectPath = sessionStorage.getItem('redirectAfterLogin')
+      sessionStorage.removeItem('redirectAfterLogin')
 
-  //       // check if admin
-  //       if (redirectPath) {
-  //         router.push(redirectPath)
-  //       } else if (isAdmin.value) {
-  //         router.push("/admin")
-  //       } else {
-  //         router.push("/dashboard")
-  //       }
-  //     } catch (err: any) {
-  //       sonner.error(err.message)
-  //     } finally {
-  //       isLoading.value = false
-  //       isFromLogin.value =true
-  //     }
-  //   }
+      // check if admin
+      if (redirectPath) {
+        router.push(redirectPath)
+      } else if (isAdmin.value) {
+        router.push('/dashboard/admin')
+      } else {
+        router.push('/dashboard')
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) sonner.error(err.message)
+    } finally {
+      isLoading.value = false
+    }
+  }
 
   const login = async (credentials: { email: string; password: string }) => {
     isLoading.value = true
@@ -196,19 +201,19 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       console.log('Updating user with ID:', userInfo.value.userId)
       console.log('Updates being sent:', updates)
-      
+
       // Try different possible API endpoints
       const possibleEndpoints = [
         `${URL}/account/${userInfo.value.userId}`,
         `${URL}/account/update`,
         `${URL}/account/profile`,
         `${URL}/user/${userInfo.value.userId}`,
-        `${URL}/user/update`
+        `${URL}/user/update`,
       ]
-      
+
       let res: Response | null = null
       let lastError: string = ''
-      
+
       for (const endpoint of possibleEndpoints) {
         try {
           console.log('Trying endpoint:', endpoint)
@@ -218,7 +223,7 @@ export const useAuthStore = defineStore('auth', () => {
             body: JSON.stringify(updates),
             credentials: 'include',
           })
-          
+
           if (res.ok) {
             console.log('Success with endpoint:', endpoint)
             break
@@ -231,12 +236,12 @@ export const useAuthStore = defineStore('auth', () => {
           console.log(lastError)
         }
       }
-      
+
       if (!res || !res.ok) {
         sonner.error(`Failed to update profile. ${lastError}`)
         return false
       }
-      
+
       // Try to parse JSON response
       let data
       try {
@@ -319,7 +324,7 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     handleTokenExpiry,
     makeAuthenticatedRequest,
-    //   continueWithGoogle,
+    continueWithGoogle,
     setToken,
     update,
   }
