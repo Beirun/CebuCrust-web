@@ -1,42 +1,59 @@
-# /dashboard
-
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { ShoppingCart, Heart, Star, MapPin, Clock } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
 import Footer from '@/components/Footer.vue'
 import { useFavoriteStore } from '@/stores/favorite'
-import { useOrdersStore } from '@/stores/orders'
+import { useOrderStore } from '@/stores/orders'
 import { usePizzaStore } from '@/stores/pizza'
 import { useAuthStore } from '@/stores/auth'
 import { toBase64 } from '@/plugins/convert'
+import type { Pizza } from '@/models/pizza'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, Edit, Trash2 } from 'lucide-vue-next'
+import type { Order } from '@/models/order'
+import { useLocationStore } from '@/stores/location'
+import { barangays } from '@/data/barangay'
+import type { Location } from '@/models/location'
 
 const cart = useCartStore()
-
+const order = useOrderStore()
 const favorite = useFavoriteStore()
 const pizza = usePizzaStore()
-
+const location = useLocationStore()
 const isFavorite = ref<number[]>([])
+const auth = useAuthStore()
 
 const favoritePizzas = computed(() =>
   pizza.pizzas.filter((p) => isFavorite.value.includes(p.pizzaId!)),
 )
 
-// User data (seeded from auth store if available)
-const auth = useAuthStore()
-const user = ref({
-  name: auth.user?.firstName ? `${auth.user.firstName} ${auth.user.lastName ?? ''}`.trim() : auth.user?.name ?? 'Guest',
-  // For new accounts keep address empty so UI can show "not set yet"
-  address: auth.user?.address ?? localStorage.getItem('address') ?? '',
-  deliveryTime: '25-30 mins',
-})
-
-// Orders store
-const ordersStore = useOrdersStore()
-
 // Current selected order (first recent order)
-const currentOrder = ref<any>(null)
+const currentOrder = ref<Order | null>(null)
 
 // Order status steps template
 const orderSteps = ref([
@@ -47,18 +64,6 @@ const orderSteps = ref([
   { id: 'delivered', label: 'Delivered', completed: false, active: false },
 ])
 
-const todaysSpecials = ref<
-  {
-    id: number
-    image: string
-    name: string
-    rating: number
-    reviewCount: number
-    description: string
-    price: number
-  }[]
->([])
-
 // Computed properties
 const currentTime = computed(() => {
   const hour = new Date().getHours()
@@ -68,101 +73,87 @@ const currentTime = computed(() => {
 })
 
 // Methods
-const addToCart = (item: any) => {
+const addToCart = (item: Pizza) => {
   cart.addToCart({ pizzaId: item.pizzaId!, quantity: 1 })
 }
 
 const trackOrder = () => {
   if (!currentOrder.value) return
-  console.log('Tracking order:', currentOrder.value.id)
+  console.log('Tracking order:', currentOrder.value)
 }
 
-// Change address modal state & logic
 const showAddressModal = ref(false)
-const newAddress = ref('')
-const addressError = ref('')
-const isSavingAddress = ref(false)
-
-// Searchable list of barangays in Cebu City (client-side static list)
-const barangays = [
-  'Amonian', 'Apas', 'Banilad', 'Basak Pardo', 'Basak San Nicolas', 'Basak Tua', 'Bula', 'Camputhaw',
-  'Capitol Site', 'Carmelite', 'Carreta', 'Guadalupe', 'Hipodromo', 'Kalubihan', 'Kinasang-an', 'Labangon',
-  'Lahug', 'Mabolo', 'Magallanes', 'Mambaling', 'Masilaw', 'Minglanilla', 'N. Bacayan', 'Pardo', 'Poblacion',
-  'Sagay', 'San Nicolas Proper', 'San Roque', 'Talamban', 'T. Padilla', 'Tinago'
-]
-
-const searchQuery = ref('')
-const selectedBarangay = ref<string | null>(null)
-
-const filteredBarangays = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return barangays
-  return barangays.filter((b) => b.toLowerCase().includes(q))
+const selectedAddressId = ref(0)
+const showChangeAddressModal = ref(false)
+const fromSelectAddress = ref(false)
+const isEdit = ref(false)
+const locationForm = reactive({
+  locationId: 0,
+  locationCity: 'Cebu City',
+  locationBrgy: '',
+  locationStreet: '',
+  locationHouseNo: '',
+  locationPostal: '',
+  locationLandmark: '',
+  isDefault: false,
 })
 
 const openChangeAddress = () => {
   // initialize modal state
-  newAddress.value = user.value.address || ''
-  addressError.value = ''
-  searchQuery.value = ''
-  selectedBarangay.value = null
+  locationForm.locationBrgy = ''
+  locationForm.locationStreet = ''
+  locationForm.locationHouseNo = ''
+  locationForm.locationPostal = ''
+  locationForm.locationLandmark = ''
+  locationForm.isDefault = false
   showAddressModal.value = true
 }
 
-const validateCebuCity = (addr: string) => {
-  if (!addr || addr.trim().length === 0) return 'Address is required.'
-  // we only accept selections within Cebu City; ensure the string references Cebu
-  const lower = addr.toLowerCase()
-  if (!lower.includes('cebu')) {
-    return 'Delivery is available only within Cebu City.'
-  }
-  return ''
+const openChangeAddressModal = () => {
+  showChangeAddressModal.value = true
+}
+const openEditAddress = (loc: Location) => {
+  // initialize modal state
+  locationForm.locationId = loc.locationId
+  locationForm.locationBrgy = loc.locationBrgy
+  locationForm.locationStreet = loc.locationStreet
+  locationForm.locationHouseNo = loc.locationHouseNo
+  locationForm.locationPostal = loc.locationPostal ?? ''
+  locationForm.locationLandmark = loc.locationLandmark ?? ''
+  locationForm.isDefault = loc.isDefault
+  showAddressModal.value = true
+  fromSelectAddress.value = true
+  showChangeAddressModal.value = false
+  isEdit.value = true
 }
 
-const selectBarangay = (b: string) => {
-  selectedBarangay.value = b
-  // show the composed address for confirmation
-  newAddress.value = `${b}, Cebu City`
+const UpdateShowAddressModal = (val: boolean) => {
+  showAddressModal.value = val
+  if (fromSelectAddress.value) showChangeAddressModal.value = true
+}
+
+const deleteAddress = async (loc: Location) => {
+  await location.removeLocation(loc.locationId)
+}
+
+const setAsDefault = async (loc: Location) => {
+  loc.isDefault = true
+  await location.updateLocation(loc.locationId, loc)
 }
 
 const saveAddress = async () => {
-  // If a barangay is selected use it; otherwise validate free text
-  if (selectedBarangay.value) {
-    newAddress.value = `${selectedBarangay.value}, Cebu City`
-  }
-
-  addressError.value = validateCebuCity(newAddress.value)
-  if (addressError.value) return
-  isSavingAddress.value = true
-
-  // Try to update via auth store API if available
-  try {
-    const updates: any = { address: newAddress.value }
-    const ok = await auth.update(updates)
-    if (ok) {
-      // auth.update stores the user into localStorage; sync local state
-      user.value.address = auth.user?.address ?? newAddress.value
-      localStorage.setItem('address', user.value.address)
+  if (isEdit.value) {
+    const res = await location.updateLocation(locationForm.locationId, locationForm)
+    if (res) {
       showAddressModal.value = false
-    } else {
-      // Fallback: update local state and persist to localStorage
-      user.value.address = newAddress.value
-      localStorage.setItem('address', user.value.address)
-      showAddressModal.value = false
+      isEdit.value = false
     }
-  } catch (err) {
-    // fallback local update
-    user.value.address = newAddress.value
-    localStorage.setItem('address', user.value.address)
-    showAddressModal.value = false
-  } finally {
-    isSavingAddress.value = false
-    // clear selection
-    selectedBarangay.value = null
-    searchQuery.value = ''
+  } else {
+    const res = await location.addLocation(locationForm)
+    if (res) showAddressModal.value = false
   }
+  if (fromSelectAddress.value) showChangeAddressModal.value = true
 }
-
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null
 
 const toggleFavorite = (pizzaId: number, delay = 500) => {
@@ -189,14 +180,17 @@ const toggle = (pizzaId: number, delay = 500) => {
 onMounted(async () => {
   await pizza.fetchAll()
   await favorite.fetchFavorites()
+  await location.fetchLocations()
+  await order.fetchUserOrders()
+  selectedAddressId.value = location.selectedLocation?.locationId ?? 0
+
   isFavorite.value = favorite.favorites
   // fetch user orders and set current order if any
-  await ordersStore.fetchOrders()
-  if (ordersStore.orders.length > 0) {
+  if (order.orders.length > 0) {
     // pick the latest order
-    currentOrder.value = ordersStore.orders[0]
+    currentOrder.value = order.orders[0]
     // map order status to steps
-    updateStepsFromStatus(currentOrder.value.status)
+    updateStepsFromStatus(currentOrder.value.orderStatus!)
   }
 })
 
@@ -212,7 +206,12 @@ const updateStepsFromStatus = (status: string) => {
 
 // Simple estimated delivery heuristic based on barangay/address keywords
 const estimatedDelivery = computed(() => {
-  const addr = (user.value.address || '').toLowerCase()
+  const addr =
+    location.locations
+      .find(
+        (l) => l.locationId === (selectedAddressId.value ?? location.selectedLocation?.locationId),
+      )
+      ?.locationBrgy.toLowerCase() ?? ''
   if (!addr) return 'TBD'
 
   const fast = ['lahug', 'capitol', 'mabolo', 'guadalupe', 'poblacion', 'hipodromo']
@@ -226,6 +225,10 @@ const estimatedDelivery = computed(() => {
   // default estimate
   return '25-35 mins'
 })
+
+const inCart = (id: number) => {
+  return cart.cart.some((c) => c.pizzaId === id)
+}
 </script>
 
 <template>
@@ -233,16 +236,18 @@ const estimatedDelivery = computed(() => {
     <UserHeader />
 
     <!-- Main Content -->
-    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8">
+    <main class="w-screen min-h-[calc(100vh-5rem)] px-4 sm:px-8 lg:px-30 py-8">
       <div class="bg-[#121A1D] rounded-lg p-8 mb-8 relative overflow-hidden">
-        <div class="absolute inset-0 bg-[url('@/assets/banner-dashboard.png')] bg-cover bg-center"></div>
+        <div
+          class="absolute inset-0 bg-[url('@/assets/banner-dashboard.png')] bg-cover bg-center"
+        ></div>
         <div class="absolute inset-0 bg-gradient-to-r from-[#121A1D] to-[#192124] opacity-90"></div>
         <div
           class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center"
         >
           <div class="mb-6 lg:mb-0">
             <h1 class="text-3xl font-bold text-white mb-2">
-              {{ currentTime }}, {{ user.name.split(' ')[0] }}!
+              {{ currentTime }}, {{ auth.userInfo.firstName }}!
             </h1>
             <p class="text-[#D1D5DB] text-lg mb-4">Ready for another delicious pizza experience?</p>
             <router-link
@@ -252,78 +257,249 @@ const estimatedDelivery = computed(() => {
               Order Your Favorite Pizza
             </router-link>
           </div>
-          <div class="bg-[#192124] rounded-lg p-6 w-full lg:w-80">
+          <div class="bg-[#192124] rounded-lg p-6 w-full lg:w-90">
             <div class="flex items-center mb-2">
               <MapPin class="w-5 h-5 text-[#D1D5DB] mr-2" />
               <span class="text-[#D1D5DB] font-medium">Delivering to:</span>
             </div>
-            <p class="text-white mb-3">{{ user.address || 'Address not set yet' }}</p>
+            <p class="text-white mb-3">
+              {{ location.mapLocation(location.selectedLocation ?? null) || 'Address not set yet' }}
+            </p>
             <div class="flex items-center justify-between">
               <div class="flex items-center">
                 <Clock class="w-4 h-4 text-[#D1D5DB] mr-1" />
                 <span class="text-sm text-[#D1D5DB]">Est. delivery: {{ estimatedDelivery }}</span>
               </div>
               <button
-                @click="openChangeAddress"
+                @click="location.selectedLocation ? openChangeAddressModal() : openChangeAddress()"
                 class="text-primary hover:text-primary/80 text-sm font-medium"
               >
-                {{ user.address ? 'Change address' : 'Set address' }}
+                {{ location.selectedLocation ? 'Change address' : 'Set address' }}
               </button>
             </div>
           </div>
         </div>
       </div>
 
+      <Dialog v-model:open="showChangeAddressModal">
+        <DialogContent class="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Select Delivery Address</DialogTitle>
+            <DialogDescription>Select an address for delivery within Cebu City.</DialogDescription>
+          </DialogHeader>
+          <div v-if="location.locations.length" class="space-y-3">
+            <div
+              v-for="a in location.locations"
+              :key="a.locationId"
+              class="flex items-center justify-between p-4 border rounded-lg shadow-sm relative"
+              :class="
+                selectedAddressId === a.locationId
+                  ? 'border-2 border-primary bg-primary/5'
+                  : 'border'
+              "
+              :style="selectedAddressId === a.locationId ? '' : 'border-color: #E5E7EB;'"
+            >
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  :value="a.locationId"
+                  v-model="selectedAddressId"
+                  class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                />
+                <div class="flex-1 flex items-center gap-2">
+                  <div class="font-medium text-gray-900 flex items-center gap-2">
+                    {{ location.mapLocation(a) }}
+                    <span
+                      v-if="a.isDefault"
+                      class="bg-primary text-white text-xs px-2 py-1 rounded-full font-medium"
+                      >{{ a.isDefault ? 'Default' : '' }}</span
+                    >
+                  </div>
+                </div>
+              </label>
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <Button variant="ghost" class="absolute h-8 w-8 p-0 top-1 right-1">
+                    <span class="sr-only">Open menu</span>
+                    <MoreHorizontal class="h-4 w-4 rotate-90" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem @click="openEditAddress(a)">
+                    <Edit class="h-4 w-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    @click="deleteAddress(a)"
+                    class="text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 class="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="!a.isDefault" @click="setAsDefault(a)">
+                    <Star class="h-4 w-4 mr-2" />
+                    Set as Default
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          <div v-else class="text-sm text-gray-500 mb-4">No saved addresses. Please add one.</div>
+
+          <div class="mt-4">
+            <Button
+              variant="outline"
+              @click="
+                () => {
+                  openChangeAddress()
+                  fromSelectAddress = true
+                  showChangeAddressModal = false
+                }
+              "
+              class="h-12 w-full text-primary px-4 py-2"
+            >
+              + Add New Address
+            </Button>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex justify-between gap-3">
+            <Button
+              class="w-[calc(50%-6px)] h-12"
+              variant="outline"
+              @click="showChangeAddressModal = false"
+            >
+              Cancel
+            </Button>
+            <Button
+              :disabled="location.isLoading"
+              @click="saveAddress"
+              class="w-[calc(50%-6px)] h-12 bg-primary hover:bg-primary/90"
+            >
+              <span v-if="location.isLoading">Saving...</span>
+              <span v-else>Save Address</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <!-- Change address modal -->
-      <div v-if="showAddressModal" class="fixed inset-0 z-50 flex items-center justify-center">
-        <div class="absolute inset-0 bg-black opacity-40" @click="showAddressModal = false"></div>
-        <div class="bg-white rounded-lg shadow-lg z-50 w-full max-w-md p-6">
-          <h3 class="text-lg font-semibold mb-2">Choose your Barangay (Cebu City)</h3>
-          <p class="text-sm text-gray-600 mb-4">Select from the list or search your barangay.</p>
+      <Dialog :open="showAddressModal" @update:open="UpdateShowAddressModal">
+        <DialogContent class="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{{ isEdit ? 'Update' : 'Add' }} Delivery Address</DialogTitle>
+            <DialogDescription>
+              Enter your complete address for delivery within Cebu City.
+            </DialogDescription>
+          </DialogHeader>
 
-          <div class="mb-3">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search barangay..."
-              class="w-full border rounded-md px-3 py-2"
-            />
+          <div class="grid gap-4 py-4">
+            <!-- First Row: City and Barangay -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <Label for="city">City *</Label>
+                <Input
+                  id="city"
+                  v-model="locationForm.locationCity"
+                  class="h-12 col-span-3"
+                  disabled
+                />
+              </div>
+              <div class="space-y-2">
+                <Label for="barangay">Barangay *</Label>
+                <Select v-model="locationForm.locationBrgy">
+                  <SelectTrigger class="w-full py-5.5">
+                    <SelectValue placeholder="Select barangay" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="barangay in barangays" :key="barangay" :value="barangay">
+                      {{ barangay }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <!-- Second Row: Street and House No -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <Label for="street">Street *</Label>
+                <Input
+                  class="h-12"
+                  id="street"
+                  v-model="locationForm.locationStreet"
+                  placeholder="Enter street name"
+                />
+              </div>
+              <div class="space-y-2">
+                <Label for="houseNo">House No *</Label>
+                <Input
+                  class="h-12"
+                  id="houseNo"
+                  v-model="locationForm.locationHouseNo"
+                  placeholder="Enter house number"
+                />
+              </div>
+            </div>
+
+            <!-- Third Row: Postal Code and Landmark (Optional) -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <Label for="postalCode">Postal Code</Label>
+                <Input
+                  class="h-12"
+                  id="postalCode"
+                  v-model="locationForm.locationPostal"
+                  placeholder="Enter postal code"
+                />
+              </div>
+              <div class="space-y-2">
+                <Label for="landmark">Landmark</Label>
+                <Input
+                  class="h-12"
+                  id="landmark"
+                  v-model="locationForm.locationLandmark"
+                  placeholder="Enter nearby landmark"
+                />
+              </div>
+            </div>
+
+            <!-- Save as default checkbox -->
+            <div class="flex items-center space-x-2">
+              <Checkbox id="saveDefault" v-model="locationForm.isDefault" />
+              <Label for="saveDefault" class="text-sm font-normal"> Save as default address </Label>
+            </div>
           </div>
 
-          <div class="max-h-44 overflow-auto mb-3 border rounded-md p-2">
-            <ul>
-              <li
-                v-for="b in filteredBarangays"
-                :key="b"
-                @click="selectBarangay(b)"
-                :class="['px-3 py-2 rounded-md cursor-pointer', selectedBarangay === b ? 'bg-orange-100' : 'hover:bg-gray-100']"
-              >
-                {{ b }}
-              </li>
-              <li v-if="filteredBarangays.length === 0" class="text-sm text-gray-500 px-3 py-2">No barangays found.</li>
-            </ul>
+          <!-- Buttons -->
+          <div class="flex justify-between gap-3">
+            <Button
+              class="w-[calc(50%-6px)] h-12"
+              variant="outline"
+              @click="showAddressModal = false"
+            >
+              Cancel
+            </Button>
+            <Button
+              :disabled="location.isLoading"
+              @click="saveAddress"
+              class="w-[calc(50%-6px)] h-12 bg-primary hover:bg-primary/90"
+            >
+              <span v-if="location.isLoading">Saving...</span>
+              <span v-else>Save Address</span>
+            </Button>
           </div>
-
-          <div class="mb-3">
-            <label class="block text-sm text-gray-700 mb-1">Full Address</label>
-            <input v-model="newAddress" type="text" class="w-full border rounded-md px-3 py-2" placeholder="Optional additional details (street, building)" />
-            <p v-if="addressError" class="text-sm text-red-500 mt-1">{{ addressError }}</p>
-          </div>
-
-          <div class="flex justify-end gap-3">
-            <button class="px-4 py-2 rounded-md" @click="showAddressModal = false">Cancel</button>
-            <button :disabled="isSavingAddress" @click="saveAddress" class="bg-orange-500 text-white px-4 py-2 rounded-md">{{ isSavingAddress ? 'Saving...' : 'Save Address' }}</button>
-          </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
 
       <div v-if="currentOrder" class="mb-8">
         <div class="bg-[#121A1D] rounded-lg p-6">
           <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6">
             <div>
-              <h3 class="text-lg font-semibold text-white">Order #{{ currentOrder.id }}</h3>
+              <h3 class="text-lg font-semibold text-white">Order #{{ currentOrder.orderId }}</h3>
               <p class="text-[#D1D5DB]">
-                {{ currentOrder.items?.length ?? currentOrder.items }} items • ₱{{ (currentOrder.total ?? currentOrder.totalAmount ?? currentOrder.totalPrice ?? 0).toFixed(2) }}
+                {{ currentOrder.orderLists.reduce((sum, item) => sum + item.quantity, 0) }} items •
+                ₱{{ (currentOrder.orderTotal ?? 0).toFixed(2) }}
               </p>
             </div>
             <button
@@ -361,7 +537,9 @@ const estimatedDelivery = computed(() => {
             </div>
           </div>
 
-          <p class="text-[#D1D5DB]">Estimated delivery: {{ currentOrder.estimatedDelivery ?? 'TBD' }}</p>
+          <p class="text-[#D1D5DB]">
+            Estimated delivery: {{ currentOrder.orderEstimate ?? 'TBD' }}
+          </p>
         </div>
       </div>
 
@@ -373,10 +551,7 @@ const estimatedDelivery = computed(() => {
           </router-link>
         </div>
         <!-- Empty state for favorites -->
-        <div
-          v-if="isFavorite.length === 0"
-          class="text-center p-12"
-        >
+        <div v-if="isFavorite.length === 0" class="text-center p-12">
           <Heart class="w-16 h-16 text-[#797B78] mx-auto mb-4" />
           <h3 class="text-lg font-semibold text-gray-900 mb-2">You have no favorites yet</h3>
           <p class="text-gray-600 mb-6">
@@ -435,16 +610,32 @@ const estimatedDelivery = computed(() => {
                 <div class="flex items-center">
                   <Star class="w-4 h-4 text-yellow-400 fill-current" />
                   <span class="text-sm text-[#D1D5DB] ml-1">
-                    {{ item.averageRating && item.averageRating > 0 ? `${item.averageRating} (${item.totalRatings})` : '0 (0)' }}
+                    {{
+                      item.averageRating && item.averageRating > 0
+                        ? `${item.averageRating} (${item.totalRatings})`
+                        : '0 (0)'
+                    }}
                   </span>
                 </div>
               </div>
               <button
+                :disabled="!item.isAvailable || inCart(item.pizzaId!)"
                 @click="addToCart(item)"
-                class="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-lg font-medium flex items-center justify-center"
+                class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
+                :class="
+                  item.isAvailable && !inCart(item.pizzaId!)
+                    ? 'bg-primary hover:bg-primary/80'
+                    : 'bg-gray-300 text-gray-500 cursor-default'
+                "
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
-                Add to Cart
+                {{
+                  !item.isAvailable
+                    ? 'Unavailable'
+                    : inCart(item.pizzaId!)
+                      ? 'In Cart'
+                      : 'Add to Cart'
+                }}
               </button>
             </div>
           </div>
@@ -459,10 +650,7 @@ const estimatedDelivery = computed(() => {
           </router-link>
         </div>
         <!-- Empty state for today's specials -->
-        <div
-          v-if="pizza.pizzas.length === 0"
-          class="text-center p-12"
-        >
+        <div v-if="pizza.pizzas.length === 0" class="text-center p-12">
           <Star class="w-16 h-16 text-[#797B78] mx-auto mb-4" />
           <h3 class="text-lg font-semibold text-white mb-2">No specials today</h3>
           <p class="text-[#D1D5DB] mb-6">
@@ -522,16 +710,32 @@ const estimatedDelivery = computed(() => {
                 <div class="flex items-center">
                   <Star class="w-4 h-4 text-yellow-400 fill-current" />
                   <span class="text-sm text-[#D1D5DB] ml-1">
-                    {{ item.averageRating && item.averageRating > 0 ? `${item.averageRating} (${item.totalRatings})` : '0 (0)' }}
+                    {{
+                      item.averageRating && item.averageRating > 0
+                        ? `${item.averageRating} (${item.totalRatings})`
+                        : '0 (0)'
+                    }}
                   </span>
                 </div>
               </div>
               <button
+                :disabled="!item.isAvailable || inCart(item.pizzaId!)"
                 @click="addToCart(item)"
-                class="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-lg font-medium flex items-center justify-center"
+                class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
+                :class="
+                  item.isAvailable && !inCart(item.pizzaId!)
+                    ? 'bg-primary hover:bg-primary/80'
+                    : 'bg-gray-300 text-gray-500 cursor-default'
+                "
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
-                Add to Cart
+                {{
+                  !item.isAvailable
+                    ? 'Unavailable'
+                    : inCart(item.pizzaId!)
+                      ? 'In Cart'
+                      : 'Add to Cart'
+                }}
               </button>
             </div>
           </div>
@@ -539,17 +743,6 @@ const estimatedDelivery = computed(() => {
       </section>
     </main>
 
-    
-
     <Footer />
   </div>
 </template>
-
-<style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-</style>
