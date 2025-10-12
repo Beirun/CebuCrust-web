@@ -22,9 +22,7 @@ const showFilters = ref(false)
 
 // Computed properties
 const favoritePizzas = computed(() => {
-  return pizza.pizzas.filter((pizza: Pizza) => 
-    favorite.favorites.includes(pizza.pizzaId!)
-  )
+  return pizza.pizzas.filter((pizza: Pizza) => favorite.favorites.includes(pizza.pizzaId!))
 })
 
 const filteredFavorites = computed(() => {
@@ -75,6 +73,10 @@ onMounted(async () => {
   await pizza.fetchAll()
   await favorite.fetchFavorites()
 })
+
+const inCart = (id: number) => {
+  return cart.cart.some((c) => c.pizzaId === id)
+}
 </script>
 
 <template>
@@ -82,7 +84,7 @@ onMounted(async () => {
     <UserHeader />
 
     <!-- Main Content -->
-    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8">
+    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8 min-h-[calc(100vh-5rem)]">
       <!-- Favorites Hero Section -->
       <div class="bg-gray-800 rounded-lg p-8 mb-8 relative overflow-hidden">
         <div class="absolute inset-0 bg-gradient-to-r from-gray-800 to-gray-700 opacity-90"></div>
@@ -153,9 +155,7 @@ onMounted(async () => {
                 @click="removeFromFavorites(item.pizzaId!)"
                 class="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg"
               >
-                <Heart
-                  class="w-5 h-5 fill-red-500 text-red-500"
-                />
+                <Heart class="w-5 h-5 fill-red-500 text-red-500" />
               </button>
               <div
                 v-if="!item.isAvailable"
@@ -169,9 +169,7 @@ onMounted(async () => {
               <h3 class="font-semibold text-gray-900 mb-1">{{ item.pizzaName }}</h3>
               <p class="text-gray-600 text-sm mb-2">{{ item.pizzaDescription }}</p>
               <div class="flex items-center gap-2 text-xs text-gray-500">
-                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                  15 min
-                </span>
+                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded"> 15 min </span>
                 <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded">
                   {{ item.pizzaCategory }}
                 </span>
@@ -183,7 +181,11 @@ onMounted(async () => {
               <div class="flex items-center">
                 <Star class="w-4 h-4 text-yellow-400 fill-current" />
                 <span class="text-sm text-gray-600 ml-1">
-                  {{ item.averageRating && item.averageRating > 0 ? `${item.averageRating} (${item.totalRatings})` : '0 (0)' }}
+                  {{
+                    item.averageRating && item.averageRating > 0
+                      ? `${item.averageRating} (${item.totalRatings})`
+                      : '0 (0)'
+                  }}
                 </span>
               </div>
             </div>
@@ -191,16 +193,22 @@ onMounted(async () => {
             <div class="flex gap-2">
               <button
                 @click="addToCart(item)"
-                :disabled="!item.isAvailable"
+                :disabled="!item.isAvailable || inCart(item.pizzaId!)"
                 :class="
-                  item.isAvailable
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  item.isAvailable && !inCart(item.pizzaId!)
+                    ? 'bg-primary hover:bg-primary/80'
+                    : 'bg-gray-300 text-gray-500 cursor-default'
                 "
                 class="flex-1 py-2 rounded-lg font-medium flex items-center justify-center transition-colors"
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
-                {{ item.isAvailable ? 'Add to Cart' : 'Unavailable' }}
+                {{
+                  !item.isAvailable
+                    ? 'Unavailable'
+                    : inCart(item.pizzaId!)
+                      ? 'In Cart'
+                      : 'Add to Cart'
+                }}
               </button>
               <button
                 @click="removeFromFavorites(item.pizzaId!)"
@@ -245,7 +253,8 @@ onMounted(async () => {
           </div>
           <h3 class="text-xl font-semibold text-gray-900 mb-2">No Favorites Found</h3>
           <p class="text-gray-600 mb-6">
-            We couldn't find any favorites matching your search criteria. Try adjusting your search terms.
+            We couldn't find any favorites matching your search criteria. Try adjusting your search
+            terms.
           </p>
           <button
             @click="searchQuery = ''"
