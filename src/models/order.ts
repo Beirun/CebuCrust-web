@@ -1,21 +1,22 @@
+import type { Location } from './location'
+
 export interface OrderItem {
-  name: string
+  pizzaId: number
   quantity: number
-  price: number
 }
 
 export interface Order {
-  id: string
-  customerName: string
-  phone: string
-  dateTime: string
-  address: string
-  instructions: string
-  items: OrderItem[]
-  subtotal: number
-  deliveryFee: number
-  total: number
-  status: 'pending' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled'
-  createdAt: string
-  updatedAt: string
+  orderId: number
+  userId: number
+  locationId: number
+  firstName?: string | null
+  lastName?: string | null
+  phoneNumber?: string | null
+  orderInstruction?: string | null
+  orderStatus?: string | null
+  orderEstimate?: string | null
+  orderTotal?: number | null
+  dateCreated?: Date | null
+  location?: Location | null
+  orderLists: OrderItem[]
 }
