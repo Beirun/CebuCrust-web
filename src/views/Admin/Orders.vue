@@ -1,118 +1,50 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useOrdersStore, type Order } from '@/stores/orders'
+import { ref, computed, onBeforeMount } from 'vue'
+import { useOrderStore } from '@/stores/orders'
+import { type Order } from '@/models/order'
 import { Search, Filter, ChevronDown, Eye } from 'lucide-vue-next'
 import AdminHeader from '@/components/AdminHeader.vue'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+import { Card, CardContent, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import Footer from '@/components/Footer.vue'
+import { usePizzaStore } from '@/stores/pizza'
+import { useLocationStore } from '@/stores/location'
+import { toDate } from '@/plugins/convert'
 
-const ordersStore = useOrdersStore()
-
-// Sample data for the orders
-const sampleOrders = ref<Order[]>([
-  {
-    id: 'ORD-001',
-    customerName: 'John Doe',
-    phone: '+63 912 345 6789',
-    dateTime: 'Oct 15, 2024 2:30 PM',
-    address: '123 Main Street, Cebu City',
-    instructions: 'Please ring the doorbell twice',
-    items: [
-      { name: 'Margherita Pizza', quantity: 1, price: 450 },
-      { name: 'Garlic Bread', quantity: 2, price: 150 },
-    ],
-    subtotal: 600,
-    deliveryFee: 50,
-    total: 650,
-    status: 'ready',
-    createdAt: '2024-10-15T14:30:00Z',
-    updatedAt: '2024-10-15T14:30:00Z',
-  },
-  {
-    id: 'ORD-002',
-    customerName: 'Jane Smith',
-    phone: '+63 917 123 4567',
-    dateTime: 'Oct 15, 2024 3:15 PM',
-    address: '456 Oak Avenue, Mandaue City',
-    instructions: 'Leave at the gate',
-    items: [
-      { name: 'Pepperoni Pizza', quantity: 1, price: 520 },
-      { name: 'Caesar Salad', quantity: 1, price: 180 },
-    ],
-    subtotal: 700,
-    deliveryFee: 50,
-    total: 750,
-    status: 'preparing',
-    createdAt: '2024-10-15T15:15:00Z',
-    updatedAt: '2024-10-15T15:15:00Z',
-  },
-  {
-    id: 'ORD-003',
-    customerName: 'Carlos Santos',
-    phone: '+63 918 987 6543',
-    dateTime: 'Oct 15, 2024 4:00 PM',
-    address: '789 Pine Street, Lapu-Lapu City',
-    instructions: 'Call when arriving',
-    items: [
-      { name: 'Supreme Pizza', quantity: 1, price: 680 },
-      { name: 'Pasta Carbonara', quantity: 1, price: 320 },
-    ],
-    subtotal: 1000,
-    deliveryFee: 50,
-    total: 1050,
-    status: 'pending',
-    createdAt: '2024-10-15T16:00:00Z',
-    updatedAt: '2024-10-15T16:00:00Z',
-  },
-  {
-    id: 'ORD-004',
-    customerName: 'Maria Garcia',
-    phone: '+63 919 555 1234',
-    dateTime: 'Oct 15, 2024 4:45 PM',
-    address: '321 Elm Street, Talisay City',
-    instructions: 'No special instructions',
-    items: [
-      { name: 'Hawaiian Pizza', quantity: 2, price: 900 },
-      { name: 'Chicken Wings', quantity: 1, price: 250 },
-    ],
-    subtotal: 1150,
-    deliveryFee: 50,
-    total: 1200,
-    status: 'out_for_delivery',
-    createdAt: '2024-10-15T16:45:00Z',
-    updatedAt: '2024-10-15T16:45:00Z',
-  },
-  {
-    id: 'ORD-005',
-    customerName: 'Robert Johnson',
-    phone: '+63 920 777 8888',
-    dateTime: 'Oct 15, 2024 5:30 PM',
-    address: '654 Maple Drive, Consolacion',
-    instructions: 'Gate code: 1234',
-    items: [
-      { name: 'BBQ Chicken Pizza', quantity: 1, price: 580 },
-      { name: 'Mushroom Pizza', quantity: 1, price: 520 },
-    ],
-    subtotal: 1100,
-    deliveryFee: 50,
-    total: 1150,
-    status: 'delivered',
-    createdAt: '2024-10-15T17:30:00Z',
-    updatedAt: '2024-10-15T17:30:00Z',
-  },
-])
-
-// Initialize orders with sample data
-ordersStore.orders = sampleOrders.value
-
+const order = useOrderStore()
+const pizza = usePizzaStore()
 const selectedStatus = ref('all')
 const searchQuery = ref('')
 const isOrderModalOpen = ref(false)
 const selectedOrder = ref<Order | null>(null)
+const selectedUpdateStatus = ref('')
 
 // Computed status counts based on actual orders data
+
+const selectedPizzaOrders = computed(() =>
+  selectedOrder.value?.orderLists.map((o) => {
+    const p = pizza.pizzas.find((p) => p.pizzaId === o.pizzaId)
+    return {
+      pizzaId: p!.pizzaId,
+      pizzaName: p!.pizzaName,
+      pizzaPrice: p!.pizzaPrice,
+      quantity: o.quantity,
+    }
+  }),
+)
+
 const statusCounts = computed(() => {
   const counts = {
-    all: ordersStore.orders.length,
+    all: order.orders.length,
     pending: 0,
     preparing: 0,
     ready: 0,
@@ -121,8 +53,8 @@ const statusCounts = computed(() => {
     cancelled: 0,
   }
 
-  ordersStore.orders.forEach((order) => {
-    counts[order.status as keyof typeof counts]++
+  order.orders.forEach((order) => {
+    counts[order.orderStatus as keyof typeof counts]++
   })
 
   return counts
@@ -134,7 +66,7 @@ const statusTabs = computed(() => [
   { key: 'preparing', label: 'Preparing', count: statusCounts.value.preparing },
   { key: 'ready', label: 'Ready', count: statusCounts.value.ready },
   {
-    key: 'out_for_delivery',
+    key: 'out for delivery',
     label: 'Out for Delivery',
     count: statusCounts.value.out_for_delivery,
   },
@@ -143,20 +75,23 @@ const statusTabs = computed(() => [
 ])
 
 const filteredOrders = computed(() => {
-  let filtered = ordersStore.orders
+  let filtered = order.orders
 
   if (selectedStatus.value !== 'all') {
-    filtered = filtered.filter((order) => order.status === selectedStatus.value)
+    filtered = filtered.filter((order) => order.orderStatus === selectedStatus.value)
   }
 
   if (searchQuery.value) {
     filtered = filtered.filter(
       (order) =>
-        order.id.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        order.customerName.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        order.items.some((item) =>
-          item.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
-        ),
+        order.orderId.toString().includes(searchQuery.value.toLowerCase()) ||
+        (order.firstName + ' ' + order.lastName)
+          .toLowerCase()
+          .includes(searchQuery.value.toLowerCase()) ||
+        order.orderLists.some((item) => {
+          const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
+          return p?.pizzaName.toLowerCase().includes(searchQuery.value.toLowerCase())
+        }),
     )
   }
 
@@ -171,7 +106,7 @@ const getStatusBadgeClass = (status: string) => {
       return 'bg-yellow-100 text-yellow-800'
     case 'pending':
       return 'bg-purple-100 text-purple-800'
-    case 'out_for_delivery':
+    case 'out for delivery':
       return 'bg-pink-100 text-pink-800'
     case 'delivered':
       return 'bg-green-100 text-green-800'
@@ -190,7 +125,7 @@ const formatStatus = (status: string) => {
       return 'Preparing'
     case 'ready':
       return 'Ready'
-    case 'out_for_delivery':
+    case 'out for delivery':
       return 'Out for Delivery'
     case 'delivered':
       return 'Delivered'
@@ -203,19 +138,19 @@ const formatStatus = (status: string) => {
 
 const openOrderModal = (order: Order) => {
   selectedOrder.value = order
+  selectedUpdateStatus.value = selectedOrder.value.orderStatus!
   isOrderModalOpen.value = true
 }
 
 const closeOrderModal = () => {
   isOrderModalOpen.value = false
-  selectedOrder.value = null
 }
 
-const updateOrderStatus = (orderId: string, newStatus: string) => {
-  const order = ordersStore.orders.find((o) => o.id === orderId)
-  if (order) {
-    order.status = newStatus as Order['status']
-  }
+const updateOrderStatus = async () => {
+  // console.log(selectedUpdateStatus.value)
+  if (selectedOrder.value)
+    await order.updateOrderStatus(selectedOrder.value.orderId, selectedUpdateStatus.value)
+
   closeOrderModal()
 }
 
@@ -227,7 +162,7 @@ const getTabCountClass = (tabKey: string) => {
       return 'bg-blue-100 text-blue-800'
     case 'ready':
       return 'bg-blue-100 text-blue-800'
-    case 'out_for_delivery':
+    case 'out for delivery':
       return 'bg-green-100 text-green-800'
     case 'delivered':
       return 'bg-gray-100 text-gray-800'
@@ -237,6 +172,10 @@ const getTabCountClass = (tabKey: string) => {
       return 'bg-gray-100 text-gray-800'
   }
 }
+
+onBeforeMount(async () => {
+  await order.fetchAllOrders()
+})
 </script>
 
 <template>
@@ -245,7 +184,7 @@ const getTabCountClass = (tabKey: string) => {
     <AdminHeader />
 
     <!-- Main Content -->
-    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8">
+    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8 min-h-[calc(100vh-5rem)]">
       <!-- Page Header -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900">Order Management</h1>
@@ -262,7 +201,7 @@ const getTabCountClass = (tabKey: string) => {
             'text-sm font-medium transition-colors flex items-center gap-2 pb-1',
             selectedStatus === tab.key
               ? 'text-orange-400 border-b-2 border-orange-400'
-              : 'text-gray-700 hover:text-gray-900',
+              : 'text-gray-700 border-b-2 border-transparent hover:text-gray-900',
           ]"
         >
           {{ tab.label }}
@@ -348,32 +287,41 @@ const getTabCountClass = (tabKey: string) => {
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="order in filteredOrders" :key="order.id" class="hover:bg-gray-50">
+              <tr v-for="order in filteredOrders" :key="order.orderId" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  #{{ order.id }}
+                  ORDER#{{ order.orderId }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ order.customerName }}
+                  {{ order.firstName + ' ' + order.lastName }}
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-900">
-                  {{ order.items.map((item) => item.name).join(', ') }}
+                  {{
+                    order.orderLists
+                      ?.map((item) => {
+                        const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
+                        return p ? p.pizzaName : ''
+                      })
+                      .filter((pizza) => pizza)
+                      .join(', ')
+                  }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  ₱{{ order.total }}
+                  ₱{{ order.orderTotal }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span
                     class="px-2 py-1 text-xs font-semibold rounded-full"
-                    :class="getStatusBadgeClass(order.status)"
+                    :class="getStatusBadgeClass(order.orderStatus!)"
                   >
-                    {{ formatStatus(order.status) }}
+                    {{ formatStatus(order.orderStatus!) }}
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ order.dateTime }}
+                  {{ toDate(order.dateCreated as Date) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                   <button
+                    v-if="order.orderStatus !== 'cancelled' && order.orderStatus !== 'delivered'"
                     @click="openOrderModal(order)"
                     class="flex items-center gap-1 text-gray-700 hover:text-gray-900 font-medium"
                   >
@@ -390,38 +338,99 @@ const getTabCountClass = (tabKey: string) => {
     </main>
 
     <!-- Order Details Modal -->
-    <div
-      v-if="isOrderModalOpen && selectedOrder"
-      class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-    >
-      <div class="bg-white rounded-lg max-w-4xl w-full max-h-[75vh] shadow-lg flex flex-col">
-        <!-- Modal Header -->
-        <div class="px-4 py-3 border-b border-gray-200">
-          <div class="flex justify-between items-center">
-            <h2 class="text-xl font-bold text-gray-900">Order #{{ selectedOrder.id }}</h2>
-            <button @click="closeOrderModal" class="text-gray-400 hover:text-gray-600 p-1">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
+    <Dialog v-model:open="isOrderModalOpen">
+      <DialogContent class="lg:max-w-4xl max-h-[75vh] flex flex-col p-0">
+        <DialogHeader class="px-4 py-3 border-b border-gray-200">
+          <DialogTitle class="text-xl font-bold text-gray-900">
+            Order #{{ selectedOrder?.orderId }}
+          </DialogTitle>
+        </DialogHeader>
 
-        <!-- Modal Content -->
-        <div class="p-4 space-y-4 pb-4 flex-1">
+        <div class="p-4 space-y-4 pb-4 flex-1 overflow-auto">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <!-- Left Column -->
             <div class="space-y-3">
-              <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <h3 class="text-sm font-semibold text-gray-900 mb-2">Customer Information</h3>
-                <div class="space-y-2">
+              <Card class="bg-gray-50 border border-gray-200">
+                <CardContent class="p-3">
+                  <CardTitle class="text-sm font-semibold text-gray-900 mb-2">
+                    Customer Information
+                  </CardTitle>
+                  <div class="space-y-2">
+                    <div class="flex items-center space-x-2">
+                      <div
+                        class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center"
+                      >
+                        <svg
+                          class="h-3 w-3 text-gray-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                      </div>
+                      <span class="text-xs text-gray-900 font-medium">{{
+                        selectedOrder?.firstName + ' ' + selectedOrder?.lastName
+                      }}</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <div
+                        class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center"
+                      >
+                        <svg
+                          class="h-3 w-3 text-gray-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                          />
+                        </svg>
+                      </div>
+                      <span class="text-xs text-gray-900">{{ selectedOrder?.phoneNumber }}</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <div
+                        class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center"
+                      >
+                        <svg
+                          class="h-3 w-3 text-gray-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </div>
+                      <span class="text-xs text-gray-900">{{ selectedOrder?.dateCreated }}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card class="bg-gray-50 border border-gray-200">
+                <CardContent class="p-3">
+                  <CardTitle class="text-sm font-semibold text-gray-900 mb-2">
+                    Delivery Address
+                  </CardTitle>
                   <div class="flex items-center space-x-2">
-                    <div class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+                    <div
+                      class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mt-0.5"
+                    >
                       <svg
                         class="h-3 w-3 text-gray-600"
                         fill="none"
@@ -432,205 +441,148 @@ const getTabCountClass = (tabKey: string) => {
                           stroke-linecap="round"
                           stroke-linejoin="round"
                           stroke-width="2"
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                        />
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                         />
                       </svg>
                     </div>
-                    <span class="text-xs text-gray-900 font-medium">{{
-                      selectedOrder.customerName
+                    <span class="text-xs text-gray-900">
+                      {{ useLocationStore().mapLocation(selectedOrder?.location!) }}</span
+                    >
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card class="bg-gray-50 border border-gray-200">
+                <CardContent class="p-3">
+                  <CardTitle class="text-sm font-semibold text-gray-900 mb-2">
+                    Special Instructions
+                  </CardTitle>
+                  <div class="flex items-center space-x-2">
+                    <div
+                      class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mt-0.5"
+                    >
+                      <svg
+                        class="h-3 w-3 text-gray-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        />
+                      </svg>
+                    </div>
+                    <span class="text-xs text-gray-900">{{
+                      selectedOrder?.orderInstruction || 'Customer left no instructions.'
                     }}</span>
                   </div>
-                  <div class="flex items-center space-x-2">
-                    <div class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-                      <svg
-                        class="h-3 w-3 text-gray-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                        />
-                      </svg>
-                    </div>
-                    <span class="text-xs text-gray-900">{{ selectedOrder.phone }}</span>
-                  </div>
-                  <div class="flex items-center space-x-2">
-                    <div class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-                      <svg
-                        class="h-3 w-3 text-gray-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    </div>
-                    <span class="text-xs text-gray-900">{{ selectedOrder.dateTime }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <h3 class="text-sm font-semibold text-gray-900 mb-2">Delivery Address</h3>
-                <div class="flex items-start space-x-2">
-                  <div
-                    class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mt-0.5"
-                  >
-                    <svg
-                      class="h-3 w-3 text-gray-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                  </div>
-                  <span class="text-xs text-gray-900"
-                    >123 Lahug Street, Barangay Lahug, Cebu City, 6000</span
-                  >
-                </div>
-              </div>
-
-              <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <h3 class="text-sm font-semibold text-gray-900 mb-2">Special Instructions</h3>
-                <div class="flex items-start space-x-2">
-                  <div
-                    class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mt-0.5"
-                  >
-                    <svg
-                      class="h-3 w-3 text-gray-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                      />
-                    </svg>
-                  </div>
-                  <span class="text-xs text-gray-900"
-                    >Ring doorbell twice. Leave at front door if no answer.</span
-                  >
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
             <!-- Right Column -->
             <div class="space-y-3">
-              <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <h3 class="text-sm font-semibold text-gray-900 mb-2">Order Details</h3>
-                <div class="space-y-2">
-                  <div class="flex justify-between items-center py-1 border-b border-gray-100">
-                    <div class="flex-1">
-                      <span class="text-xs font-medium text-gray-900">Classic Margherita</span>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                      <span class="text-xs text-gray-500">Qty: 1</span>
-                      <span class="text-xs font-semibold text-gray-900">P695</span>
-                    </div>
-                  </div>
-                  <div class="flex justify-between items-center py-1 border-b border-gray-100">
-                    <div class="flex-1">
-                      <span class="text-xs font-medium text-gray-900">Supreme Pepperoni</span>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                      <span class="text-xs text-gray-500">Qty: 1</span>
-                      <span class="text-xs font-semibold text-gray-900">P459</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="mt-3 pt-3 border-t border-gray-200">
-                  <div class="flex justify-between items-center py-1">
-                    <span class="text-xs text-gray-600">Subtotal</span>
-                    <span class="text-xs font-semibold text-gray-900">P1,154</span>
-                  </div>
-                  <div class="flex justify-between items-center py-1">
-                    <span class="text-xs text-gray-600">Delivery Fee</span>
-                    <span class="text-xs font-semibold text-gray-900">P50</span>
-                  </div>
-                  <div
-                    class="flex justify-between items-center py-1 text-sm font-bold border-t border-gray-200 pt-1"
-                  >
-                    <span class="text-gray-900">Total</span>
-                    <span class="text-gray-900">P1,204</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <h3 class="text-sm font-semibold text-gray-900 mb-2">Status Management</h3>
-                <div class="space-y-2">
-                  <label class="text-xs font-medium text-gray-700">Update Status:</label>
-                  <div class="relative">
-                    <select
-                      :value="selectedOrder.status"
-                      @change="
-                        updateOrderStatus(
-                          selectedOrder.id,
-                          ($event.target as HTMLSelectElement).value,
-                        )
-                      "
-                      class="w-full px-2 py-1 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 appearance-none bg-white"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="preparing">Preparing</option>
-                      <option value="ready">Ready</option>
-                      <option value="out_for_delivery">Out for Delivery</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
+              <Card class="bg-gray-50 border border-gray-200">
+                <CardContent class="p-3">
+                  <CardTitle class="text-sm font-semibold text-gray-900 mb-2">
+                    Order Details
+                  </CardTitle>
+                  <div class="space-y-2">
                     <div
-                      class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
+                      v-for="pizzaOrder in selectedPizzaOrders"
+                      :key="pizzaOrder.pizzaId!"
+                      class="flex justify-between items-center py-1 border-b border-gray-100"
                     >
-                      <svg
-                        class="w-4 h-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
+                      <div class="flex-1">
+                        <span class="text-xs font-medium text-gray-900">{{
+                          pizzaOrder.pizzaName
+                        }}</span>
+                      </div>
+                      <div class="flex items-center space-x-2">
+                        <span class="text-xs text-gray-500">Qty: {{ pizzaOrder.quantity }}</span>
+                        <span class="text-xs font-semibold text-gray-900"
+                          >P{{ pizzaOrder.pizzaPrice * pizzaOrder.quantity }}</span
+                        >
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+
+                  <div class="mt-3 pt-3 border-t border-gray-200">
+                    <div class="flex justify-between items-center py-1">
+                      <span class="text-xs text-gray-600">Subtotal</span>
+                      <span class="text-xs font-semibold text-gray-900"
+                        >P{{
+                          selectedPizzaOrders?.reduce(
+                            (sum, o) => sum + o.quantity * o.pizzaPrice,
+                            0,
+                          )
+                        }}</span
+                      >
+                    </div>
+                    <div class="flex justify-between items-center py-1">
+                      <span class="text-xs text-gray-600">Delivery Fee</span>
+                      <span class="text-xs font-semibold text-gray-900">P50</span>
+                    </div>
+                    <div
+                      class="flex justify-between items-center py-1 text-sm font-bold border-t border-gray-200 pt-1"
+                    >
+                      <span class="text-gray-900">Total</span>
+                      <span class="text-gray-900"
+                        >P{{
+                          Number(
+                            selectedPizzaOrders?.reduce(
+                              (sum, o) => sum + o.quantity * o.pizzaPrice,
+                              0,
+                            ),
+                          ) + 50
+                        }}</span
+                      >
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card class="bg-gray-50 border border-gray-200">
+                <CardContent class="p-3">
+                  <CardTitle class="text-sm font-semibold text-gray-900 mb-2">
+                    Status Management
+                  </CardTitle>
+                  <div class="space-y-2">
+                    <Label class="text-xs font-medium text-gray-700">Update Status:</Label>
+                    <Select v-model="selectedUpdateStatus">
+                      <SelectTrigger
+                        class="w-full px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                      >
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="preparing">Preparing</SelectItem>
+                        <SelectItem value="ready">Ready</SelectItem>
+                        <SelectItem value="out for delivery">Out for Delivery</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
 
           <!-- Action Buttons -->
           <div class="flex justify-end space-x-2 pt-4">
-            <button
-              @click="updateOrderStatus(selectedOrder.id, selectedOrder.status)"
-              class="px-3 py-1.5 text-xs bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-1"
+            <Button
+              @click="updateOrderStatus"
+              class="px-3 py-1.5 text-xs text-white flex items-center gap-1"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -641,17 +593,14 @@ const getTabCountClass = (tabKey: string) => {
                 />
               </svg>
               Update Status
-            </button>
-            <button
-              @click="closeOrderModal"
-              class="px-3 py-1.5 text-xs bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
+            </Button>
+            <Button @click="closeOrderModal" variant="outline" class="px-3 py-1.5 text-xs">
               Close
-            </button>
+            </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
     <Footer />
   </div>
 </template>
