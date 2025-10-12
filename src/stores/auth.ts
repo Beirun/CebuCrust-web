@@ -13,7 +13,7 @@ export const useAuthStore = defineStore('auth', () => {
   const URL = import.meta.env.VITE_BASE_URL ?? 'http://localhost:5135/api'
 
   const token = ref(localStorage.getItem('token'))
-  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
+  const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
   const isLoading = ref(false)
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() =>
@@ -177,7 +177,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = null
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      router.push('/')
+      router.push('/signin')
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
       sonner.error(errorMessage)
