@@ -2,13 +2,11 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useSonnerStore } from './sonner'
-import { useAuthStore } from './auth'
 import { useFetch } from '@/plugins/api'
 import type { Rating, RatingRequest, RatingResponse, PizzaRating } from '@/models/rating'
 
 export const useRatingStore = defineStore('rating', () => {
   const sonner = useSonnerStore()
-  const auth = useAuthStore()
   const URL = import.meta.env.VITE_BASE_URL ?? 'http://localhost:5135/api'
 
   const ratings = ref<Rating[]>([])
@@ -20,7 +18,6 @@ export const useRatingStore = defineStore('rating', () => {
     try {
       const res = await useFetch(`${URL}/rating`, {
         method: 'GET',
-        headers: { Authorization: `Bearer ${auth.token}` },
         credentials: 'include',
       })
       const data = await res.json()
@@ -38,25 +35,23 @@ export const useRatingStore = defineStore('rating', () => {
     try {
       const res = await useFetch(`${URL}/rating/pizza/${pizzaId}`, {
         method: 'GET',
-        headers: { Authorization: `Bearer ${auth.token}` },
         credentials: 'include',
       })
       const data = await res.json()
       if (!res.ok) return sonner.error(data.message ?? 'Failed to fetch pizza ratings')
-      
+
       // Calculate average rating and total count
       const ratings = data as RatingResponse[]
-      const averageRating = ratings.length > 0 
-        ? ratings.reduce((sum, r) => sum + r.ratingValue, 0) / ratings.length 
-        : 0
-      
+      const averageRating =
+        ratings.length > 0 ? ratings.reduce((sum, r) => sum + r.ratingValue, 0) / ratings.length : 0
+
       const pizzaRating: PizzaRating = {
         pizzaId,
         averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
         totalRatings: ratings.length,
-        ratings
+        ratings,
       }
-      
+
       pizzaRatings.value.set(pizzaId, pizzaRating)
       return pizzaRating
     } catch (err: unknown) {
@@ -71,16 +66,15 @@ export const useRatingStore = defineStore('rating', () => {
     try {
       const res = await useFetch(`${URL}/rating`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${auth.token}` 
         },
         body: JSON.stringify(request),
         credentials: 'include',
       })
       const data = await res.json()
       if (!res.ok) return sonner.error(data.message ?? 'Failed to create rating')
-      
+
       // Refresh ratings for this pizza
       await fetchRatingsByPizzaId(request.pizzaId)
       sonner.success('Rating submitted successfully!')
@@ -99,16 +93,15 @@ export const useRatingStore = defineStore('rating', () => {
     try {
       const res = await useFetch(`${URL}/rating/${ratingId}`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${auth.token}` 
         },
         body: JSON.stringify(request),
         credentials: 'include',
       })
       const data = await res.json()
       if (!res.ok) return sonner.error(data.message ?? 'Failed to update rating')
-      
+
       // Refresh ratings for this pizza
       await fetchRatingsByPizzaId(request.pizzaId)
       sonner.success('Rating updated successfully!')
@@ -127,14 +120,13 @@ export const useRatingStore = defineStore('rating', () => {
     try {
       const res = await useFetch(`${URL}/rating/${ratingId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${auth.token}` },
         credentials: 'include',
       })
       if (!res.ok) {
         const data = await res.json()
         return sonner.error(data.message ?? 'Failed to delete rating')
       }
-      
+
       sonner.success('Rating deleted successfully!')
       return true
     } catch (err: unknown) {
@@ -171,6 +163,6 @@ export const useRatingStore = defineStore('rating', () => {
     deleteRating,
     getPizzaRating,
     getAverageRating,
-    getTotalRatings
+    getTotalRatings,
   }
 })
