@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import router from '@/router'
 import { useRoute } from 'vue-router'
 import { ref } from 'vue'
@@ -33,7 +32,7 @@ const toggleMenu = () => {
 <template>
   <div
     :class="[
-      'w-full flex justify-between absolute top-0 px-4 sm:px-8 lg:px-30 gap-4 sm:gap-6 lg:gap-10 py-4 text-lg z-10',
+      'w-full h-20 flex justify-between absolute top-0 px-4 sm:px-8 lg:px-30 gap-4 sm:gap-6 lg:gap-10 py-4 text-lg z-10',
       props.class,
     ]"
   >
@@ -72,8 +71,13 @@ const toggleMenu = () => {
 
     <!-- Mobile Auth Buttons -->
     <div class="flex lg:hidden gap-2 sm:gap-4">
-      <button @click="router.push('/signin')" class="text-primary text-sm sm:text-base">Sign In</button>
-      <button @click="router.push('/signup')" class="bg-primary text-white px-2 sm:px-4 py-2 sm:py-3 rounded-sm text-sm sm:text-base">
+      <button @click="router.push('/signin')" class="text-primary text-sm sm:text-base">
+        Sign In
+      </button>
+      <button
+        @click="router.push('/signup')"
+        class="bg-primary text-white px-2 sm:px-4 py-2 sm:py-3 rounded-sm text-sm sm:text-base"
+      >
         Sign Up
       </button>
     </div>
@@ -86,19 +90,19 @@ const toggleMenu = () => {
       <span
         :class="[
           'block w-6 h-0.5 bg-white transition-all duration-300',
-          isMenuOpen ? 'rotate-45 translate-y-1.5' : ''
+          isMenuOpen ? 'rotate-45 translate-y-1.5' : '',
         ]"
       ></span>
       <span
         :class="[
           'block w-6 h-0.5 bg-white transition-all duration-300',
-          isMenuOpen ? 'opacity-0' : ''
+          isMenuOpen ? 'opacity-0' : '',
         ]"
       ></span>
       <span
         :class="[
           'block w-6 h-0.5 bg-white transition-all duration-300',
-          isMenuOpen ? '-rotate-45 -translate-y-1.5' : ''
+          isMenuOpen ? '-rotate-45 -translate-y-1.5' : '',
         ]"
       ></span>
     </button>
@@ -114,15 +118,13 @@ const toggleMenu = () => {
     <div
       :class="[
         'fixed top-0 right-0 h-full w-80 bg-[#121A1D] z-50 transform transition-transform duration-300 lg:hidden',
-        isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        isMenuOpen ? 'translate-x-0' : 'translate-x-full',
       ]"
     >
       <div class="flex flex-col h-full p-6">
         <!-- Close Button -->
         <div class="flex justify-end mb-8">
-          <button @click="isMenuOpen = false" class="text-white text-2xl">
-            ×
-          </button>
+          <button @click="isMenuOpen = false" class="text-white text-2xl">×</button>
         </div>
 
         <!-- Mobile Navigation Links -->
@@ -142,7 +144,10 @@ const toggleMenu = () => {
           <button @click="router.push('/signin')" class="text-primary text-lg text-left">
             Sign In
           </button>
-          <button @click="router.push('/signup')" class="bg-primary text-white px-6 py-3 rounded-sm text-lg">
+          <button
+            @click="router.push('/signup')"
+            class="bg-primary text-white px-6 py-3 rounded-sm text-lg"
+          >
             Sign Up
           </button>
         </div>

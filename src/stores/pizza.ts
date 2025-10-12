@@ -2,14 +2,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useSonnerStore } from './sonner'
-import { useAuthStore } from './auth'
 import { useFetch } from '@/plugins/api'
 import type { Pizza } from '@/models/pizza'
 import { useRatingStore } from './rating'
 
 export const usePizzaStore = defineStore('pizza', () => {
   const sonner = useSonnerStore()
-  const auth = useAuthStore()
   const ratingStore = useRatingStore()
   const URL = import.meta.env.VITE_BASE_URL ?? 'http://localhost:5135/api'
 
@@ -21,12 +19,11 @@ export const usePizzaStore = defineStore('pizza', () => {
     try {
       const res = await useFetch(`${URL}/pizza`, {
         method: 'GET',
-        headers: { Authorization: `Bearer ${auth.token}` },
         credentials: 'include',
       })
       const data = await res.json()
       if (!res.ok) return sonner.error(data.message ?? 'Failed to fetch pizzas')
-      
+
       // Fetch ratings for each pizza
       const pizzasWithRatings = await Promise.all(
         data.map(async (pizza: Pizza) => {
@@ -35,13 +32,13 @@ export const usePizzaStore = defineStore('pizza', () => {
             return {
               ...pizza,
               averageRating: pizzaRating?.averageRating || 0,
-              totalRatings: pizzaRating?.totalRatings || 0
+              totalRatings: pizzaRating?.totalRatings || 0,
             }
           }
           return pizza
-        })
+        }),
       )
-      
+
       pizzas.value = pizzasWithRatings
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error fetching pizzas'
@@ -55,7 +52,6 @@ export const usePizzaStore = defineStore('pizza', () => {
     try {
       const res = await useFetch(`${URL}/pizza/${id}`, {
         method: 'GET',
-        headers: { Authorization: `Bearer ${auth.token}` },
         credentials: 'include',
       })
       if (res.status === 404) return null

@@ -18,6 +18,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { usePizzaStore } from '@/stores/pizza'
 import { useFavoriteStore } from '@/stores/favorite'
+import { useLocationStore } from '@/stores/location'
+import ModifyOrder from '@/views/User/ModifyOrder.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -94,9 +96,14 @@ const router = createRouter({
       component: Cart,
     },
     {
-      path: '/completeOrder',
+      path: '/order/complete',
       name: 'CompleteOrder',
       component: CompleteOrder,
+    },
+    {
+      path: '/order/modify/:id',
+      name: 'ModifyOrder',
+      component: ModifyOrder,
     },
   ],
 })
@@ -108,6 +115,7 @@ router.beforeEach(async () => {
     await useCartStore().fetchCart()
     await usePizzaStore().fetchAll()
     await useFavoriteStore().fetchFavorites()
+    await useLocationStore().fetchLocations()
   }
 })
 

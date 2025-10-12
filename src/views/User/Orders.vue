@@ -1,135 +1,233 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, reactive, onBeforeMount } from 'vue'
 import { useCartStore } from '@/stores/cart'
-import { useAuthStore } from '@/stores/auth'
-import { useOrdersStore } from '@/stores/orders'
 import UserHeader from '@/components/UserHeader.vue'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+
+import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Check, Clock, ConciergeBell, CookingPot, Pizza, Truck, X } from 'lucide-vue-next'
+import { Search, Filter, ChevronDown } from 'lucide-vue-next'
 import Footer from '@/components/Footer.vue'
+import { usePizzaStore } from '@/stores/pizza'
+import { toBase64, toDate } from '@/plugins/convert'
+import { useLocationStore } from '@/stores/location'
+import { barangays } from '@/data/barangay'
+import { useOrderStore } from '@/stores/orders'
+import type { Order } from '@/models/order'
+import type { Cart } from '@/models/cart'
+import router from '@/router'
+
 const cart = useCartStore()
-const auth = useAuthStore()
-const orders = useOrdersStore()
-const router = useRouter()
+const pizza = usePizzaStore()
+const location = useLocationStore()
+const order = useOrderStore()
+const cartItems = ref<
+  {
+    pizzaId: number
+    quantity: number
+  }[]
+>([])
 
-// Addresses stored locally; keep simple shape { id, address, isDefault }
-const addresses = ref<Array<{ id: string; address: string; isDefault?: boolean }>>(
-  JSON.parse(localStorage.getItem('addresses') || '[]'),
-)
-const selectedAddressId = ref<string | null>(
-  addresses.value.find((a) => a.isDefault)?.id ?? addresses.value[0]?.id ?? null,
-)
-const instructions = ref('')
+const selectedStatus = ref('all')
+const searchQuery = ref('')
 
-const subtotal = computed(() => {
-  const items = cart.cart || []
-  return items.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 1)), 0)
+const selectedAddressId = ref(0)
+const showAddressModal = ref(false)
+const isEdit = ref(false)
+const cancelConfirmationOpen = ref(false)
+const locationForm = reactive({
+  locationId: 0,
+  locationCity: 'Cebu City',
+  locationBrgy: '',
+  locationStreet: '',
+  locationHouseNo: '',
+  locationPostal: '',
+  locationLandmark: '',
+  isDefault: false,
 })
-const deliveryFee = computed(() => 50) // Fixed delivery fee of 50 pesos
-const total = computed(() => subtotal.value + deliveryFee.value)
 
-const formatCurrency = (v: number) => `₱${v.toLocaleString()}`
-
-const saveAddresses = () => {
-  localStorage.setItem('addresses', JSON.stringify(addresses.value))
-}
-
-const openAdd = ref(false)
-const editing = ref<{ id?: string; address?: string } | null>(null)
-const addressInput = ref('')
-
-const startAdd = () => {
-  editing.value = null
-  addressInput.value = ''
-  openAdd.value = true
-}
-
-const startEdit = (a: { id: string; address: string }) => {
-  editing.value = { ...a }
-  addressInput.value = a.address
-  openAdd.value = true
-}
-
-const removeAddress = (id: string) => {
-  addresses.value = addresses.value.filter((a) => a.id !== id)
-  if (selectedAddressId.value === id) selectedAddressId.value = addresses.value[0]?.id ?? null
-  saveAddresses()
-}
-
-const setDefault = (id: string) => {
-  addresses.value = addresses.value.map((a) => ({ ...a, isDefault: a.id === id }))
-  selectedAddressId.value = id
-  saveAddresses()
-  // update auth store local user address shortcut
-  const addr = addresses.value.find((a) => a.id === id)
-  if (addr) {
-    auth.user = { ...auth.user, address: addr.address }
-    localStorage.setItem('user', JSON.stringify(auth.user))
-  }
-}
-
-const submitAddress = () => {
-  const trimmed = addressInput.value.trim()
-  if (!trimmed) return
-  if (editing.value && editing.value.id) {
-    addresses.value = addresses.value.map((a) =>
-      a.id === editing.value!.id ? { ...a, address: trimmed } : a,
-    )
+const saveAddress = async () => {
+  if (isEdit.value) {
+    const res = await location.updateLocation(locationForm.locationId, locationForm)
+    if (res) {
+      showAddressModal.value = false
+      isEdit.value = false
+    }
   } else {
-    const id = Date.now().toString()
-    addresses.value.push({ id, address: trimmed, isDefault: addresses.value.length === 0 })
-    if (addresses.value.length === 1) selectedAddressId.value = id
+    const res = await location.addLocation(locationForm)
+    if (res) showAddressModal.value = false
   }
-  saveAddresses()
-  openAdd.value = false
-}
-
-const placeOrder = () => {
-  if (!cart.cart.length) return alert('Your cart is empty')
-  if (!selectedAddressId.value) return alert('Please select a delivery address or add one')
-
-  const addr = addresses.value.find((a) => a.id === selectedAddressId.value)!
-  const cartArr = cart.cart
-
-  const order: Order = {
-    id: 'ORD-' + Date.now(),
-    customerName: auth.user?.name || auth.user?.userName || 'Guest',
-    phone: auth.user?.phone || auth.user?.phoneNumber || '',
-    dateTime: new Date().toISOString(),
-    address: addr.address,
-    instructions: instructions.value,
-    items: cartArr.map((i) => ({
-      name: i.name || `Pizza ${i.pizzaId}`,
-      quantity: i.quantity || 1,
-      price: i.price || 0
-    })),
-    subtotal: subtotal.value,
-    deliveryFee: deliveryFee.value,
-    total: total.value,
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-
-  // push to orders store and persist in localStorage as simple implementation
-  orders.orders.push(order)
-  localStorage.setItem('orders', JSON.stringify(orders.orders))
-
-  // Clear cart by removing all items
-  for (const item of cart.cart) {
-    cart.removeFromCart(item.pizzaId)
-  }
-  alert('Order placed successfully')
-  router.push('/dashboard')
 }
 
 onMounted(() => {
-  // bootstrap addresses: if user has address in auth.user, seed it
-  if (!addresses.value.length && auth.user?.address) {
-    const id = Date.now().toString()
-    addresses.value.push({ id, address: auth.user.address, isDefault: true })
-    selectedAddressId.value = id
-    saveAddresses()
+  cartItems.value = cart.cart
+  console.log('locs', location.locations)
+  selectedAddressId.value = location.selectedLocation?.locationId ?? 0
+})
+
+const statusCounts = computed(() => {
+  const counts = {
+    all: order.orders.length,
+    pending: 0,
+    preparing: 0,
+    ready: 0,
+    out_for_delivery: 0,
+    delivered: 0,
+    cancelled: 0,
   }
+
+  order.orders.forEach((order) => {
+    counts[order.orderStatus as keyof typeof counts]++
+  })
+
+  return counts
+})
+
+const statusTabs = computed(() => [
+  { key: 'all', label: 'All Orders', count: null },
+  { key: 'pending', label: 'Pending', count: statusCounts.value.pending },
+  { key: 'preparing', label: 'Preparing', count: statusCounts.value.preparing },
+  { key: 'ready', label: 'Ready', count: statusCounts.value.ready },
+  {
+    key: 'out for delivery',
+    label: 'Out for Delivery',
+    count: statusCounts.value.out_for_delivery,
+  },
+  { key: 'delivered', label: 'Delivered', count: statusCounts.value.delivered },
+  { key: 'cancelled', label: 'Cancelled', count: statusCounts.value.cancelled },
+])
+const getTabCountClass = (tabKey: string) => {
+  switch (tabKey) {
+    case 'pending':
+      return 'bg-orange-100 text-orange-800'
+    case 'preparing':
+      return 'bg-blue-100 text-blue-800'
+    case 'ready':
+      return 'bg-blue-100 text-blue-800'
+    case 'out for delivery':
+      return 'bg-green-100 text-green-800'
+    case 'delivered':
+      return 'bg-gray-100 text-gray-800'
+    case 'cancelled':
+      return 'bg-red-100 text-red-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+const filteredOrders = computed(() => {
+  let filtered = order.orders
+
+  if (selectedStatus.value !== 'all') {
+    filtered = filtered.filter((order) => order.orderStatus === selectedStatus.value)
+  }
+
+  if (searchQuery.value) {
+    filtered = filtered.filter(
+      (order) =>
+        order.orderId.toString().includes(searchQuery.value.toLowerCase()) ||
+        (order.firstName + ' ' + order.lastName)
+          .toLowerCase()
+          .includes(searchQuery.value.toLowerCase()) ||
+        order.orderLists.some((item) => {
+          const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
+          return p?.pizzaName.toLowerCase().includes(searchQuery.value.toLowerCase())
+        }),
+    )
+  }
+
+  return filtered
+})
+
+const getStatusBadgeClass = (status: string) => {
+  switch (status) {
+    case 'ready':
+      return 'bg-blue-100 text-blue-800'
+    case 'preparing':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'pending':
+      return 'bg-purple-100 text-purple-800'
+    case 'out for delivery':
+      return 'bg-pink-100 text-pink-800'
+    case 'delivered':
+      return 'bg-green-100 text-green-800'
+    case 'cancelled':
+      return 'bg-red-100 text-red-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'ready':
+      return ConciergeBell
+    case 'preparing':
+      return CookingPot
+    case 'pending':
+      return Clock
+    case 'out for delivery':
+      return Truck
+    case 'delivered':
+      return Check
+    case 'cancelled':
+      return X
+    default:
+      return Pizza
+  }
+}
+
+const formatStatus = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return 'Pending'
+    case 'preparing':
+      return 'Preparing'
+    case 'ready':
+      return 'Ready'
+    case 'out for delivery':
+      return 'Out for Delivery'
+    case 'delivered':
+      return 'Delivered'
+    case 'cancelled':
+      return 'Cancelled'
+    default:
+      return status
+  }
+}
+
+const handleCancelOrder = async (id: number) => {
+  await order.updateOrderStatus(id, 'cancelled')
+  cancelConfirmationOpen.value = false
+}
+
+const handleModifyOrder = (currentOrder: Order) => {
+  order.setPendingOrder(currentOrder.orderLists as Cart[])
+  router.push('/order/modify/' + currentOrder.orderId)
+}
+
+onBeforeMount(async () => {
+  await order.fetchUserOrders()
 })
 </script>
 
@@ -138,183 +236,305 @@ onMounted(() => {
     <!-- Header -->
     <UserHeader />
 
-    <div class="py-8">
-      <div class="w-screen px-4 sm:px-8 lg:px-30 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left: Order summary -->
-        <div class="lg:col-span-1">
-          <div class="bg-gray-900 text-white rounded-lg p-6 shadow">
-            <h2 class="text-xl font-semibold mb-4">Complete Your Order</h2>
-            <p class="text-gray-300 text-sm mb-6">
-              Review your items and complete your delivery details
-            </p>
+    <div class="py-8 px-4 sm:px-8 lg:px-30 min-h-[calc(100vh-5rem)]">
+      <!-- Header Section -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">My Orders</h1>
+        <p class="text-gray-600 mt-2">Track and manage all your pizza orders</p>
+      </div>
+      <!-- Status Tabs -->
+      <div class="flex flex-wrap gap-6 mb-6">
+        <button
+          v-for="tab in statusTabs"
+          :key="tab.key"
+          @click="selectedStatus = tab.key"
+          :class="[
+            'text-sm font-medium transition-colors flex items-center gap-2 pb-1',
+            selectedStatus === tab.key
+              ? 'text-orange-400 border-b-2 border-orange-400'
+              : 'text-gray-700 border-b-2 border-transparent hover:text-gray-900',
+          ]"
+        >
+          {{ tab.label }}
+          <span
+            v-if="tab.count !== null"
+            class="px-2 py-1 rounded-full text-xs font-bold"
+            :class="getTabCountClass(tab.key)"
+          >
+            {{ tab.count }}
+          </span>
+        </button>
+      </div>
 
-            <div class="bg-gray-800 rounded-lg p-4">
-              <h3 class="text-white font-semibold mb-4">Order Details</h3>
-              <div v-if="cart.cart.length === 0" class="text-center py-6 text-gray-400">
-                <p>Your cart is empty. Please add items from the menu.</p>
-                <router-link to="/menu" class="text-orange-400 hover:text-orange-300 mt-4 inline-block">
-                  Browse Menu
-                </router-link>
-              </div>
-              <div v-else>
-                <!-- Order Items -->
-                <div v-for="item in cart.cart" :key="item.pizzaId"
-                  class="flex items-center justify-between bg-gray-700 p-3 rounded mb-3">
-                  <div class="flex items-center gap-3">
-                    <img v-if="item.image" :src="item.image"
-                      class="w-12 h-12 rounded object-cover bg-gray-600"
-                      :alt="item.name || `Pizza ${item.pizzaId}`"/>
-                    <div class="flex-1">
-                      <div class="font-medium">{{ item.name || `Pizza ${item.pizzaId}` }}</div>
-                      <div class="text-xs text-gray-400 mt-1">
-                        {{ formatCurrency(item.price || 0) }} each
-                      </div>
-                      <div class="flex items-center gap-2 mt-2">
-                        <button
-                          @click="cart.updateCart(item.pizzaId, Math.max((item.quantity || 1) - 1, 1))"
-                          class="bg-orange-500 hover:bg-orange-600 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                          :disabled="(item.quantity || 1) <= 1"
-                        >
-                          -
-                        </button>
-                        <span class="px-2 min-w-[2rem] text-center">{{ item.quantity || 1 }}</span>
-                        <button
-                          @click="cart.updateCart(item.pizzaId, (item.quantity || 1) + 1)"
-                          class="bg-orange-500 hover:bg-orange-600 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                    <div class="text-right">
-                      <div class="font-semibold text-orange-300">
-                        {{ formatCurrency((item.price || 0) * (item.quantity || 1)) }}
-                      </div>
-                      <button
-                        @click="cart.removeFromCart(item.pizzaId)"
-                        class="text-red-400 hover:text-red-300 text-sm mt-2 p-1"
-                        title="Remove item"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Order Summary -->
-              <div class="mt-6 border-t border-gray-600 pt-4">
-                <div class="space-y-3">
-                  <div class="flex justify-between text-gray-300 text-sm">
-                    <span>Items Subtotal ({{ cart.cart.reduce((acc, item) => acc + (item.quantity || 1), 0) }} items)</span>
-                    <span>{{ formatCurrency(subtotal) }}</span>
-                  </div>
-                  <div class="flex justify-between text-gray-300 text-sm">
-                    <span>Delivery Fee</span>
-                    <span>{{ formatCurrency(deliveryFee) }}</span>
-                  </div>
-                  <div class="pt-3 border-t border-gray-600">
-                    <div class="flex justify-between font-semibold text-orange-300 text-lg">
-                      <span>Total Amount</span>
-                      <span>{{ formatCurrency(total) }}</span>
-                    </div>
-                    <p class="text-xs text-gray-400 mt-2">
-                      By placing your order, you agree to our Terms of Service and Privacy Policy
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+      <!-- Search and Controls -->
+      <div class="flex items-center gap-4 mb-6">
+        <div class="relative flex-1">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search by order number, pizza name..."
+            class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 w-full"
+          />
+          <Search class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
         </div>
 
-        <!-- Right: Delivery address and instructions -->
-        <div class="lg:col-span-2">
-          <div class="bg-white rounded-lg p-6 shadow mb-6 border">
-            <h3 class="font-semibold mb-4">Choose Delivery Address</h3>
+        <div class="flex gap-2">
+          <button
+            class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Filter class="h-4 w-4" />
+            Filter
+          </button>
+          <button
+            class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <ChevronDown class="h-4 w-4" />
+            Sort
+          </button>
+        </div>
+      </div>
 
-            <div v-if="addresses.length" class="space-y-3">
-              <div
-                v-for="a in addresses"
-                :key="a.id"
-                class="flex items-center justify-between p-3 border rounded"
+      <div class="space-y-6">
+        <div v-for="o in filteredOrders" :key="o.orderId" class="bg-white rounded-lg shadow">
+          <Card class="w-full rounded-xl shadow-sm border-0 bg-white">
+            <CardHeader class="flex justify-between items-start">
+              <div>
+                <p class="font-semibold text-sm">ORDER #{{ o.orderId }}</p>
+                <p class="text-xs text-gray-500">{{ toDate(o.dateCreated as Date) }}</p>
+              </div>
+              <Badge
+                :class="[
+                  getStatusBadgeClass(o.orderStatus!),
+                  'px-4 py-2 rounded-full flex items-center space-x-1 ',
+                ]"
               >
-                <label class="flex items-center gap-3">
-                  <input type="radio" :value="a.id" v-model="selectedAddressId" class="radio" />
-                  <div>
-                    <div class="font-medium">{{ a.address }}</div>
-                    <div class="text-xs text-gray-500">{{ a.isDefault ? 'Default' : '' }}</div>
-                  </div>
-                </label>
-                <div class="flex items-center gap-2">
-                  <button @click="startEdit(a)" class="text-sm text-gray-600">✏️</button>
-                  <button @click="removeAddress(a.id)" class="text-sm text-red-500">🗑️</button>
-                  <button
-                    v-if="!a.isDefault"
-                    @click="setDefault(a.id)"
-                    class="text-sm text-orange-500"
-                  >
-                    Set as Default
-                  </button>
-                </div>
+                <component :is="getStatusIcon(o.orderStatus!)" class="w-3 h-3 mr-1" />
+                {{ formatStatus(o.orderStatus!) }}
+              </Badge>
+            </CardHeader>
+
+            <CardContent
+              v-for="po in o.orderLists?.map((item) => {
+                const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
+                return {
+                  pizzaId: item.pizzaId,
+                  pizzaName: p?.pizzaName,
+                  quantity: item.quantity,
+                  pizzaPrice: p?.pizzaPrice,
+                  pizzaImage: p?.pizzaImage,
+                }
+              })"
+              :key="po.pizzaId"
+              class="flex items-center gap-2 py-2"
+            >
+              <img
+                :src="toBase64(po.pizzaImage as string)"
+                alt="Hawaiian Delight"
+                class="size-20 rounded-md object-cover"
+              />
+              <div class="flex-1">
+                <p class="font-medium text-sm">{{ po.pizzaName }}</p>
+                <p class="text-xs text-gray-500">Qty: {{ po.quantity }}</p>
+                <p class="text-sm font-semibold mt-1">₱{{ po.quantity * po.pizzaPrice! }}</p>
+              </div>
+            </CardContent>
+
+            <div class="w-full grid place-items-center">
+              <Separator class="max-w-[97%]" />
+            </div>
+            <CardFooter class="flex justify-between items-center py-3">
+              <div>
+                <p class="text-xs text-gray-500">{{ o.orderLists.length }} item</p>
+                <p
+                  class="font-semibold"
+                  :class="o.orderStatus === 'cancelled' ? 'line-through' : ''"
+                >
+                  ₱{{
+                    o.orderLists.reduce((total, item) => {
+                      const p = pizza.pizzas.find((el) => el.pizzaId === item.pizzaId)
+                      if (!p) return total
+                      return total + p.pizzaPrice * item.quantity
+                    }, 0)
+                  }}
+                </p>
+              </div>
+              <div v-if="o.orderStatus === 'pending'" class="space-x-4">
+                <!-- Confirm Cancel Dialog -->
+                <Dialog v-model:open="cancelConfirmationOpen">
+                  <DialogTrigger>
+                    <Button variant="outline" class="h-12 rounded-md px-4 py-2"> Cancel </Button>
+                  </DialogTrigger>
+                  <DialogContent class="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Confirm Checkout</DialogTitle>
+                    </DialogHeader>
+                    <div>Are you sure you want to cancel this order?</div>
+                    <div
+                      v-for="po in o.orderLists?.map((item) => {
+                        const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
+                        return {
+                          pizzaId: item.pizzaId,
+                          pizzaName: p?.pizzaName,
+                          quantity: item.quantity,
+                          pizzaPrice: p?.pizzaPrice,
+                          pizzaImage: p?.pizzaImage,
+                        }
+                      })"
+                      :key="po.pizzaId"
+                      class="flex items-center gap-4 py-2"
+                    >
+                      <img
+                        :src="toBase64(po.pizzaImage as string)"
+                        alt="Hawaiian Delight"
+                        class="size-16 rounded-md object-cover"
+                      />
+                      <div class="flex-1">
+                        <p class="font-medium text-sm">{{ po.pizzaName }}</p>
+                        <p class="text-xs text-gray-500">Qty: {{ po.quantity }}</p>
+                        <p class="text-sm font-semibold mt-1">
+                          ₱{{ po.quantity * po.pizzaPrice! }}
+                        </p>
+                      </div>
+                    </div>
+                    <DialogFooter class="flex justify-end space-x-2">
+                      <Button variant="outline" @click="cancelConfirmationOpen = false">No</Button>
+                      <Button @click="handleCancelOrder(o.orderId)">Yes</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <Button @click="handleModifyOrder(o)" class="h-12 rounded-md px-4 py-2">
+                  Modify Order
+                </Button>
+              </div>
+              <div
+                v-else-if="o.orderStatus === 'delivered' || o.orderStatus === 'cancelled'"
+                class="space-x-4"
+              >
+                <Button
+                  v-if="o.orderStatus === 'delivered'"
+                  variant="outline"
+                  class="h-12 rounded-md px-4 py-2"
+                >
+                  Rate & Review
+                </Button>
+                <Button class="h-12 rounded-md px-4 py-2"> Reorder </Button>
+              </div>
+              <div v-else class="space-x-4">
+                <Button class="h-12 rounded-md px-4 py-2"> Track Order </Button>
+              </div>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+
+      <!-- Change address modal -->
+      <Dialog v-model:open="showAddressModal">
+        <DialogContent class="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{{ !isEdit ? 'Add' : 'Update' }} Delivery Address</DialogTitle>
+            <DialogDescription>
+              Enter your complete address for delivery within Cebu City.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div class="grid gap-4 py-4">
+            <!-- First Row: City and Barangay -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <Label for="city">City *</Label>
+                <Input
+                  id="city"
+                  v-model="locationForm.locationCity"
+                  class="h-12 col-span-3"
+                  disabled
+                />
+              </div>
+              <div class="space-y-2">
+                <Label for="barangay">Barangay *</Label>
+                <Select v-model="locationForm.locationBrgy">
+                  <SelectTrigger class="w-full py-5.5">
+                    <SelectValue placeholder="Select barangay" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="barangay in barangays" :key="barangay" :value="barangay">
+                      {{ barangay }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            <div v-else class="text-sm text-gray-500 mb-4">No saved addresses. Please add one.</div>
+            <!-- Second Row: Street and House No -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <Label for="street">Street *</Label>
+                <Input
+                  class="h-12"
+                  id="street"
+                  v-model="locationForm.locationStreet"
+                  placeholder="Enter street name"
+                />
+              </div>
+              <div class="space-y-2">
+                <Label for="houseNo">House No *</Label>
+                <Input
+                  class="h-12"
+                  id="houseNo"
+                  v-model="locationForm.locationHouseNo"
+                  placeholder="Enter house number"
+                />
+              </div>
+            </div>
 
-            <div class="mt-4">
-              <button @click="startAdd" class="bg-orange-500 text-white px-4 py-2 rounded">
-                + Add New Address
-              </button>
+            <!-- Third Row: Postal Code and Landmark (Optional) -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <Label for="postalCode">Postal Code</Label>
+                <Input
+                  class="h-12"
+                  id="postalCode"
+                  v-model="locationForm.locationPostal"
+                  placeholder="Enter postal code"
+                />
+              </div>
+              <div class="space-y-2">
+                <Label for="landmark">Landmark</Label>
+                <Input
+                  class="h-12"
+                  id="landmark"
+                  v-model="locationForm.locationLandmark"
+                  placeholder="Enter nearby landmark"
+                />
+              </div>
+            </div>
+
+            <!-- Save as default checkbox -->
+            <div class="flex items-center space-x-2">
+              <Checkbox id="saveDefault" v-model="locationForm.isDefault" />
+              <Label for="saveDefault" class="text-sm font-normal"> Save as default address </Label>
             </div>
           </div>
 
-          <div class="bg-white rounded-lg p-6 shadow mb-6 border">
-            <h3 class="font-semibold mb-4">Special Instructions</h3>
-            <textarea
-              v-model="instructions"
-              rows="4"
-              class="w-full border rounded p-3 text-sm"
-              placeholder="Ring doorbell twice. Leave at front door if no answer."
-            ></textarea>
-          </div>
-
-          <div class="flex gap-4">
-            <button @click="placeOrder" class="bg-orange-500 text-white px-6 py-3 rounded shadow">
-              Place Order
-            </button>
-            <router-link
-              to="/menu"
-              class="border border-orange-300 text-orange-500 px-6 py-3 rounded"
-              >Back to Menu</router-link
+          <!-- Buttons -->
+          <div class="flex justify-between gap-3">
+            <Button
+              class="w-[calc(50%-6px)] h-12"
+              variant="outline"
+              @click="showAddressModal = false"
             >
+              Cancel
+            </Button>
+            <Button
+              :disabled="location.isLoading"
+              @click="saveAddress"
+              class="w-[calc(50%-6px)] h-12 bg-primary hover:bg-primary/90"
+            >
+              <span v-if="location.isLoading">Saving...</span>
+              <span v-else>Save Address</span>
+            </Button>
           </div>
-        </div>
-      </div>
-
-      <!-- Add/Edit address modal (simple) -->
-      <div
-        v-if="openAdd"
-        class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center"
-      >
-        <div class="bg-white rounded-lg p-6 w-full max-w-md">
-          <h4 class="font-semibold mb-4">
-            {{ editing && editing.id ? 'Edit Address' : 'Add Address' }}
-          </h4>
-          <textarea
-            v-model="addressInput"
-            rows="4"
-            class="w-full border rounded p-3 mb-4"
-            placeholder="123 Lahug Street, Barangay Lahug, Cebu City, 6000"
-          ></textarea>
-          <div class="flex justify-end gap-2">
-            <button @click="openAdd = false" class="px-4 py-2 border rounded">Cancel</button>
-            <button @click="submitAddress" class="px-4 py-2 bg-orange-500 text-white rounded">
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
     <Footer />
   </div>
