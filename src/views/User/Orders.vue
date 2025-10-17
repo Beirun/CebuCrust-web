@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, reactive, onBeforeMount } from 'vue'
 import { useCartStore } from '@/stores/cart'
-import { useAuthStore } from '@/stores/auth'
-import { useOrdersStore } from '@/stores/orders'
 import UserHeader from '@/components/UserHeader.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,127 +27,83 @@ import { Separator } from '@/components/ui/separator'
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Check, Clock, ConciergeBell, CookingPot, Pizza, Truck, X } from 'lucide-vue-next'
+<<<<<<< HEAD
 import { Search } from 'lucide-vue-next'
+=======
+import { Search, Filter, ChevronDown } from 'lucide-vue-next'
+>>>>>>> origin/main
 import Footer from '@/components/Footer.vue'
+import { usePizzaStore } from '@/stores/pizza'
+import { toBase64, toDate } from '@/plugins/convert'
+import { useLocationStore } from '@/stores/location'
+import { barangays } from '@/data/barangay'
+import { useOrderStore } from '@/stores/orders'
+import type { Order } from '@/models/order'
+import type { Cart } from '@/models/cart'
+import router from '@/router'
+
 const cart = useCartStore()
-const auth = useAuthStore()
-const orders = useOrdersStore()
-const router = useRouter()
+const pizza = usePizzaStore()
+const location = useLocationStore()
+const order = useOrderStore()
+const cartItems = ref<
+  {
+    pizzaId: number
+    quantity: number
+  }[]
+>([])
 
 const selectedStatus = ref('all')
 const searchQuery = ref('')
+<<<<<<< HEAD
 const sortBy = ref('')
 const categoryFilter = ref('all')
+=======
+>>>>>>> origin/main
 
-const subtotal = computed(() => {
-  const items = cart.cart || []
-  return items.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 1)), 0)
+const selectedAddressId = ref(0)
+const showAddressModal = ref(false)
+const isEdit = ref(false)
+const cancelConfirmationOpen = ref(false)
+const locationForm = reactive({
+  locationId: 0,
+  locationCity: 'Cebu City',
+  locationBrgy: '',
+  locationStreet: '',
+  locationHouseNo: '',
+  locationPostal: '',
+  locationLandmark: '',
+  isDefault: false,
 })
-const deliveryFee = computed(() => 50) // Fixed delivery fee of 50 pesos
-const total = computed(() => subtotal.value + deliveryFee.value)
 
-const formatCurrency = (v: number) => `₱${v.toLocaleString()}`
-
-const saveAddresses = () => {
-  localStorage.setItem('addresses', JSON.stringify(addresses.value))
-}
-
-const openAdd = ref(false)
-const editing = ref<{ id?: string; address?: string } | null>(null)
-const addressInput = ref('')
-
-const startAdd = () => {
-  editing.value = null
-  addressInput.value = ''
-  openAdd.value = true
-}
-
-const startEdit = (a: { id: string; address: string }) => {
-  editing.value = { ...a }
-  addressInput.value = a.address
-  openAdd.value = true
-}
-
-const removeAddress = (id: string) => {
-  addresses.value = addresses.value.filter((a) => a.id !== id)
-  if (selectedAddressId.value === id) selectedAddressId.value = addresses.value[0]?.id ?? null
-  saveAddresses()
-}
-
-const setDefault = (id: string) => {
-  addresses.value = addresses.value.map((a) => ({ ...a, isDefault: a.id === id }))
-  selectedAddressId.value = id
-  saveAddresses()
-  // update auth store local user address shortcut
-  const addr = addresses.value.find((a) => a.id === id)
-  if (addr) {
-    auth.user = { ...auth.user, address: addr.address }
-    localStorage.setItem('user', JSON.stringify(auth.user))
-  }
-}
-
-const submitAddress = () => {
-  const trimmed = addressInput.value.trim()
-  if (!trimmed) return
-  if (editing.value && editing.value.id) {
-    addresses.value = addresses.value.map((a) =>
-      a.id === editing.value!.id ? { ...a, address: trimmed } : a,
-    )
+const saveAddress = async () => {
+  if (isEdit.value) {
+    const res = await location.updateLocation(locationForm.locationId, locationForm)
+    if (res) {
+      showAddressModal.value = false
+      isEdit.value = false
+    }
   } else {
-    const id = Date.now().toString()
-    addresses.value.push({ id, address: trimmed, isDefault: addresses.value.length === 0 })
-    if (addresses.value.length === 1) selectedAddressId.value = id
+    const res = await location.addLocation(locationForm)
+    if (res) showAddressModal.value = false
   }
-  saveAddresses()
-  openAdd.value = false
-}
-
-const placeOrder = () => {
-  if (!cart.cart.length) return alert('Your cart is empty')
-  if (!selectedAddressId.value) return alert('Please select a delivery address or add one')
-
-  const addr = addresses.value.find((a) => a.id === selectedAddressId.value)!
-  const cartArr = cart.cart
-
-  const order: Order = {
-    id: 'ORD-' + Date.now(),
-    customerName: auth.user?.name || auth.user?.userName || 'Guest',
-    phone: auth.user?.phone || auth.user?.phoneNumber || '',
-    dateTime: new Date().toISOString(),
-    address: addr.address,
-    instructions: instructions.value,
-    items: cartArr.map((i) => ({
-      name: i.name || `Pizza ${i.pizzaId}`,
-      quantity: i.quantity || 1,
-      price: i.price || 0
-    })),
-    subtotal: subtotal.value,
-    deliveryFee: deliveryFee.value,
-    total: total.value,
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-
-  // push to orders store and persist in localStorage as simple implementation
-  orders.orders.push(order)
-  localStorage.setItem('orders', JSON.stringify(orders.orders))
-
-  // Clear cart by removing all items
-  for (const item of cart.cart) {
-    cart.removeFromCart(item.pizzaId)
-  }
-  alert('Order placed successfully')
-  router.push('/dashboard')
 }
 
 onMounted(() => {
-  // bootstrap addresses: if user has address in auth.user, seed it
-  if (!addresses.value.length && auth.user?.address) {
-    const id = Date.now().toString()
-    addresses.value.push({ id, address: auth.user.address, isDefault: true })
-    selectedAddressId.value = id
-    saveAddresses()
+  cartItems.value = cart.cart
+  console.log('locs', location.locations)
+  selectedAddressId.value = location.selectedLocation?.locationId ?? 0
+})
+
+const statusCounts = computed(() => {
+  const counts = {
+    all: order.orders.length,
+    pending: 0,
+    preparing: 0,
+    ready: 0,
+    out_for_delivery: 0,
+    delivered: 0,
+    cancelled: 0,
   }
 
   order.orders.forEach((order) => {
@@ -194,6 +147,7 @@ const getTabCountClass = (tabKey: string) => {
 const filteredOrders = computed(() => {
   let filtered = order.orders
 
+<<<<<<< HEAD
   // Filter by pizza category
   if (categoryFilter.value !== 'all') {
     filtered = filtered.filter((order) => 
@@ -206,6 +160,8 @@ const filteredOrders = computed(() => {
   }
 
   // Filter by status tabs (existing functionality)
+=======
+>>>>>>> origin/main
   if (selectedStatus.value !== 'all') {
     filtered = filtered.filter((order) => order.orderStatus === selectedStatus.value)
   }
@@ -224,6 +180,7 @@ const filteredOrders = computed(() => {
     )
   }
 
+<<<<<<< HEAD
   // Sort orders
   if (sortBy.value) {
     switch (sortBy.value) {
@@ -246,6 +203,8 @@ const filteredOrders = computed(() => {
     }
   }
 
+=======
+>>>>>>> origin/main
   return filtered
 })
 
@@ -316,6 +275,7 @@ const handleModifyOrder = (currentOrder: Order) => {
   router.push('/order/modify/' + currentOrder.orderId)
 }
 
+<<<<<<< HEAD
 const handleReorder = (currentOrder: Order) => {
   // Set the pending order with the same items from the previous order
   order.setPendingOrder(currentOrder.orderLists as Cart[])
@@ -329,6 +289,8 @@ const clearAllFilters = () => {
   sortBy.value = ''
 }
 
+=======
+>>>>>>> origin/main
 onBeforeMount(async () => {
   await order.fetchUserOrders()
 })
@@ -339,17 +301,41 @@ onBeforeMount(async () => {
     <!-- Header -->
     <UserHeader />
 
-    <div class="py-8">
-      <div class="w-screen px-4 sm:px-8 lg:px-30 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left: Order summary -->
-        <div class="lg:col-span-1">
-          <div class="bg-gray-900 text-white rounded-lg p-6 shadow">
-            <h2 class="text-xl font-semibold mb-4">Complete Your Order</h2>
-            <p class="text-gray-300 text-sm mb-6">
-              Review your items and complete your delivery details
-            </p>
+    <div class="py-8 px-4 sm:px-8 lg:px-30 min-h-[calc(100vh-5rem)]">
+      <!-- Header Section -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">My Orders</h1>
+        <p class="text-gray-600 mt-2">Track and manage all your pizza orders</p>
+      </div>
+      <!-- Status Tabs -->
+      <div class="flex flex-wrap gap-6 mb-6">
+        <button
+          v-for="tab in statusTabs"
+          :key="tab.key"
+          @click="selectedStatus = tab.key"
+          :class="[
+            'text-sm font-medium transition-colors flex items-center gap-2 pb-1',
+            selectedStatus === tab.key
+              ? 'text-orange-400 border-b-2 border-orange-400'
+              : 'text-gray-700 border-b-2 border-transparent hover:text-gray-900',
+          ]"
+        >
+          {{ tab.label }}
+          <span
+            v-if="tab.count !== null"
+            class="px-2 py-1 rounded-full text-xs font-bold"
+            :class="getTabCountClass(tab.key)"
+          >
+            {{ tab.count }}
+          </span>
+        </button>
+      </div>
 
+<<<<<<< HEAD
       <!-- Search, Filter and Sort -->
+=======
+      <!-- Search and Controls -->
+>>>>>>> origin/main
       <div class="flex items-center gap-4 mb-6">
         <div class="relative flex-1">
           <input
@@ -359,6 +345,7 @@ onBeforeMount(async () => {
             class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 w-full"
           />
           <Search class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+<<<<<<< HEAD
         </div>
 
         <div class="flex gap-2">
@@ -532,72 +519,160 @@ onBeforeMount(async () => {
               </div>
             </div>
           </div>
+=======
+>>>>>>> origin/main
         </div>
 
-        <!-- Right: Delivery address and instructions -->
-        <div class="lg:col-span-2">
-          <div class="bg-white rounded-lg p-6 shadow mb-6 border">
-            <h3 class="font-semibold mb-4">Choose Delivery Address</h3>
-
-            <div v-if="addresses.length" class="space-y-3">
-              <div
-                v-for="a in addresses"
-                :key="a.id"
-                class="flex items-center justify-between p-3 border rounded"
-              >
-                <label class="flex items-center gap-3">
-                  <input type="radio" :value="a.id" v-model="selectedAddressId" class="radio" />
-                  <div>
-                    <div class="font-medium">{{ a.address }}</div>
-                    <div class="text-xs text-gray-500">{{ a.isDefault ? 'Default' : '' }}</div>
-                  </div>
-                </label>
-                <div class="flex items-center gap-2">
-                  <button @click="startEdit(a)" class="text-sm text-gray-600">✏️</button>
-                  <button @click="removeAddress(a.id)" class="text-sm text-red-500">🗑️</button>
-                  <button
-                    v-if="!a.isDefault"
-                    @click="setDefault(a.id)"
-                    class="text-sm text-orange-500"
-                  >
-                    Set as Default
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div v-else class="text-sm text-gray-500 mb-4">No saved addresses. Please add one.</div>
-
-            <div class="mt-4">
-              <button @click="startAdd" class="bg-orange-500 text-white px-4 py-2 rounded">
-                + Add New Address
-              </button>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-lg p-6 shadow mb-6 border">
-            <h3 class="font-semibold mb-4">Special Instructions</h3>
-            <textarea
-              v-model="instructions"
-              rows="4"
-              class="w-full border rounded p-3 text-sm"
-              placeholder="Ring doorbell twice. Leave at front door if no answer."
-            ></textarea>
-          </div>
-
-          <div class="flex gap-4">
-            <button @click="placeOrder" class="bg-orange-500 text-white px-6 py-3 rounded shadow">
-              Place Order
-            </button>
-            <router-link
-              to="/menu"
-              class="border border-orange-300 text-orange-500 px-6 py-3 rounded"
-              >Back to Menu</router-link
-            >
-          </div>
+        <div class="flex gap-2">
+          <button
+            class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Filter class="h-4 w-4" />
+            Filter
+          </button>
+          <button
+            class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <ChevronDown class="h-4 w-4" />
+            Sort
+          </button>
         </div>
       </div>
 
+      <div class="space-y-6">
+        <div v-for="o in filteredOrders" :key="o.orderId" class="bg-white rounded-lg shadow">
+          <Card class="w-full rounded-xl shadow-sm border-0 bg-white">
+            <CardHeader class="flex justify-between items-start">
+              <div>
+                <p class="font-semibold text-sm">ORDER #{{ o.orderId }}</p>
+                <p class="text-xs text-gray-500">{{ toDate(o.dateCreated as Date) }}</p>
+              </div>
+              <Badge
+                :class="[
+                  getStatusBadgeClass(o.orderStatus!),
+                  'px-4 py-2 rounded-full flex items-center space-x-1 ',
+                ]"
+              >
+                <component :is="getStatusIcon(o.orderStatus!)" class="w-3 h-3 mr-1" />
+                {{ formatStatus(o.orderStatus!) }}
+              </Badge>
+            </CardHeader>
+
+            <CardContent
+              v-for="po in o.orderLists?.map((item) => {
+                const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
+                return {
+                  pizzaId: item.pizzaId,
+                  pizzaName: p?.pizzaName,
+                  quantity: item.quantity,
+                  pizzaPrice: p?.pizzaPrice,
+                  pizzaImage: p?.pizzaImage,
+                }
+              })"
+              :key="po.pizzaId"
+              class="flex items-center gap-2 py-2"
+            >
+              <img
+                :src="toBase64(po.pizzaImage as string)"
+                alt="Hawaiian Delight"
+                class="size-20 rounded-md object-cover"
+              />
+              <div class="flex-1">
+                <p class="font-medium text-sm">{{ po.pizzaName }}</p>
+                <p class="text-xs text-gray-500">Qty: {{ po.quantity }}</p>
+                <p class="text-sm font-semibold mt-1">₱{{ po.quantity * po.pizzaPrice! }}</p>
+              </div>
+            </CardContent>
+
+            <div class="w-full grid place-items-center">
+              <Separator class="max-w-[97%]" />
+            </div>
+            <CardFooter class="flex justify-between items-center py-3">
+              <div>
+                <p class="text-xs text-gray-500">{{ o.orderLists.length }} item</p>
+                <p
+                  class="font-semibold"
+                  :class="o.orderStatus === 'cancelled' ? 'line-through' : ''"
+                >
+                  ₱{{
+                    o.orderLists.reduce((total, item) => {
+                      const p = pizza.pizzas.find((el) => el.pizzaId === item.pizzaId)
+                      if (!p) return total
+                      return total + p.pizzaPrice * item.quantity
+                    }, 0)
+                  }}
+                </p>
+              </div>
+              <div v-if="o.orderStatus === 'pending'" class="space-x-4">
+                <!-- Confirm Cancel Dialog -->
+                <Dialog v-model:open="cancelConfirmationOpen">
+                  <DialogTrigger>
+                    <Button variant="outline" class="h-12 rounded-md px-4 py-2"> Cancel </Button>
+                  </DialogTrigger>
+                  <DialogContent class="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Confirm Checkout</DialogTitle>
+                    </DialogHeader>
+                    <div>Are you sure you want to cancel this order?</div>
+                    <div
+                      v-for="po in o.orderLists?.map((item) => {
+                        const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
+                        return {
+                          pizzaId: item.pizzaId,
+                          pizzaName: p?.pizzaName,
+                          quantity: item.quantity,
+                          pizzaPrice: p?.pizzaPrice,
+                          pizzaImage: p?.pizzaImage,
+                        }
+                      })"
+                      :key="po.pizzaId"
+                      class="flex items-center gap-4 py-2"
+                    >
+                      <img
+                        :src="toBase64(po.pizzaImage as string)"
+                        alt="Hawaiian Delight"
+                        class="size-16 rounded-md object-cover"
+                      />
+                      <div class="flex-1">
+                        <p class="font-medium text-sm">{{ po.pizzaName }}</p>
+                        <p class="text-xs text-gray-500">Qty: {{ po.quantity }}</p>
+                        <p class="text-sm font-semibold mt-1">
+                          ₱{{ po.quantity * po.pizzaPrice! }}
+                        </p>
+                      </div>
+                    </div>
+                    <DialogFooter class="flex justify-end space-x-2">
+                      <Button variant="outline" @click="cancelConfirmationOpen = false">No</Button>
+                      <Button @click="handleCancelOrder(o.orderId)">Yes</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <Button @click="handleModifyOrder(o)" class="h-12 rounded-md px-4 py-2">
+                  Modify Order
+                </Button>
+              </div>
+              <div
+                v-else-if="o.orderStatus === 'delivered' || o.orderStatus === 'cancelled'"
+                class="space-x-4"
+              >
+                <Button
+                  v-if="o.orderStatus === 'delivered'"
+                  variant="outline"
+                  class="h-12 rounded-md px-4 py-2"
+                >
+                  Rate & Review
+                </Button>
+                <Button class="h-12 rounded-md px-4 py-2"> Reorder </Button>
+              </div>
+              <div v-else class="space-x-4">
+                <Button class="h-12 rounded-md px-4 py-2"> Track Order </Button>
+              </div>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+
+<<<<<<< HEAD
       <!-- Empty State - No Orders Found -->
       <div v-if="order.orders.length > 0 && filteredOrders.length === 0" class="text-center py-16">
         <div class="max-w-md mx-auto">
@@ -617,6 +692,8 @@ onBeforeMount(async () => {
         </div>
       </div>
 
+=======
+>>>>>>> origin/main
       <!-- Change address modal -->
       <Dialog v-model:open="showAddressModal">
         <DialogContent class="sm:max-w-[500px]">
@@ -704,8 +781,27 @@ onBeforeMount(async () => {
               <Label for="saveDefault" class="text-sm font-normal"> Save as default address </Label>
             </div>
           </div>
-        </div>
-      </div>
+
+          <!-- Buttons -->
+          <div class="flex justify-between gap-3">
+            <Button
+              class="w-[calc(50%-6px)] h-12"
+              variant="outline"
+              @click="showAddressModal = false"
+            >
+              Cancel
+            </Button>
+            <Button
+              :disabled="location.isLoading"
+              @click="saveAddress"
+              class="w-[calc(50%-6px)] h-12 bg-primary hover:bg-primary/90"
+            >
+              <span v-if="location.isLoading">Saving...</span>
+              <span v-else>Save Address</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
     <Footer />
   </div>

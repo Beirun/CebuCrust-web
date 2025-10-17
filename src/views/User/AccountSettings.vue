@@ -267,8 +267,13 @@ const save = async () => {
         confirmPassword: ''
       }
       
-      // Navigate back to dashboard
-      router.push('/dashboard')
+      // Navigate back to appropriate dashboard
+      // Keep admin users on the admin dashboard so they aren't redirected to the user side
+      if (auth.isAdmin) {
+        router.push('/dashboard/admin')
+      } else {
+        router.push('/dashboard')
+      }
     }
   } catch (error) {
     console.error('Error updating profile:', error)

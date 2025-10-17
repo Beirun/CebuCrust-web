@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import LandingFooter from '@/components/LandingFooter.vue'
 import LandingNavbar from '@/components/LandingNavbar.vue'
 import Footer from '@/components/Footer.vue'
 import router from '@/router'

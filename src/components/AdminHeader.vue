@@ -3,11 +3,15 @@ import { toBase64 } from '@/plugins/convert'
 import { useAuthStore } from '@/stores/auth'
 import { Bell, ChevronDown, User, LogOut, X, BarChart3, Utensils, Package } from 'lucide-vue-next'
 import { ref, computed, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-
+import { useRoute } from 'vue-router'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+} from '@/components/ui/dropdown-menu'
+import router from '@/router'
 const auth = useAuthStore()
 const route = useRoute()
-const router = useRouter()
 const user = ref(auth.user ? { ...auth.user } : {})
 
 const displayName = computed(() => {
@@ -35,24 +39,10 @@ const profileItems = [
   { name: 'Logout', icon: LogOut, action: () => handleLogout() },
 ]
 
-// Safely format an image source for <img>.
-const formatImage = (img: string | null) => {
-  if (!img) return null
-  if (typeof img !== 'string') return null
-  const trimmed = img.trim()
-  // already a data URL
-  if (trimmed.startsWith('data:')) return trimmed
-  // probably a full/relative URL
-  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('/')) return trimmed
-  // otherwise assume it's a raw base64 payload
-  return toBase64(trimmed)
-}
-
 // Handle logout
 const handleLogout = async () => {
   try {
     await auth.logout()
-    router.push('/')
   } catch (error) {
     console.error('Logout failed:', error)
   }
@@ -93,11 +83,7 @@ watch(
             :key="link.name"
             :to="link.to"
             class="relative group font-medium px-3 py-2 transition-colors duration-300"
-            :class="[
-              route.path === link.to
-                ? 'text-primary'
-                : 'text-gray-300 hover:text-white'
-            ]"
+            :class="[route.path === link.to ? 'text-primary' : 'text-gray-300 hover:text-white']"
           >
             {{ link.name }}
             <!-- Orange underline for active link -->
@@ -123,40 +109,49 @@ watch(
 
           <!-- User Profile Dropdown -->
           <div class="relative">
-            <button
-              @click="isProfileDropdownOpen = !isProfileDropdownOpen"
-              class="flex items-center space-x-3 text-gray-300 hover:text-white transition-colors"
-            >
-              <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
-                <img
-                  v-if="preview"
-                  :src="formatImage(preview)"
-                  alt="profile"
-                  class="w-full h-full object-cover"
-                />
-              </div>
-              <span class="font-medium">{{ displayName }}</span>
-              <ChevronDown 
-                class="w-4 h-4 text-gray-400 transition-transform duration-200"
-                :class="{ 'rotate-180': isProfileDropdownOpen }"
-              />
-            </button>
+            <DropdownMenu v-model:open="isProfileDropdownOpen">
+              <DropdownMenuTrigger as-child>
+                <button
+                  class="flex items-center space-x-3 text-gray-300 hover:text-white transition-colors"
+                >
+                  <div
+                    class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden"
+                  >
+                    <img
+                      v-if="preview"
+                      :src="toBase64(preview)"
+                      alt="profile"
+                      class="w-full h-full object-cover"
+                    />
+                  </div>
+                  <span class="font-medium">{{ displayName }}</span>
+                  <ChevronDown
+                    class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                    :class="{ 'rotate-180': isProfileDropdownOpen }"
+                  />
+                </button>
+              </DropdownMenuTrigger>
 
-            <!-- Profile Dropdown Menu -->
-            <div
-              v-if="isProfileDropdownOpen"
-              class="absolute right-0 mt-2 w-48 bg-[#192124] rounded-lg shadow-lg border border-[#D3D3D3]/30 py-2 z-50"
-            >
-              <button
-                v-for="item in profileItems"
-                :key="item.name"
-                @click="item.action(); isProfileDropdownOpen = false"
-                class="w-full flex items-center space-x-3 px-4 py-2 text-gray-300 hover:text-white hover:bg-[#121A1D] transition-colors"
+              <!-- Profile Dropdown Menu -->
+              <DropdownMenuContent
+                class="mt-2 w-48 bg-[#192124] rounded-lg shadow-lg border border-[#D3D3D3]/30 py-2"
               >
-                <component :is="item.icon" class="w-4 h-4" />
-                <span>{{ item.name }}</span>
-              </button>
-            </div>
+                <button
+                  v-for="item in profileItems"
+                  :key="item.name"
+                  @click="
+                    () => {
+                      item.action()
+                      isProfileDropdownOpen = false
+                    }
+                  "
+                  class="w-full flex items-center space-x-3 px-4 py-2 text-gray-300 hover:text-white hover:bg-[#121A1D] transition-colors"
+                >
+                  <component :is="item.icon" class="w-4 h-4" />
+                  <span>{{ item.name }}</span>
+                </button>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -168,19 +163,19 @@ watch(
           <span
             :class="[
               'block w-6 h-0.5 bg-white transition-all duration-300',
-              isMobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''
+              isMobileMenuOpen ? 'rotate-45 translate-y-1.5' : '',
             ]"
           ></span>
           <span
             :class="[
               'block w-6 h-0.5 bg-white transition-all duration-300',
-              isMobileMenuOpen ? 'opacity-0' : ''
+              isMobileMenuOpen ? 'opacity-0' : '',
             ]"
           ></span>
           <span
             :class="[
               'block w-6 h-0.5 bg-white transition-all duration-300',
-              isMobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''
+              isMobileMenuOpen ? '-rotate-45 -translate-y-1.5' : '',
             ]"
           ></span>
         </button>
@@ -198,7 +193,7 @@ watch(
     <div
       :class="[
         'fixed top-0 right-0 h-full w-80 bg-[#121A1D] z-50 transform transition-transform duration-300 lg:hidden',
-        isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full',
       ]"
     >
       <div class="flex flex-col h-full p-6">
@@ -227,7 +222,9 @@ watch(
         <!-- Mobile User Actions -->
         <div class="flex flex-col gap-4 mb-8">
           <!-- Notifications -->
-          <button class="flex items-center space-x-3 text-white text-xl hover:text-primary transition-colors">
+          <button
+            class="flex items-center space-x-3 text-white text-xl hover:text-primary transition-colors"
+          >
             <Bell class="w-5 h-5" />
             <span>Notifications</span>
             <span class="ml-auto w-2 h-2 bg-primary rounded-full"></span>
@@ -237,7 +234,12 @@ watch(
         <!-- Mobile Profile Actions -->
         <div class="mt-auto flex flex-col gap-4">
           <button
-            @click="router.push('/settings'); closeDropdowns()"
+            @click="
+              () => {
+                router.push('/settings')
+                closeDropdowns()
+              }
+            "
             class="flex items-center space-x-3 text-white text-xl hover:text-primary transition-colors"
           >
             <User class="w-5 h-5" />

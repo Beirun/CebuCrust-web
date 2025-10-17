@@ -24,9 +24,7 @@ const selectedCategory = ref('all')
 
 // Computed properties
 const favoritePizzas = computed(() => {
-  return pizza.pizzas.filter((pizza: Pizza) => 
-    favorite.favorites.includes(pizza.pizzaId!)
-  )
+  return pizza.pizzas.filter((pizza: Pizza) => favorite.favorites.includes(pizza.pizzaId!))
 })
 
 const filteredFavorites = computed(() => {
@@ -93,6 +91,10 @@ onMounted(async () => {
   await pizza.fetchAll()
   await favorite.fetchFavorites()
 })
+
+const inCart = (id: number) => {
+  return cart.cart.some((c) => c.pizzaId === id)
+}
 </script>
 
 <template>
@@ -101,11 +103,22 @@ onMounted(async () => {
 
     <!-- Main Content -->
     <main class="w-screen px-4 sm:px-8 lg:px-30 py-8 min-h-[calc(100vh-5rem)]">
+<<<<<<< HEAD
       <!-- Header Section -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900 mb-2">My Favorites</h1>
         <p class="text-gray-600">Your favorite pizzas and menu items, all in one place</p>
       </div>
+=======
+      <!-- Favorites Hero Section -->
+      <div class="bg-gray-800 rounded-lg p-8 mb-8 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-gray-800 to-gray-700 opacity-90"></div>
+        <div class="relative z-10">
+          <h1 class="text-4xl font-bold text-white mb-4">My Favorites</h1>
+          <p class="text-gray-300 text-lg mb-6">
+            Your favorite pizzas and menu items, all in one place
+          </p>
+>>>>>>> origin/main
 
       <!-- Search, Filter and Sort Bar -->
       <div class="flex flex-col lg:flex-row gap-4 mb-8">
@@ -184,9 +197,7 @@ onMounted(async () => {
                 class="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg"
                 @click.stop="removeFromFavorites(item.pizzaId!)"
               >
-                <Heart
-                  class="w-5 h-5 fill-red-500 text-red-500"
-                />
+                <Heart class="w-5 h-5 fill-red-500 text-red-500" />
               </button>
 
               <!-- Unavailable Overlay -->
@@ -198,6 +209,7 @@ onMounted(async () => {
               </div>
             </div>
 
+<<<<<<< HEAD
             <!-- Pizza Details -->
             <div class="p-4">
               <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
@@ -216,21 +228,56 @@ onMounted(async () => {
                   </span>
                 </div>
                 <span class="text-xl font-bold text-primary">₱{{ item.pizzaPrice }}</span>
+=======
+            <div class="mb-3">
+              <h3 class="font-semibold text-gray-900 mb-1">{{ item.pizzaName }}</h3>
+              <p class="text-gray-600 text-sm mb-2">{{ item.pizzaDescription }}</p>
+              <div class="flex items-center gap-2 text-xs text-gray-500">
+                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded"> 15 min </span>
+                <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                  {{ item.pizzaCategory }}
+                </span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-lg font-bold text-gray-900">₱{{ item.pizzaPrice }}</span>
+              <div class="flex items-center">
+                <Star class="w-4 h-4 text-yellow-400 fill-current" />
+                <span class="text-sm text-gray-600 ml-1">
+                  {{
+                    item.averageRating && item.averageRating > 0
+                      ? `${item.averageRating} (${item.totalRatings})`
+                      : '0 (0)'
+                  }}
+                </span>
+>>>>>>> origin/main
               </div>
 
               <!-- Action Buttons -->
               <button
+<<<<<<< HEAD
                 :disabled="!item.isAvailable || inCart(item.pizzaId!)"
                 @click.stop="addToCart(item)"
                 class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
+=======
+                @click="addToCart(item)"
+                :disabled="!item.isAvailable || inCart(item.pizzaId!)"
+>>>>>>> origin/main
                 :class="
-                  item.isAvailable
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  item.isAvailable && !inCart(item.pizzaId!)
+                    ? 'bg-primary hover:bg-primary/80'
+                    : 'bg-gray-300 text-gray-500 cursor-default'
                 "
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
-                {{ item.isAvailable ? 'Add to Cart' : 'Unavailable' }}
+                {{
+                  !item.isAvailable
+                    ? 'Unavailable'
+                    : inCart(item.pizzaId!)
+                      ? 'In Cart'
+                      : 'Add to Cart'
+                }}
               </button>
             </div>
           </div>
@@ -268,7 +315,8 @@ onMounted(async () => {
           </div>
           <h3 class="text-xl font-semibold text-gray-900 mb-2">No Favorites Found</h3>
           <p class="text-gray-600 mb-6">
-            We couldn't find any favorites matching your search criteria. Try adjusting your search terms.
+            We couldn't find any favorites matching your search criteria. Try adjusting your search
+            terms.
           </p>
           <button
             @click="clearAllFilters"

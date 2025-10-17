@@ -180,7 +180,7 @@ onMounted(async () => {
     <AdminHeader />
 
     <!-- Main Content -->
-    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8">
+    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8 min-h-[calc(100vh-5rem)]">
       <!-- Page Header -->
       <div class="flex justify-between items-center mb-8">
         <div>
@@ -707,12 +707,3 @@ onMounted(async () => {
     <Footer />
   </div>
 </template>
-
-<style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-</style>

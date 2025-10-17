@@ -1,99 +1,198 @@
+// stores/order.ts
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
+import { useSonnerStore } from './sonner'
+import { useFetch } from '@/plugins/api'
+import type { Order, OrderItem } from '@/models/order'
+import { usePizzaStore } from './pizza'
+import { type Cart } from '@/models/cart'
+import router from '@/router'
+import { useCartStore } from './cart'
 
-export interface Order {
-  id: string
-  customerName: string
-  phone: string
-  dateTime: string
-  address: string
-  instructions: string
-  items: Array<{
-    name: string
-    quantity: number
-    price: number
-  }>
-  subtotal: number
-  deliveryFee: number
-  total: number
-  status: 'pending' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled'
-  createdAt: string
-  updatedAt: string
-}
-
-export const useOrdersStore = defineStore('orders', () => {
-  // Initialize with empty data - will be populated from API
+export const useOrderStore = defineStore('order', () => {
+  const cart = useCartStore()
+  const sonner = useSonnerStore()
+  const pizza = usePizzaStore()
+  const URL = import.meta.env.VITE_BASE_URL ?? 'http://localhost:5135/api'
   const orders = ref<Order[]>([])
-  const searchQuery = ref('')
-  const statusFilter = ref('all')
+  const isLoading = ref(false)
+  const pendingOrder = ref<Cart[]>(JSON.parse(localStorage.getItem('pendingOrders') || '[]'))
 
-  const filteredOrders = computed(() => {
-    let filtered = orders.value
-
-    if (searchQuery.value) {
-      filtered = filtered.filter(order =>
-        order.id.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        order.customerName.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        order.phone.includes(searchQuery.value)
-      )
-    }
-
-    if (statusFilter.value !== 'all') {
-      filtered = filtered.filter(order => order.status === statusFilter.value)
-    }
-
-    return filtered
-  })
-
-  const fetchOrders = async () => {
+  const fetchUserOrders = async () => {
+    isLoading.value = true
     try {
-      // TODO: Replace with actual API call
-      // Example API integration:
-      // const response = await fetch('/api/orders')
-      // const data = await response.json()
-      // orders.value = data.orders
-
-      console.log('Orders will be fetched from API')
-    } catch (error) {
-      console.error('Error fetching orders:', error)
+      const res = await useFetch(`${URL}/order/me`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) return sonner.error(data.message ?? 'Failed to fetch orders')
+      orders.value = data.map((o: Order) => {
+        const total = o.orderLists.reduce((sum, item) => {
+          const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
+          return sum + (p ? p.pizzaPrice * item.quantity : 0)
+        }, 0)
+        return { ...o, orderTotal: total }
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error fetching orders'
+      sonner.error(msg)
+    } finally {
+      isLoading.value = false
     }
   }
 
-  const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+  const fetchAllOrders = async () => {
+    isLoading.value = true
     try {
-      // TODO: Replace with actual API call
-      // Example API integration:
-      // const response = await fetch(`/api/orders/${orderId}/status`, {
-      //   method: 'PUT',
-      //   headers: {
-      //     'Content-Type': 'application/json'
-      //   },
-      //   body: JSON.stringify({ status: newStatus })
-      // })
-      //
-      // const updatedOrder = await response.json()
-      // const index = orders.value.findIndex(order => order.id === orderId)
-      // if (index !== -1) {
-      //   orders.value[index] = updatedOrder
-      // }
+      const res = await useFetch(`${URL}/order`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) return sonner.error(data.message ?? 'Failed to fetch all orders')
 
-      console.log('Order status will be updated via API:', orderId, newStatus)
-    } catch (error) {
-      console.error('Error updating order status:', error)
+      console.log('data', data)
+      orders.value = data.map((o: Order) => {
+        const total = o.orderLists.reduce((sum, item) => {
+          const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
+          return sum + (p ? p.pizzaPrice * item.quantity : 0)
+        }, 0)
+        return { ...o, orderTotal: total }
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error fetching all orders'
+      sonner.error(msg)
+    } finally {
+      isLoading.value = false
     }
   }
 
-  const getOrderById = (id: string) => {
-    return orders.value.find(order => order.id === id)
+  const createOrder = async (order: {
+    locationId: number
+    orderInstruction?: string
+    orderStatus?: string
+    orderEstimate?: string
+    orderLists: OrderItem[]
+  }) => {
+    isLoading.value = true
+    try {
+      const res = await useFetch(`${URL}/order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order),
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) return sonner.error(data.message ?? 'Failed to create order')
+      sonner.success('Order created')
+      orders.value.push(data)
+      await router.push('/orders')
+      setPendingOrder([])
+      order.orderLists.map(async (o) => {
+        await cart.removeFromCart(o.pizzaId)
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error creating order'
+      sonner.error(msg)
+    } finally {
+      isLoading.value = false
+    }
+  }
+  const updateOrder = async (
+    orderId: number,
+    order: {
+      locationId: number
+      orderInstruction?: string
+      orderStatus?: string
+      orderEstimate?: string
+      orderLists: OrderItem[]
+    },
+  ) => {
+    isLoading.value = true
+    try {
+      const res = await useFetch(`${URL}/order/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order),
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) return sonner.error(data.message ?? 'Failed to create order')
+      await router.push('/orders')
+      sonner.success('Order modified')
+      setPendingOrder([])
+      const i = orders.value.findIndex((o) => o.orderId === orderId)
+      if (i !== -1) orders.value[i] = data
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error creating order'
+      sonner.error(msg)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const updateOrderStatus = async (orderId: number, status: string) => {
+    isLoading.value = true
+    try {
+      const res = await useFetch(`${URL}/order/${orderId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(status),
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) return sonner.error(data.message ?? 'Failed to update status')
+      sonner.success('Order status updated')
+      const i = orders.value.findIndex((o) => o.orderId === orderId)
+      if (i !== -1) orders.value[i].orderStatus = status
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error updating status'
+      sonner.error(msg)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const deleteOrder = async (orderId: number) => {
+    isLoading.value = true
+    try {
+      const res = await useFetch(`${URL}/order/${orderId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        return sonner.error(data.message ?? 'Failed to delete order')
+      }
+      sonner.success('Order deleted')
+      orders.value = orders.value.filter((o) => o.orderId !== orderId)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error deleting order'
+      sonner.error(msg)
+    } finally {
+      isLoading.value = false
+    }
+  }
+  const setPendingOrder = (carts: Cart[]) => {
+    pendingOrder.value = carts
+
+    if (carts.length > 0) localStorage.setItem('pendingOrders', JSON.stringify(pendingOrder.value))
+    else localStorage.removeItem('pendingOrders')
   }
 
   return {
     orders,
-    searchQuery,
-    statusFilter,
-    filteredOrders,
-    fetchOrders,
+    isLoading,
+    fetchUserOrders,
+    fetchAllOrders,
+    createOrder,
+    updateOrder,
     updateOrderStatus,
-    getOrderById
+    deleteOrder,
+    setPendingOrder,
+    pendingOrder,
   }
 })

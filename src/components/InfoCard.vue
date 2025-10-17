@@ -22,7 +22,7 @@ console.log(props.imageSrc)
         {{ sectionTitle }}
         <span class="h-[1px] w-15 bg-primary"></span>
       </div>
-      <div class="text-white text-3xl sm:text-4xl lg:text-5xl md:text-3xl lg:text-4xl 2xl:text-5xl font-bold">
+      <div class="text-white text-3xl sm:text-4xl md:text-3xl lg:text-4xl 2xl:text-5xl font-bold">
         {{ heading }}
       </div>
       <div class="text-[#797B78] text-sm sm:text-base xl:text-base 2xl:text-lg">

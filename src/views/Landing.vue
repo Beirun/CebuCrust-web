@@ -1,15 +1,12 @@
 # /
 
 <script setup lang="ts">
-
-import { onBeforeUnmount, onMounted, reactive } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+import { onBeforeUnmount, onMounted } from 'vue'
 import { usePizzaStore } from '@/stores/pizza'
 import ScrollToTopButton from '@/components/ScrollToTopButton.vue'
 import LandingNavbar from '@/components/LandingNavbar.vue'
 import LandingHero from '@/components/LandingHero.vue'
 import InfoCard from '@/components/InfoCard.vue'
-import LandingFooter from '@/components/LandingFooter.vue'
 import Footer from '@/components/Footer.vue'
 import { useSonnerStore } from '@/stores/sonner'
 import { toBase64 } from '@/plugins/convert'
@@ -83,9 +80,11 @@ onBeforeUnmount(() => sonner.setTheme('light'))
     <LandingNavbar />
     <LandingHero />
 
-
     <!-- About Us Section -->
-    <div id="about" class="flex flex-col w-screen bg-[#0A1316] p-4 sm:p-8 lg:p-30 pt-16 sm:pt-18 lg:pt-20 gap-12 sm:gap-16 lg:gap-20">
+    <div
+      id="about"
+      class="flex flex-col w-screen bg-[#0A1316] p-4 sm:p-8 lg:p-30 pt-16 sm:pt-18 lg:pt-20 gap-12 sm:gap-16 lg:gap-20"
+    >
       <InfoCard
         v-for="(section, index) in aboutSection"
         :key="index"
@@ -99,43 +98,66 @@ onBeforeUnmount(() => sonner.setTheme('light'))
       />
     </div>
 
-
     <!-- Features Section -->
-    <div class="flex flex-col items-center w-screen bg-[#0A1316] p-4 sm:p-8 lg:p-20 pt-16 sm:pt-18 lg:pt-20 gap-4 sm:gap-5 lg:gap-6">
+    <div
+      class="flex flex-col items-center w-screen bg-[#0A1316] p-4 sm:p-8 lg:p-20 pt-16 sm:pt-18 lg:pt-20 gap-4 sm:gap-5 lg:gap-6"
+    >
       <div class="flex flex-col text-white items-center gap-2">
         FEATURES
         <span class="h-[1px] w-full bg-primary"></span>
       </div>
-      <div class="flex flex-col w-full sm:w-4/5 lg:w-1/2 items-center text-white gap-4 sm:gap-5 lg:gap-6">
+      <div
+        class="flex flex-col w-full sm:w-4/5 lg:w-1/2 items-center text-white gap-4 sm:gap-5 lg:gap-6"
+      >
         <div class="text-3xl sm:text-4xl font-semibold text-center">Why people choose us?</div>
         <div class="text-[#797B78] text-sm sm:text-base text-center">
-          Experience the perfect blend of traditional Italian craftsmanship and modern convenience. Our commitment to quality ingredients and authentic preparation methods sets us apart in Cebu City's pizza scene.
+          Experience the perfect blend of traditional Italian craftsmanship and modern convenience.
+          Our commitment to quality ingredients and authentic preparation methods sets us apart in
+          Cebu City's pizza scene.
         </div>
       </div>
-      <div class="flex justify-center gap-8 sm:gap-12 lg:gap-20 xl:gap-50 mt-4 px-4 sm:px-8 lg:px-35 flex-col xl:flex-row">
-        <div v-for="(feature, index) in features" :key="index" class="flex flex-col gap-3 sm:gap-4 items-center">
+      <div
+        class="flex justify-center gap-8 sm:gap-12 lg:gap-20 xl:gap-50 mt-4 px-4 sm:px-8 lg:px-35 flex-col xl:flex-row"
+      >
+        <div
+          v-for="(feature, index) in features"
+          :key="index"
+          class="flex flex-col gap-3 sm:gap-4 items-center"
+        >
           <span :class="['text-white size-16 sm:size-18 lg:size-20', feature.icon]"></span>
-          <div class="text-white text-lg sm:text-xl lg:text-2xl font-semibold text-center">{{ feature.header }}</div>
-          <div class="text-[#797B78] text-sm sm:text-base text-center">{{ feature.description }}</div>
+          <div class="text-white text-lg sm:text-xl lg:text-2xl font-semibold text-center">
+            {{ feature.header }}
+          </div>
+          <div class="text-[#797B78] text-sm sm:text-base text-center">
+            {{ feature.description }}
+          </div>
         </div>
       </div>
     </div>
 
-
     <!-- Menu Section -->
-    <div id="menu" class="flex flex-col items-center w-screen bg-[#0A1316] p-4 sm:p-8 lg:p-20 pt-16 sm:pt-18 lg:pt-20 gap-4 sm:gap-5 lg:gap-6">
+    <div
+      id="menu"
+      class="flex flex-col items-center w-screen bg-[#0A1316] p-4 sm:p-8 lg:p-20 pt-16 sm:pt-18 lg:pt-20 gap-4 sm:gap-5 lg:gap-6"
+    >
       <div class="flex flex-col text-white items-center gap-2">
         MENU
         <span class="h-[1px] w-full bg-primary"></span>
       </div>
-      <div class="flex flex-col w-full sm:w-4/5 lg:w-1/2 items-center text-white gap-4 sm:gap-5 lg:gap-6">
+      <div
+        class="flex flex-col w-full sm:w-4/5 lg:w-1/2 items-center text-white gap-4 sm:gap-5 lg:gap-6"
+      >
         <div class="text-3xl sm:text-4xl font-semibold text-center">Explore Our Foods</div>
         <div class="text-[#797B78] text-sm sm:text-base text-center">
-          Discover our signature pizzas crafted with authentic Italian techniques and premium ingredients. Each pizza is made fresh to order with our traditional wood-fired oven for that perfect crispy crust and smoky flavor.
+          Discover our signature pizzas crafted with authentic Italian techniques and premium
+          ingredients. Each pizza is made fresh to order with our traditional wood-fired oven for
+          that perfect crispy crust and smoky flavor.
         </div>
       </div>
       <!-- Pizza Cards Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-full max-w-7xl px-4 sm:px-8 lg:px-0">
+      <div
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-full max-w-7xl px-4 sm:px-8 lg:px-0"
+      >
         <div
           v-for="pizza in pizzaStore.pizzas.slice(0, 8)"
           :key="pizza.pizzaId!"
@@ -185,41 +207,54 @@ onBeforeUnmount(() => sonner.setTheme('light'))
 
       <!-- Load More Button -->
       <div v-if="pizzaStore.pizzas.length > 8" class="flex justify-center mt-8">
-        <button class="bg-primary text-white px-8 py-3 rounded-lg hover:bg-primary/90 transition-colors">
+        <button
+          class="bg-primary text-white px-8 py-3 rounded-lg hover:bg-primary/90 transition-colors"
+        >
           LOAD MORE
         </button>
       </div>
     </div>
 
-
     <!-- Get In Touch Section -->
-    <div id="contact" class="flex flex-col items-center w-screen bg-[#0A1316] p-4 sm:p-8 lg:p-20 pt-16 sm:pt-18 lg:pt-20 gap-4 sm:gap-5 lg:gap-6">
+    <div
+      id="contact"
+      class="flex flex-col items-center w-screen bg-[#0A1316] p-4 sm:p-8 lg:p-20 pt-16 sm:pt-18 lg:pt-20 gap-4 sm:gap-5 lg:gap-6"
+    >
       <div class="flex flex-col text-white items-center gap-2">
         GET IN TOUCH
         <span class="h-[1px] w-full bg-primary"></span>
       </div>
-      <div class="flex flex-col w-full sm:w-4/5 lg:w-1/2 items-center text-white gap-4 sm:gap-5 lg:gap-6">
+      <div
+        class="flex flex-col w-full sm:w-4/5 lg:w-1/2 items-center text-white gap-4 sm:gap-5 lg:gap-6"
+      >
         <div class="text-3xl sm:text-4xl font-semibold text-center">Visit Our Location</div>
         <div class="text-[#797B78] text-sm sm:text-base text-center">
-          Visit us at our convenient location near University of Cebu Main Campus. We're open Monday through Saturday, ready to serve you authentic Italian pizza made fresh daily. Contact us for catering, delivery, or dine-in reservations.
+          Visit us at our convenient location near University of Cebu Main Campus. We're open Monday
+          through Saturday, ready to serve you authentic Italian pizza made fresh daily. Contact us
+          for catering, delivery, or dine-in reservations.
         </div>
       </div>
-      <div class="flex justify-center gap-6 sm:gap-8 lg:gap-10 mt-4 px-4 sm:px-8 lg:px-30 w-full flex-col lg:flex-row">
-        <div class="h-64 sm:h-80 lg:h-200 w-full lg:w-1/2 flex flex-col p-4 sm:p-6 bg-[#121A1D] rounded-xl">
-          <iframe 
+      <div
+        class="flex justify-center gap-6 sm:gap-8 lg:gap-10 mt-4 px-4 sm:px-8 lg:px-30 w-full flex-col lg:flex-row"
+      >
+        <div
+          class="h-64 sm:h-80 lg:h-200 w-full lg:w-1/2 flex flex-col p-4 sm:p-6 bg-[#121A1D] rounded-xl"
+        >
+          <iframe
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3922.123456789!2d123.9123456!3d10.3123456!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33a9b8c123456789%3A0x1234567890abcdef!2sUniversity%20of%20Cebu%20Main%20Campus%2C%20Sanciangko%20St%2C%20Cebu%20City%2C%20Cebu!5e0!3m2!1sen!2sph!4v1234567890123!5m2!1sen!2sph"
-            width="100%" 
-            height="100%" 
-            style="border:0; border-radius: 8px;" 
-            allowfullscreen="" 
-            loading="lazy" 
-            referrerpolicy="no-referrer-when-downgrade">
+            width="100%"
+            height="100%"
+            style="border: 0; border-radius: 8px"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+          >
           </iframe>
           <div class="w-full flex justify-center pt-6">
-            <a 
-              href="https://www.google.com/maps/place/University+of+Cebu+Main+Campus,+Sanciangko+St,+Cebu+City,+Cebu" 
-              target="_blank" 
-              class="text-primary flex items-end gap-2 hover:text-primary/80 transition-colors">
+            <a
+              href="https://www.google.com/maps/place/University+of+Cebu+Main+Campus,+Sanciangko+St,+Cebu+City,+Cebu"
+              target="_blank"
+              class="text-primary flex items-end gap-2 hover:text-primary/80 transition-colors"
+            >
               <span class="icon-[ion--arrow-up-right-box-outline] size-6"></span>
               <span>View Larger Map</span>
             </a>
@@ -289,11 +324,19 @@ onBeforeUnmount(() => sonner.setTheme('light'))
     <div class="relative w-screen h-48 sm:h-60 lg:h-180">
       <div class="absolute inset-0 bg-[url('@/assets/footerlanding.png')] bg-cover bg-center"></div>
       <div class="absolute inset-0 bg-black/50"></div>
-      <div class="relative h-full w-full sm:w-4/5 lg:w-1/2 gap-6 sm:gap-8 lg:gap-12 p-4 sm:p-8 lg:p-40 py-8 sm:py-12 lg:py-16 flex flex-col justify-center">
-        <div class="text-2xl sm:text-4xl lg:text-6xl text-white">Experience Authentic Italian Pizza in Cebu City</div>
+      <div
+        class="relative h-full w-full sm:w-4/5 lg:w-1/2 gap-6 sm:gap-8 lg:gap-12 p-4 sm:p-8 lg:p-40 py-8 sm:py-12 lg:py-16 flex flex-col justify-center"
+      >
+        <div class="text-2xl sm:text-4xl lg:text-6xl text-white">
+          Experience Authentic Italian Pizza in Cebu City
+        </div>
         <div class="flex flex-col sm:flex-row text-sm sm:text-base lg:text-lg gap-3 sm:gap-4">
           <button class="bg-primary text-white p-3 sm:p-4 rounded-sm">Order Now</button>
-          <button class="bg-transparent border border-white text-white p-3 sm:p-4 rounded-sm hover:bg-white hover:text-black transition-colors">Contact Us</button>
+          <button
+            class="bg-transparent border border-white text-white p-3 sm:p-4 rounded-sm hover:bg-white hover:text-black transition-colors"
+          >
+            Contact Us
+          </button>
         </div>
       </div>
     </div>
@@ -301,12 +344,3 @@ onBeforeUnmount(() => sonner.setTheme('light'))
     <Footer />
   </div>
 </template>
-
-<style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-</style>

@@ -90,7 +90,6 @@ export const useCartStore = defineStore('cart', () => {
         const data = await res.json()
         return sonner.error(data.message ?? 'Failed to remove item')
       }
-      sonner.success('Item removed')
       cart.value = cart.value.filter((c) => c.pizzaId !== pizzaId)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error removing item'
