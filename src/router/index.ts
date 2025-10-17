@@ -20,10 +20,7 @@ import { usePizzaStore } from '@/stores/pizza'
 import { useFavoriteStore } from '@/stores/favorite'
 import { useLocationStore } from '@/stores/location'
 import ModifyOrder from '@/views/User/ModifyOrder.vue'
-<<<<<<< HEAD
 import ProductDetail from '@/views/User/ProductDetail.vue'
-=======
->>>>>>> origin/main
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -100,7 +97,7 @@ const router = createRouter({
       component: Cart,
     },
     {
-      path: '/order/complete',
+      path: '/completeOrder',
       name: 'CompleteOrder',
       component: CompleteOrder,
     },
@@ -109,14 +106,11 @@ const router = createRouter({
       name: 'ModifyOrder',
       component: ModifyOrder,
     },
-<<<<<<< HEAD
     {
       path: '/product/:id',
       name: 'ProductDetail',
       component: ProductDetail,
     },
-=======
->>>>>>> origin/main
   ],
 })
 
@@ -127,7 +121,6 @@ router.beforeEach(async () => {
     await useCartStore().fetchCart()
     await usePizzaStore().fetchAll()
     await useFavoriteStore().fetchFavorites()
-    await useLocationStore().fetchLocations()
   }
 })
 
