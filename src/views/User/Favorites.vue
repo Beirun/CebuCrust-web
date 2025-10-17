@@ -2,7 +2,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ShoppingCart, Heart, Star, Search, Filter, Trash2 } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { ShoppingCart, Heart, Star, Search } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
 import Footer from '@/components/Footer.vue'
 import { usePizzaStore } from '@/stores/pizza'
@@ -14,11 +15,12 @@ import { useCartStore } from '@/stores/cart'
 const favorite = useFavoriteStore()
 const pizza = usePizzaStore()
 const cart = useCartStore()
+const router = useRouter()
 
 // Search and filter states
 const searchQuery = ref('')
-const sortBy = ref('name')
-const showFilters = ref(false)
+const sortBy = ref('')
+const selectedCategory = ref('all')
 
 // Computed properties
 const favoritePizzas = computed(() => {
@@ -29,6 +31,14 @@ const favoritePizzas = computed(() => {
 
 const filteredFavorites = computed(() => {
   let items = favoritePizzas.value
+
+  // Filter by category
+  if (selectedCategory.value !== 'all') {
+    items = items.filter((item: Pizza) => {
+      const cat = (item.pizzaCategory || '').toString().toLowerCase()
+      return cat === selectedCategory.value.toLowerCase()
+    })
+  }
 
   // Filter by search query
   if (searchQuery.value) {
@@ -41,19 +51,21 @@ const filteredFavorites = computed(() => {
   }
 
   // Sort items
-  switch (sortBy.value) {
-    case 'price-low':
-      items.sort((a: Pizza, b: Pizza) => (a.pizzaPrice || 0) - (b.pizzaPrice || 0))
-      break
-    case 'price-high':
-      items.sort((a: Pizza, b: Pizza) => (b.pizzaPrice || 0) - (a.pizzaPrice || 0))
-      break
-    case 'name':
-    default:
-      items.sort((a: Pizza, b: Pizza) =>
-        (a.pizzaName || '').toString().localeCompare((b.pizzaName || '').toString()),
-      )
-      break
+  if (sortBy.value) {
+    switch (sortBy.value) {
+      case 'name':
+        items.sort((a: Pizza, b: Pizza) => (a.pizzaName || '').localeCompare(b.pizzaName || ''))
+        break
+      case 'price-low':
+        items.sort((a: Pizza, b: Pizza) => (a.pizzaPrice || 0) - (b.pizzaPrice || 0))
+        break
+      case 'price-high':
+        items.sort((a: Pizza, b: Pizza) => (b.pizzaPrice || 0) - (a.pizzaPrice || 0))
+        break
+      case 'rating':
+        items.sort((a: Pizza, b: Pizza) => (b.averageRating || 0) - (a.averageRating || 0))
+        break
+    }
   }
 
   return items
@@ -70,6 +82,12 @@ const removeFromFavorites = async (pizzaId: number) => {
   await favorite.removeFavorite(pizzaId)
 }
 
+const clearAllFilters = () => {
+  searchQuery.value = ''
+  selectedCategory.value = 'all'
+  sortBy.value = ''
+}
+
 // Load data on mount
 onMounted(async () => {
   await pizza.fetchAll()
@@ -82,6 +100,7 @@ onMounted(async () => {
     <UserHeader />
 
     <!-- Main Content -->
+<<<<<<< Updated upstream
     <main class="w-screen px-4 sm:px-8 lg:px-30 py-8">
       <!-- Favorites Hero Section -->
       <div class="bg-gray-800 rounded-lg p-8 mb-8 relative overflow-hidden">
@@ -91,38 +110,49 @@ onMounted(async () => {
           <p class="text-gray-300 text-lg mb-6">
             Your favorite pizzas and menu items, all in one place
           </p>
+=======
+    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8 min-h-[calc(100vh-5rem)]">
+      <!-- Header Section -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">My Favorites</h1>
+        <p class="text-gray-600">Your favorite pizzas and menu items, all in one place</p>
+      </div>
+>>>>>>> Stashed changes
 
-          <!-- Search and Filter Bar -->
-          <div class="flex flex-col lg:flex-row gap-4">
-            <div class="flex-1 relative">
-              <Search
-                class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
-              />
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Search your favorites..."
-                class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
-            </div>
-            <div class="flex gap-2">
-              <select
-                v-model="sortBy"
-                class="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              >
-                <option value="name">Sort by Name</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-              </select>
-              <button
-                @click="showFilters = !showFilters"
-                class="px-4 py-3 rounded-lg border border-gray-300 hover:bg-gray-100 flex items-center gap-2"
-              >
-                <Filter class="w-4 h-4" />
-                Filters
-              </button>
-            </div>
-          </div>
+      <!-- Search, Filter and Sort Bar -->
+      <div class="flex flex-col lg:flex-row gap-4 mb-8">
+        <div class="flex-1 relative">
+          <Search
+            class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
+          />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search your favorites..."
+            class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          />
+        </div>
+        <div class="flex gap-2">
+          <select
+            v-model="selectedCategory"
+            class="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          >
+            <option value="all">All Categories</option>
+            <option value="veggie">Veggie</option>
+            <option value="meat-lovers">Meat Lovers</option>
+            <option value="premium-specials">Premium Specials</option>
+            <option value="seasonal-picks">Seasonal Picks</option>
+          </select>
+          <select
+            v-model="sortBy"
+            class="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          >
+            <option value="" disabled>Sort by</option>
+            <option value="name">Name</option>
+            <option value="price-low">Price: Low to High</option>
+            <option value="price-high">Price: High to Low</option>
+            <option value="rating">Highest Rated</option>
+          </select>
         </div>
       </div>
 
@@ -141,30 +171,46 @@ onMounted(async () => {
           <div
             v-for="item in filteredFavorites"
             :key="item.pizzaId!"
-            class="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow"
+            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+            @click="router.push(`/product/${item.pizzaId}`)"
           >
-            <div class="relative mb-4">
+            <!-- Pizza Image -->
+            <div class="relative h-48 bg-gray-700 flex items-center justify-center">
               <img
+                v-if="item.pizzaImage"
                 :src="toBase64(item.pizzaImage as string)"
                 :alt="item.pizzaName"
-                class="w-full h-48 object-cover rounded-lg"
+                class="w-full h-full object-cover"
+                @error="
+                  (e: Event) => {
+                    const img = e.target as HTMLImageElement
+                    img.src =
+                      'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMzc0MTUxIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IiM5Q0EzQUYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfkLU8L3RleHQ+Cjwvc3ZnPg=='
+                  }
+                "
               />
+              <div v-else class="text-6xl">🍕</div>
+
+              <!-- Heart Icon -->
               <button
-                @click="removeFromFavorites(item.pizzaId!)"
                 class="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg"
+                @click.stop="removeFromFavorites(item.pizzaId!)"
               >
                 <Heart
                   class="w-5 h-5 fill-red-500 text-red-500"
                 />
               </button>
+
+              <!-- Unavailable Overlay -->
               <div
                 v-if="!item.isAvailable"
-                class="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center"
+                class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center"
               >
                 <span class="text-white font-semibold">Currently Unavailable</span>
               </div>
             </div>
 
+<<<<<<< Updated upstream
             <div class="mb-3">
               <h3 class="font-semibold text-gray-900 mb-1">{{ item.pizzaName }}</h3>
               <p class="text-gray-600 text-sm mb-2">{{ item.pizzaDescription }}</p>
@@ -185,29 +231,46 @@ onMounted(async () => {
                 <span class="text-sm text-gray-600 ml-1">
                   {{ item.averageRating && item.averageRating > 0 ? `${item.averageRating} (${item.totalRatings})` : '0 (0)' }}
                 </span>
-              </div>
-            </div>
+=======
+            <!-- Pizza Details -->
+            <div class="p-4">
+              <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
+              <p class="text-[#D1D5DB] text-sm mb-3 line-clamp-2">{{ item.pizzaDescription }}</p>
 
-            <div class="flex gap-2">
+              <!-- Price and Rating -->
+              <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-1">
+                  <Star class="h-4 w-4 text-yellow-400 fill-current" />
+                  <span class="text-white text-sm">
+                    {{
+                      item.averageRating && item.averageRating > 0
+                        ? `${item.averageRating} (${item.totalRatings})`
+                        : '0 (0)'
+                    }}
+                  </span>
+                </div>
+                <span class="text-xl font-bold text-primary">₱{{ item.pizzaPrice }}</span>
+>>>>>>> Stashed changes
+              </div>
+
+              <!-- Action Buttons -->
               <button
+<<<<<<< Updated upstream
                 @click="addToCart(item)"
                 :disabled="!item.isAvailable"
+=======
+                :disabled="!item.isAvailable || inCart(item.pizzaId!)"
+                @click.stop="addToCart(item)"
+                class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
+>>>>>>> Stashed changes
                 :class="
                   item.isAvailable
                     ? 'bg-orange-500 hover:bg-orange-600 text-white'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 "
-                class="flex-1 py-2 rounded-lg font-medium flex items-center justify-center transition-colors"
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
                 {{ item.isAvailable ? 'Add to Cart' : 'Unavailable' }}
-              </button>
-              <button
-                @click="removeFromFavorites(item.pizzaId!)"
-                class="p-2 border border-red-300 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                title="Remove from favorites"
-              >
-                <Trash2 class="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -248,10 +311,10 @@ onMounted(async () => {
             We couldn't find any favorites matching your search criteria. Try adjusting your search terms.
           </p>
           <button
-            @click="searchQuery = ''"
+            @click="clearAllFilters"
             class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium"
           >
-            Clear Search
+            Clear Filters
           </button>
         </div>
       </div>

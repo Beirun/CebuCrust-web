@@ -2,7 +2,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+<<<<<<< Updated upstream
 import { ShoppingCart, Heart, Star, Search, Filter } from 'lucide-vue-next'
+=======
+import { useRouter } from 'vue-router'
+import { ShoppingCart, Heart, Star, Search } from 'lucide-vue-next'
+>>>>>>> Stashed changes
 import UserHeader from '@/components/UserHeader.vue'
 import Footer from '@/components/Footer.vue'
 import { usePizzaStore } from '@/stores/pizza'
@@ -14,6 +19,7 @@ import { useCartStore } from '@/stores/cart'
 const favorite = useFavoriteStore()
 const pizza = usePizzaStore()
 const cart = useCartStore()
+const router = useRouter()
 
 const isFavorite = ref<number[]>([])
 // Local UI state
@@ -31,8 +37,12 @@ const adminMenuItems = computed(() => pizza.pizzas)
 // Search and filter states
 const searchQuery = ref('')
 const selectedCategory = ref('all')
+<<<<<<< Updated upstream
 const sortBy = ref('name')
 const showFilters = ref(false)
+=======
+const sortBy = ref('')
+>>>>>>> Stashed changes
 
 // Computed properties
 const filteredMenuItems = computed(() => {
@@ -70,7 +80,7 @@ const filteredMenuItems = computed(() => {
       items.sort((a: Pizza, b: Pizza) => (b.pizzaPrice || 0) - (a.pizzaPrice || 0))
       break
     case 'rating':
-      // items.sort((a: Pizza, b: Pizza) => (b.rating || 0) - (a.rating || 0))
+      items.sort((a: Pizza, b: Pizza) => (b.averageRating || 0) - (a.averageRating || 0))
       break
   }
 
@@ -155,7 +165,13 @@ const inCart = (id: number) => {
 
     <!-- Category Tabs and Search Bar - Attached to Banner -->
     <div class="bg-white py-4">
+<<<<<<< Updated upstream
        <div class="w-screen px-4 sm:px-8 lg:px-30 flex flex-col lg:flex-row gap-8 lg:gap-40 items-center">
+=======
+      <div
+        class="w-screen px-4 sm:px-8 lg:px-30 flex flex-col lg:flex-row gap-8 lg:gap-25 items-center"
+      >
+>>>>>>> Stashed changes
         <!-- Category Tabs -->
         <div class="flex flex-wrap gap-2 justify-center lg:justify-start">
           <button
@@ -164,8 +180,8 @@ const inCart = (id: number) => {
             @click="selectCategory(category.id)"
             :class="
               category.active
-                ? 'bg-primary text-white rounded-full'
-                : 'bg-white text-gray-700 hover:bg-gray-100 rounded-full'
+                ? 'bg-primary text-white rounded-lg'
+                : 'bg-white text-gray-700 hover:bg-gray-100 rounded-lg'
             "
             class="px-6 py-3 font-medium transition-colors"
           >
@@ -173,8 +189,9 @@ const inCart = (id: number) => {
           </button>
         </div>
 
-        <!-- Search Bar -->
+        <!-- Search Bar and Sort -->
         <div class="w-full lg:flex-1 lg:ml-auto">
+<<<<<<< Updated upstream
           <div class="relative max-w-xl lg:max-w-lg mx-auto lg:mx-0">
             <input
               v-model="searchQuery"
@@ -183,6 +200,35 @@ const inCart = (id: number) => {
               class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
             />
             <Search class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+=======
+          <div class="flex flex-col lg:flex-row gap-4 max-w-3xl lg:max-w-5xl mx-auto lg:mx-0">
+            <!-- Search Bar -->
+            <div class="relative flex-1">
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search pizzas..."
+                class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+              <Search
+                class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
+              />
+            </div>
+            
+            <!-- Sort Dropdown -->
+            <div class="lg:w-32">
+              <select
+                v-model="sortBy"
+                class="w-full px-3 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-sm"
+              >
+                <option value="" disabled>Sort by</option>
+                <option value="name">Sort by Name</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="rating">Highest Rated</option>
+              </select>
+            </div>
+>>>>>>> Stashed changes
           </div>
         </div>
       </div>
@@ -197,7 +243,8 @@ const inCart = (id: number) => {
           <div
             v-for="item in filteredMenuItems.slice(0, 8)"
             :key="item.pizzaId!"
-            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+            @click="router.push(`/product/${item.pizzaId}`)"
           >
             <!-- Pizza Image -->
             <div class="relative h-48 bg-gray-700 flex items-center justify-center">
@@ -219,7 +266,7 @@ const inCart = (id: number) => {
               <!-- Heart Icon -->
               <button
                 class="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg"
-                @click="toggleFavorite(item.pizzaId!)"
+                @click.stop="toggleFavorite(item.pizzaId!)"
               >
                 <Heart
                   :class="
@@ -250,8 +297,19 @@ const inCart = (id: number) => {
 
               <!-- Action Buttons -->
               <button
+<<<<<<< Updated upstream
                 @click="addToCart(item)"
                 class="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-lg font-medium flex items-center justify-center"
+=======
+                :disabled="!item.isAvailable || inCart(item.pizzaId!)"
+                @click.stop="addToCart(item)"
+                class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
+                :class="
+                  item.isAvailable && !inCart(item.pizzaId!)
+                    ? 'bg-primary hover:bg-primary/80'
+                    : 'bg-gray-300 text-gray-500 cursor-default'
+                "
+>>>>>>> Stashed changes
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
                 Add to Cart
