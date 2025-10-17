@@ -97,7 +97,7 @@ const router = createRouter({
       component: Cart,
     },
     {
-      path: '/completeOrder',
+      path: '/order/complete',
       name: 'CompleteOrder',
       component: CompleteOrder,
     },
@@ -121,6 +121,7 @@ router.beforeEach(async () => {
     await useCartStore().fetchCart()
     await usePizzaStore().fetchAll()
     await useFavoriteStore().fetchFavorites()
+    await useLocationStore().fetchLocations()
   }
 })
 

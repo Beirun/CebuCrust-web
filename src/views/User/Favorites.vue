@@ -88,6 +88,10 @@ const clearAllFilters = () => {
   sortBy.value = ''
 }
 
+const inCart = (id: number) => {
+  return cart.cart.some((c) => c.pizzaId === id)
+}
+
 // Load data on mount
 onMounted(async () => {
   await pizza.fetchAll()

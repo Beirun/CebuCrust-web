@@ -484,10 +484,10 @@ onMounted(async () => {
       <DialogContent class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Confirm Checkout</DialogTitle>
+          <DialogDescription>
+            Would you like to proceed to checkout? You will be redirected to complete your order details.
+          </DialogDescription>
         </DialogHeader>
-        <div>
-          Would you like to proceed to checkout? You will be redirected to complete your order details.
-        </div>
         <DialogFooter class="flex justify-end space-x-2">
           <Button variant="outline" @click="confirmationOpen = false">Cancel</Button>
           <Button @click="proceedToCheckout">Proceed</Button>
