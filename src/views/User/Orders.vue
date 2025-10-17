@@ -5,8 +5,6 @@ import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { useOrdersStore } from '@/stores/orders'
 import UserHeader from '@/components/UserHeader.vue'
-<<<<<<< Updated upstream
-=======
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,28 +31,16 @@ import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Check, Clock, ConciergeBell, CookingPot, Pizza, Truck, X } from 'lucide-vue-next'
 import { Search } from 'lucide-vue-next'
->>>>>>> Stashed changes
 import Footer from '@/components/Footer.vue'
 const cart = useCartStore()
 const auth = useAuthStore()
 const orders = useOrdersStore()
 const router = useRouter()
 
-<<<<<<< Updated upstream
-// Addresses stored locally; keep simple shape { id, address, isDefault }
-const addresses = ref<Array<{ id: string; address: string; isDefault?: boolean }>>(
-  JSON.parse(localStorage.getItem('addresses') || '[]'),
-)
-const selectedAddressId = ref<string | null>(
-  addresses.value.find((a) => a.isDefault)?.id ?? addresses.value[0]?.id ?? null,
-)
-const instructions = ref('')
-=======
 const selectedStatus = ref('all')
 const searchQuery = ref('')
 const sortBy = ref('')
 const categoryFilter = ref('all')
->>>>>>> Stashed changes
 
 const subtotal = computed(() => {
   const items = cart.cart || []
@@ -166,8 +152,6 @@ onMounted(() => {
     selectedAddressId.value = id
     saveAddresses()
   }
-<<<<<<< Updated upstream
-=======
 
   order.orders.forEach((order) => {
     counts[order.orderStatus as keyof typeof counts]++
@@ -347,7 +331,6 @@ const clearAllFilters = () => {
 
 onBeforeMount(async () => {
   await order.fetchUserOrders()
->>>>>>> Stashed changes
 })
 </script>
 
@@ -366,10 +349,6 @@ onBeforeMount(async () => {
               Review your items and complete your delivery details
             </p>
 
-<<<<<<< Updated upstream
-            <div class="bg-gray-800 rounded-lg p-4">
-              <h3 class="text-white font-semibold mb-4">Your Order</h3>
-=======
       <!-- Search, Filter and Sort -->
       <div class="flex items-center gap-4 mb-6">
         <div class="relative flex-1">
@@ -520,48 +499,11 @@ onBeforeMount(async () => {
                   Modify Order
                 </Button>
               </div>
->>>>>>> Stashed changes
               <div
                 v-for="item in cart.cart"
                 :key="item.pizzaId"
                 class="flex items-center justify-between bg-gray-700 p-3 rounded mb-3"
               >
-<<<<<<< Updated upstream
-                <div class="flex items-center gap-3">
-                  <img
-                    v-if="item.image"
-                    :src="item.image"
-                    class="w-12 h-12 rounded-full object-cover"
-                  />
-                  <div>
-                    <div class="font-medium">{{ item.name || `Pizza ${item.pizzaId}` }}</div>
-                    <div class="text-xs text-gray-200">{{ item.description || '' }}</div>
-                    <div class="flex items-center gap-2 mt-2">
-                      <button
-                        @click="cart.updateCart(item.pizzaId, (item.quantity || 1) - 1)"
-                        class="bg-orange-500 text-white rounded-full w-6 h-6"
-                      >
-                        -
-                      </button>
-                      <span class="px-2">{{ item.quantity || 1 }}</span>
-                      <button
-                        @click="cart.updateCart(item.pizzaId, (item.quantity || 1) + 1)"
-                        class="bg-orange-500 text-white rounded-full w-6 h-6"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div class="text-right">
-                  <div class="font-semibold">
-                    {{ formatCurrency((item.price || 0) * (item.quantity || 1)) }}
-                  </div>
-                  <button @click="cart.removeFromCart(item.pizzaId)" class="text-red-400 text-sm mt-2">
-                    🗑️
-                  </button>
-                </div>
-=======
                 <Button
                   v-if="o.orderStatus === 'delivered'"
                   variant="outline"
@@ -575,7 +517,6 @@ onBeforeMount(async () => {
                 > 
                   Reorder 
                 </Button>
->>>>>>> Stashed changes
               </div>
 
               <div class="mt-4 border-t border-gray-600 pt-4 text-sm">
@@ -657,28 +598,6 @@ onBeforeMount(async () => {
         </div>
       </div>
 
-<<<<<<< Updated upstream
-      <!-- Add/Edit address modal (simple) -->
-      <div
-        v-if="openAdd"
-        class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center"
-      >
-        <div class="bg-white rounded-lg p-6 w-full max-w-md">
-          <h4 class="font-semibold mb-4">
-            {{ editing && editing.id ? 'Edit Address' : 'Add Address' }}
-          </h4>
-          <textarea
-            v-model="addressInput"
-            rows="4"
-            class="w-full border rounded p-3 mb-4"
-            placeholder="123 Lahug Street, Barangay Lahug, Cebu City, 6000"
-          ></textarea>
-          <div class="flex justify-end gap-2">
-            <button @click="openAdd = false" class="px-4 py-2 border rounded">Cancel</button>
-            <button @click="submitAddress" class="px-4 py-2 bg-orange-500 text-white rounded">
-              Save
-            </button>
-=======
       <!-- Empty State - No Orders Found -->
       <div v-if="order.orders.length > 0 && filteredOrders.length === 0" class="text-center py-16">
         <div class="max-w-md mx-auto">
@@ -784,7 +703,6 @@ onBeforeMount(async () => {
               <Checkbox id="saveDefault" v-model="locationForm.isDefault" />
               <Label for="saveDefault" class="text-sm font-normal"> Save as default address </Label>
             </div>
->>>>>>> Stashed changes
           </div>
         </div>
       </div>

@@ -2,12 +2,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-<<<<<<< Updated upstream
-import { ShoppingCart, Heart, Star, Search, Filter } from 'lucide-vue-next'
-=======
 import { useRouter } from 'vue-router'
 import { ShoppingCart, Heart, Star, Search } from 'lucide-vue-next'
->>>>>>> Stashed changes
 import UserHeader from '@/components/UserHeader.vue'
 import Footer from '@/components/Footer.vue'
 import { usePizzaStore } from '@/stores/pizza'
@@ -37,12 +33,7 @@ const adminMenuItems = computed(() => pizza.pizzas)
 // Search and filter states
 const searchQuery = ref('')
 const selectedCategory = ref('all')
-<<<<<<< Updated upstream
-const sortBy = ref('name')
-const showFilters = ref(false)
-=======
 const sortBy = ref('')
->>>>>>> Stashed changes
 
 // Computed properties
 const filteredMenuItems = computed(() => {
@@ -165,13 +156,9 @@ const inCart = (id: number) => {
 
     <!-- Category Tabs and Search Bar - Attached to Banner -->
     <div class="bg-white py-4">
-<<<<<<< Updated upstream
-       <div class="w-screen px-4 sm:px-8 lg:px-30 flex flex-col lg:flex-row gap-8 lg:gap-40 items-center">
-=======
       <div
         class="w-screen px-4 sm:px-8 lg:px-30 flex flex-col lg:flex-row gap-8 lg:gap-25 items-center"
       >
->>>>>>> Stashed changes
         <!-- Category Tabs -->
         <div class="flex flex-wrap gap-2 justify-center lg:justify-start">
           <button
@@ -191,16 +178,6 @@ const inCart = (id: number) => {
 
         <!-- Search Bar and Sort -->
         <div class="w-full lg:flex-1 lg:ml-auto">
-<<<<<<< Updated upstream
-          <div class="relative max-w-xl lg:max-w-lg mx-auto lg:mx-0">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search orders..."
-              class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
-            <Search class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-=======
           <div class="flex flex-col lg:flex-row gap-4 max-w-3xl lg:max-w-5xl mx-auto lg:mx-0">
             <!-- Search Bar -->
             <div class="relative flex-1">
@@ -228,7 +205,6 @@ const inCart = (id: number) => {
                 <option value="rating">Highest Rated</option>
               </select>
             </div>
->>>>>>> Stashed changes
           </div>
         </div>
       </div>
@@ -297,10 +273,6 @@ const inCart = (id: number) => {
 
               <!-- Action Buttons -->
               <button
-<<<<<<< Updated upstream
-                @click="addToCart(item)"
-                class="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-lg font-medium flex items-center justify-center"
-=======
                 :disabled="!item.isAvailable || inCart(item.pizzaId!)"
                 @click.stop="addToCart(item)"
                 class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
@@ -309,7 +281,6 @@ const inCart = (id: number) => {
                     ? 'bg-primary hover:bg-primary/80'
                     : 'bg-gray-300 text-gray-500 cursor-default'
                 "
->>>>>>> Stashed changes
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
                 Add to Cart

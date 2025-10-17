@@ -18,12 +18,9 @@ import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { usePizzaStore } from '@/stores/pizza'
 import { useFavoriteStore } from '@/stores/favorite'
-<<<<<<< Updated upstream
-=======
 import { useLocationStore } from '@/stores/location'
 import ModifyOrder from '@/views/User/ModifyOrder.vue'
 import ProductDetail from '@/views/User/ProductDetail.vue'
->>>>>>> Stashed changes
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -104,8 +101,6 @@ const router = createRouter({
       name: 'CompleteOrder',
       component: CompleteOrder,
     },
-<<<<<<< Updated upstream
-=======
     {
       path: '/order/modify/:id',
       name: 'ModifyOrder',
@@ -116,7 +111,6 @@ const router = createRouter({
       name: 'ProductDetail',
       component: ProductDetail,
     },
->>>>>>> Stashed changes
   ],
 })
 

@@ -1,12 +1,8 @@
 # /dashboard
 
 <script setup lang="ts">
-<<<<<<< Updated upstream
-import { ref, computed, onMounted } from 'vue'
-=======
 import { ref, computed, onMounted, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
->>>>>>> Stashed changes
 import { useCartStore } from '@/stores/cart'
 import { ShoppingCart, Heart, Star, MapPin, Clock } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
@@ -21,40 +17,19 @@ const cart = useCartStore()
 
 const favorite = useFavoriteStore()
 const pizza = usePizzaStore()
-<<<<<<< Updated upstream
-
-=======
 const location = useLocationStore()
 const router = useRouter()
->>>>>>> Stashed changes
 const isFavorite = ref<number[]>([])
 
 const favoritePizzas = computed(() =>
   pizza.pizzas.filter((p) => isFavorite.value.includes(p.pizzaId!)),
 )
 
-<<<<<<< Updated upstream
-// User data (seeded from auth store if available)
-const auth = useAuthStore()
-const user = ref({
-  name: auth.user?.firstName ? `${auth.user.firstName} ${auth.user.lastName ?? ''}`.trim() : auth.user?.name ?? 'Guest',
-  // For new accounts keep address empty so UI can show "not set yet"
-  address: auth.user?.address ?? localStorage.getItem('address') ?? '',
-  deliveryTime: '25-30 mins',
-})
-
-// Orders store
-const ordersStore = useOrdersStore()
-
-// Current selected order (first recent order)
-const currentOrder = ref<any>(null)
-=======
 // Current active order (most recent non-delivered order)
 const currentOrder = computed(() => {
   const activeOrders = order.orders.filter(o => o.orderStatus !== 'delivered' && o.orderStatus !== 'cancelled')
   return activeOrders.length > 0 ? activeOrders[0] : null
 })
->>>>>>> Stashed changes
 
 // Order status steps template
 const orderSteps = ref([
@@ -208,20 +183,10 @@ onMounted(async () => {
   await pizza.fetchAll()
   await favorite.fetchFavorites()
   isFavorite.value = favorite.favorites
-<<<<<<< Updated upstream
-  // fetch user orders and set current order if any
-  await ordersStore.fetchOrders()
-  if (ordersStore.orders.length > 0) {
-    // pick the latest order
-    currentOrder.value = ordersStore.orders[0]
-    // map order status to steps
-    updateStepsFromStatus(currentOrder.value.status)
-=======
   // fetch user orders - currentOrder is now computed automatically
   if (order.orders.length > 0 && currentOrder.value) {
     // map order status to steps for the current active order
     updateStepsFromStatus(currentOrder.value.orderStatus!)
->>>>>>> Stashed changes
   }
 })
 
@@ -405,23 +370,6 @@ const estimatedDelivery = computed(() => {
           </router-link>
         </div>
         <!-- Empty state for favorites -->
-<<<<<<< Updated upstream
-        <div
-          v-if="isFavorite.length === 0"
-          class="text-center p-12"
-        >
-          <Heart class="w-16 h-16 text-[#797B78] mx-auto mb-4" />
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">You have no favorites yet</h3>
-          <p class="text-gray-600 mb-6">
-            Start exploring our menu and add your favorite pizzas to see them here!
-          </p>
-          <router-link
-            to="/menu"
-            class="inline-flex items-center bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-          >
-            Browse Menu
-          </router-link>
-=======
         <div v-if="isFavorite.length === 0" class="text-center py-16">
           <div class="max-w-md mx-auto">
             <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -438,7 +386,6 @@ const estimatedDelivery = computed(() => {
               Browse Menu
             </router-link>
           </div>
->>>>>>> Stashed changes
         </div>
 
         <!-- Favorites grid -->
@@ -492,10 +439,6 @@ const estimatedDelivery = computed(() => {
                 </div>
               </div>
               <button
-<<<<<<< Updated upstream
-                @click="addToCart(item)"
-                class="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-lg font-medium flex items-center justify-center"
-=======
                 :disabled="!item.isAvailable || inCart(item.pizzaId!)"
                 @click.stop="addToCart(item)"
                 class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
@@ -504,7 +447,6 @@ const estimatedDelivery = computed(() => {
                     ? 'bg-primary hover:bg-primary/80'
                     : 'bg-gray-300 text-gray-500 cursor-default'
                 "
->>>>>>> Stashed changes
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
                 Add to Cart
@@ -522,24 +464,6 @@ const estimatedDelivery = computed(() => {
           </router-link>
         </div>
         <!-- Empty state for today's specials -->
-<<<<<<< Updated upstream
-        <div
-          v-if="pizza.pizzas.length === 0"
-          class="text-center p-12"
-        >
-          <Star class="w-16 h-16 text-[#797B78] mx-auto mb-4" />
-          <h3 class="text-lg font-semibold text-white mb-2">No specials today</h3>
-          <p class="text-[#D1D5DB] mb-6">
-            Our admin hasn't added any special offers for today. Check back later or explore our
-            regular menu!
-          </p>
-          <router-link
-            to="/menu"
-            class="inline-flex items-center bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-          >
-            View Full Menu
-          </router-link>
-=======
         <div v-if="pizza.pizzas.length === 0" class="text-center py-16">
           <div class="max-w-md mx-auto">
             <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -556,7 +480,6 @@ const estimatedDelivery = computed(() => {
               Browse Menu
             </router-link>
           </div>
->>>>>>> Stashed changes
         </div>
 
         <!-- Today's specials grid -->
@@ -610,10 +533,6 @@ const estimatedDelivery = computed(() => {
                 </div>
               </div>
               <button
-<<<<<<< Updated upstream
-                @click="addToCart(item)"
-                class="w-full bg-primary hover:bg-primary/80 text-white py-2 rounded-lg font-medium flex items-center justify-center"
-=======
                 :disabled="!item.isAvailable || inCart(item.pizzaId!)"
                 @click.stop="addToCart(item)"
                 class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
@@ -622,7 +541,6 @@ const estimatedDelivery = computed(() => {
                     ? 'bg-primary hover:bg-primary/80'
                     : 'bg-gray-300 text-gray-500 cursor-default'
                 "
->>>>>>> Stashed changes
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
                 Add to Cart

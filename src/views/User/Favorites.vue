@@ -100,24 +100,12 @@ onMounted(async () => {
     <UserHeader />
 
     <!-- Main Content -->
-<<<<<<< Updated upstream
-    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8">
-      <!-- Favorites Hero Section -->
-      <div class="bg-gray-800 rounded-lg p-8 mb-8 relative overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-r from-gray-800 to-gray-700 opacity-90"></div>
-        <div class="relative z-10">
-          <h1 class="text-4xl font-bold text-white mb-4">My Favorites</h1>
-          <p class="text-gray-300 text-lg mb-6">
-            Your favorite pizzas and menu items, all in one place
-          </p>
-=======
     <main class="w-screen px-4 sm:px-8 lg:px-30 py-8 min-h-[calc(100vh-5rem)]">
       <!-- Header Section -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900 mb-2">My Favorites</h1>
         <p class="text-gray-600">Your favorite pizzas and menu items, all in one place</p>
       </div>
->>>>>>> Stashed changes
 
       <!-- Search, Filter and Sort Bar -->
       <div class="flex flex-col lg:flex-row gap-4 mb-8">
@@ -210,28 +198,6 @@ onMounted(async () => {
               </div>
             </div>
 
-<<<<<<< Updated upstream
-            <div class="mb-3">
-              <h3 class="font-semibold text-gray-900 mb-1">{{ item.pizzaName }}</h3>
-              <p class="text-gray-600 text-sm mb-2">{{ item.pizzaDescription }}</p>
-              <div class="flex items-center gap-2 text-xs text-gray-500">
-                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                  15 min
-                </span>
-                <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded">
-                  {{ item.pizzaCategory }}
-                </span>
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-lg font-bold text-gray-900">₱{{ item.pizzaPrice }}</span>
-              <div class="flex items-center">
-                <Star class="w-4 h-4 text-yellow-400 fill-current" />
-                <span class="text-sm text-gray-600 ml-1">
-                  {{ item.averageRating && item.averageRating > 0 ? `${item.averageRating} (${item.totalRatings})` : '0 (0)' }}
-                </span>
-=======
             <!-- Pizza Details -->
             <div class="p-4">
               <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
@@ -250,19 +216,13 @@ onMounted(async () => {
                   </span>
                 </div>
                 <span class="text-xl font-bold text-primary">₱{{ item.pizzaPrice }}</span>
->>>>>>> Stashed changes
               </div>
 
               <!-- Action Buttons -->
               <button
-<<<<<<< Updated upstream
-                @click="addToCart(item)"
-                :disabled="!item.isAvailable"
-=======
                 :disabled="!item.isAvailable || inCart(item.pizzaId!)"
                 @click.stop="addToCart(item)"
                 class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
->>>>>>> Stashed changes
                 :class="
                   item.isAvailable
                     ? 'bg-orange-500 hover:bg-orange-600 text-white'
