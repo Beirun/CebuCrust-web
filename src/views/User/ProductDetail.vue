@@ -1,7 +1,7 @@
 # /product/:id
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ShoppingCart, Heart, Star, Truck } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
@@ -21,7 +21,9 @@ import { useFavoriteStore } from '@/stores/favorite'
 import { useRatingStore } from '@/stores/rating'
 import { useOrderStore } from '@/stores/orders'
 import { toBase64 } from '@/plugins/convert'
+import { useFetch } from '@/plugins/api'
 import type { Pizza } from '@/models/pizza'
+import type { User } from '@/models/user'
 
 const route = useRoute()
 const router = useRouter()
@@ -38,47 +40,19 @@ const isFavorite = ref<number[]>([])
 const selectedReviewFilter = ref('all')
 const productInfoRef = ref<HTMLElement | null>(null)
 const confirmationOpen = ref(false)
+const showAllReviews = ref(false)
 
-// Mock review data - in real app, this would come from API
-const reviews = ref([
-  {
-    id: 1,
-    user: 'Maria Santos',
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
-    rating: 5,
-    comment: 'Amazing pizza! The crust was perfectly crispy and the toppings were so fresh. Delivery was super fast too. Will definitely order again!',
-    date: '2024-01-15',
-    size: 'Medium'
-  },
-  {
-    id: 2,
-    user: 'John Rodriguez',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
-    rating: 5,
-    comment: 'Best pizza in town! Love the authentic taste and generous toppings. The cheese stretch is incredible.',
-    date: '2024-01-14',
-    size: 'Large'
-  },
-  {
-    id: 3,
-    user: 'Ana Dela Cruz',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face',
-    rating: 4,
-    comment: 'Really good pizza, but delivery took a bit longer than expected. Still worth it though!',
-    date: '2024-01-13',
-    size: 'Medium'
-  }
-])
-
+// Real review data from database
+const reviews = ref<any[]>([])
 const ratingStats = ref({
-  average: 4.8,
-  totalReviews: 2347,
+  average: 0,
+  totalReviews: 0,
   distribution: {
-    5: 1831,
-    4: 352,
-    3: 94,
-    2: 47,
-    1: 23
+    5: 0,
+    4: 0,
+    3: 0,
+    2: 0,
+    1: 0
   }
 })
 
@@ -121,15 +95,114 @@ const productInfoHeight = computed(() => {
 })
 
 const filteredReviews = computed(() => {
-  if (selectedReviewFilter.value === 'all') return reviews.value
-  const rating = parseInt(selectedReviewFilter.value)
-  return reviews.value.filter(review => review.rating === rating)
+  let filtered = reviews.value
+  if (selectedReviewFilter.value !== 'all') {
+    const rating = parseInt(selectedReviewFilter.value)
+    filtered = reviews.value.filter(review => review.rating === rating)
+  }
+  
+  // Show only first 5 reviews unless showAllReviews is true
+  if (!showAllReviews.value && filtered.length > 5) {
+    return filtered.slice(0, 5)
+  }
+  
+  return filtered
+})
+
+const hasMoreReviews = computed(() => {
+  let filtered = reviews.value
+  if (selectedReviewFilter.value !== 'all') {
+    const rating = parseInt(selectedReviewFilter.value)
+    filtered = reviews.value.filter(review => review.rating === rating)
+  }
+  return filtered.length > 5
+})
+
+const toggleShowAllReviews = () => {
+  showAllReviews.value = !showAllReviews.value
+}
+
+// Reset showAllReviews when filter changes
+watch(selectedReviewFilter, () => {
+  showAllReviews.value = false
 })
 
 const addToCart = async () => {
   if (!currentPizza.value) return
   
   await cart.addToCart({ pizzaId: currentPizza.value.pizzaId!, quantity: quantity.value })
+}
+
+// Get user name from orders data
+const getUserNameFromOrders = (userId: number): string => {
+  console.log('Looking for user ID:', userId)
+  console.log('Available orders:', order.orders.length)
+  
+  // Find an order from this user to get their name
+  const userOrder = order.orders.find(o => o.userId === userId)
+  console.log('Found user order:', userOrder)
+  
+  if (userOrder && userOrder.firstName && userOrder.lastName) {
+    const fullName = `${userOrder.firstName} ${userOrder.lastName}`
+    console.log('Returning full name:', fullName)
+    return fullName
+  }
+  
+  console.log('Returning fallback name for user:', userId)
+  return `User ${userId}`
+}
+
+// Fetch user data by userId
+const fetchUserById = async (userId: number): Promise<User | null> => {
+  try {
+    const URL = import.meta.env.VITE_BASE_URL ?? 'http://localhost:5135/api'
+    const res = await useFetch(`${URL}/user/${userId}`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+    const data = await res.json()
+    if (!res.ok) return null
+    return data
+  } catch (error) {
+    console.error('Error fetching user:', error)
+    return null
+  }
+}
+
+// Fetch reviews for current pizza
+const fetchReviews = async () => {
+  if (!pizzaId.value) return
+  
+  try {
+    const pizzaRating = await rating.fetchRatingsByPizzaId(pizzaId.value)
+    if (pizzaRating) {
+      // Transform the rating data to match the expected format
+      reviews.value = pizzaRating.ratings.map((rating, index) => ({
+        id: index + 1,
+        user: getUserNameFromOrders(rating.userId),
+        avatar: `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&seed=${rating.userId}`,
+        rating: rating.ratingValue,
+        comment: rating.ratingMessage || 'No comment provided',
+        date: new Date().toISOString().split('T')[0], // You might want to use actual dates
+        size: 'Medium' // Default size since this info isn't in the rating data
+      }))
+      
+      // Update rating stats
+      ratingStats.value = {
+        average: pizzaRating.averageRating,
+        totalReviews: pizzaRating.totalRatings,
+        distribution: {
+          5: pizzaRating.ratings.filter(r => r.ratingValue === 5).length,
+          4: pizzaRating.ratings.filter(r => r.ratingValue === 4).length,
+          3: pizzaRating.ratings.filter(r => r.ratingValue === 3).length,
+          2: pizzaRating.ratings.filter(r => r.ratingValue === 2).length,
+          1: pizzaRating.ratings.filter(r => r.ratingValue === 1).length
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching reviews:', error)
+  }
 }
 
 const orderNow = () => {
@@ -174,13 +247,23 @@ const decrementQuantity = () => {
 onMounted(async () => {
   await pizza.fetchAll()
   await favorite.fetchFavorites()
-  await rating.fetchRatingsByPizzaId(pizzaId.value)
+  await order.fetchUserOrders() // Fetch orders to get user names
   isFavorite.value = favorite.favorites
   
   currentPizza.value = pizza.pizzas.find(p => p.pizzaId === pizzaId.value) || null
   
   if (!currentPizza.value) {
     router.push('/menu')
+  }
+  
+  // Fetch reviews for this pizza
+  await fetchReviews()
+})
+
+// Watch for pizzaId changes and refetch reviews
+watch(pizzaId, async () => {
+  if (pizzaId.value) {
+    await fetchReviews()
   }
 })
 </script>
@@ -395,8 +478,12 @@ onMounted(async () => {
           </div>
         </div>
 
-        <button class="w-full mt-6 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-lg font-medium transition-colors">
-          View All Reviews
+        <button 
+          v-if="hasMoreReviews"
+          @click="toggleShowAllReviews"
+          class="w-full mt-6 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-lg font-medium transition-colors"
+        >
+          {{ showAllReviews ? 'Show Less Reviews' : 'View All Reviews' }}
         </button>
       </div>
 

@@ -84,7 +84,7 @@ const addToCart = (item: Pizza) => {
 
 const trackOrder = () => {
   if (!currentOrder.value) return
-  console.log('Tracking order:', currentOrder.value)
+  router.push(`/order/track/${currentOrder.value.orderId}`)
 }
 
 const showAddressModal = ref(false)
