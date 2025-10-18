@@ -16,39 +16,33 @@ const user = ref(auth.user ? { ...auth.user } : {})
 const preview = ref<string | null>(user.value?.profileImage || user.value?.profileImageUrl || null)
 const isUploading = ref(false)
 const isSaving = ref(false)
-
+const fileInput = ref<HTMLInputElement | null>(null) // added ref
+const newProfileImage = ref<File | null>()
 // Password change state
 const passwordForm = ref({
   currentPassword: '',
   newPassword: '',
-  confirmPassword: ''
+  confirmPassword: '',
 })
 
 const showPasswords = ref({
   current: false,
   new: false,
-  confirm: false
+  confirm: false,
 })
 
 // Form validation
 const errors = ref<Record<string, string>>({})
 
-// Debug: Log admin status
-console.log('Auth store isAdmin:', auth.isAdmin)
-console.log('Auth user:', auth.user)
-
-// Keep local user in sync if auth.user changes
+// Sync local user if auth.user changes
 watch(
   () => auth.user,
   (val) => {
     user.value = val ? { ...val } : {}
-    // Handle profile image display properly
     if (user.value?.profileImage) {
-      // If it's already a base64 string, use it directly
       if (user.value.profileImage.startsWith('data:')) {
         preview.value = user.value.profileImage
       } else {
-        // If it's a file path or URL, convert it
         preview.value = toBase64(user.value.profileImage)
       }
     } else {
@@ -58,7 +52,7 @@ watch(
   { immediate: true },
 )
 
-// Computed properties
+// Computed
 const displayName = computed(() => {
   return user.value?.name || (user.value?.firstName && user.value?.lastName)
     ? `${user.value.firstName} ${user.value.lastName}`
@@ -71,33 +65,29 @@ const hasProfileImage = computed(() => !!preview.value)
 const onFileChange = (e: Event) => {
   const input = e.target as HTMLInputElement
   if (!input.files || input.files.length === 0) return
-  
+
   const file = input.files[0]
-  
-  // Validate file size (2MB max)
+  newProfileImage.value = file
+
   if (file.size > 2 * 1024 * 1024) {
     errors.value.profileImage = 'File size must be less than 2MB'
     return
   }
-  
-  // Validate file type
+
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
   if (!allowedTypes.includes(file.type)) {
     errors.value.profileImage = 'Only JPG, PNG, and WEBP files are allowed'
     return
   }
-  
+
   const reader = new FileReader()
   reader.onload = async () => {
     const result = reader.result as string
+    console.log('res', result)
     preview.value = result
     user.value.profileImage = result
     delete errors.value.profileImage
-    
-    // Show success message for successful image upload
-    const { useSonnerStore } = await import('@/stores/sonner')
-    const sonner = useSonnerStore()
-    sonner.success('Profile picture selected successfully! Click "Save Changes" to update your profile.')
+    console.log('result', result)
   }
   reader.readAsDataURL(file)
 }
@@ -107,16 +97,12 @@ const onDrop = (e: DragEvent) => {
   const files = e.dataTransfer?.files
   if (files && files.length > 0) {
     const file = files[0]
-    const fakeEvent = {
-      target: { files: [file] }
-    } as Event
+    const fakeEvent = { target: { files: [file] } } as Event
     onFileChange(fakeEvent)
   }
 }
 
-const onDragOver = (e: DragEvent) => {
-  e.preventDefault()
-}
+const onDragOver = (e: DragEvent) => e.preventDefault()
 
 const removePhoto = () => {
   preview.value = null
@@ -129,151 +115,78 @@ const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
   showPasswords.value[field] = !showPasswords.value[field]
 }
 
-// Form validation
+// Validation
 const validateForm = () => {
   errors.value = {}
-  
-  // Validate personal information
-  if (!user.value.firstName?.trim()) {
-    errors.value.firstName = 'First name is required'
-  }
-  
-  if (!user.value.lastName?.trim()) {
-    errors.value.lastName = 'Last name is required'
-  }
-  
+  if (!user.value.firstName?.trim()) errors.value.firstName = 'First name is required'
+  if (!user.value.lastName?.trim()) errors.value.lastName = 'Last name is required'
   if (!user.value.email?.trim()) {
     errors.value.email = 'Email is required'
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.value.email)) {
     errors.value.email = 'Please enter a valid email address'
   }
-  
-  if (!user.value.phoneNo?.trim()) {
-    errors.value.phoneNo = 'Phone number is required'
-  }
-  
-  // Validate password change if any password field is filled
-  const hasPasswordFields = passwordForm.value.currentPassword || 
-                           passwordForm.value.newPassword || 
-                           passwordForm.value.confirmPassword
-  
+  if (!user.value.phoneNo?.trim()) errors.value.phoneNo = 'Phone number is required'
+
+  const hasPasswordFields =
+    passwordForm.value.currentPassword ||
+    passwordForm.value.newPassword ||
+    passwordForm.value.confirmPassword
+
   if (hasPasswordFields) {
-    if (!passwordForm.value.currentPassword) {
+    if (!passwordForm.value.currentPassword)
       errors.value.currentPassword = 'Current password is required'
-    }
-    
-    if (!passwordForm.value.newPassword) {
-      errors.value.newPassword = 'New password is required'
-    } else if (passwordForm.value.newPassword.length < 6) {
+    if (!passwordForm.value.newPassword) errors.value.newPassword = 'New password is required'
+    else if (passwordForm.value.newPassword.length < 6)
       errors.value.newPassword = 'Password must be at least 6 characters'
-    }
-    
-    if (!passwordForm.value.confirmPassword) {
+    if (!passwordForm.value.confirmPassword)
       errors.value.confirmPassword = 'Please confirm your new password'
-    } else if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
+    else if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword)
       errors.value.confirmPassword = 'Passwords do not match'
-    }
   }
-  
   return Object.keys(errors.value).length === 0
 }
 
 // Save changes
 const save = async () => {
   if (!validateForm()) return
-  
   isSaving.value = true
-  
   try {
-    // Check what has changed
-    const hasProfileImageChanged = user.value.profileImage && 
-      user.value.profileImage !== (auth.user?.profileImage || '')
-    
-    const hasPersonalInfoChanged = 
+    const hasProfileImageChanged =
+      user.value.profileImage && user.value.profileImage !== (auth.user?.profileImage || '')
+    const hasPersonalInfoChanged =
       user.value.firstName !== auth.user?.firstName ||
       user.value.lastName !== auth.user?.lastName ||
       user.value.email !== auth.user?.email ||
       user.value.phoneNo !== auth.user?.phoneNo
-    
-    const hasPasswordChanged = passwordForm.value.currentPassword && 
-      passwordForm.value.newPassword && 
+    const hasPasswordChanged =
+      passwordForm.value.currentPassword &&
+      passwordForm.value.newPassword &&
       passwordForm.value.confirmPassword
-    
-    // Prepare updates - use correct field names
+
     const updates: Record<string, unknown> = {
-      firstName: user.value.firstName,
-      lastName: user.value.lastName,
-      email: user.value.email,
-      phoneNumber: user.value.phoneNo,
-      phoneNo: user.value.phoneNo  // Try both field names for compatibility
+      userFName: user.value.firstName,
+      userLName: user.value.lastName,
+      userEmail: user.value.email,
+      userPhoneNo: user.value.phoneNo,
+      image: newProfileImage.value,
     }
-    
-    // Add profile image if changed
-    if (hasProfileImageChanged) {
-      updates.profileImage = user.value.profileImage
-    }
-    
-    // Add password change if provided
+
     if (hasPasswordChanged) {
-      updates.oldPassword = passwordForm.value.currentPassword
+      updates.currentPassword = passwordForm.value.currentPassword
       updates.newPassword = passwordForm.value.newPassword
       updates.confirmPassword = passwordForm.value.confirmPassword
     }
-    
-    console.log('Sending updates:', updates)
-    console.log('Changes detected:', {
-      profileImage: hasProfileImageChanged,
-      personalInfo: hasPersonalInfoChanged,
-      password: hasPasswordChanged
-    })
-    console.log('Phone number values:', {
-      current: user.value.phoneNo,
-      original: auth.user?.phoneNo,
-      changed: hasPersonalInfoChanged
-    })
-    
+
     const success = await auth.update(updates)
-    
     if (success) {
-      // Show specific success messages
-      if (hasProfileImageChanged) {
-        // Use the sonner store directly for profile picture success
-        const { useSonnerStore } = await import('@/stores/sonner')
-        const sonner = useSonnerStore()
-        sonner.success('Profile picture updated successfully!')
-      }
-      
-      if (hasPersonalInfoChanged) {
-        const { useSonnerStore } = await import('@/stores/sonner')
-        const sonner = useSonnerStore()
-        sonner.success('Personal information updated successfully!')
-      }
-      
-      if (hasPasswordChanged) {
-        const { useSonnerStore } = await import('@/stores/sonner')
-        const sonner = useSonnerStore()
-        sonner.success('Password changed successfully!')
-      }
-      
-      // Update the preview to match the stored image
-      if (user.value.profileImage) {
-        preview.value = user.value.profileImage
-      }
-      
-      // Clear password form
-      passwordForm.value = {
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      }
-      
-      // Navigate back to appropriate dashboard
-      // Keep admin users on the admin dashboard so they aren't redirected to the user side
-      if (auth.isAdmin) {
-        router.push('/dashboard/admin')
-      } else {
-        router.push('/dashboard')
-      }
+      const { useSonnerStore } = await import('@/stores/sonner')
+      const sonner = useSonnerStore()
+      if (hasProfileImageChanged) sonner.success('Profile picture updated successfully!')
+      if (hasPersonalInfoChanged) sonner.success('Personal information updated successfully!')
+      if (hasPasswordChanged) sonner.success('Password changed successfully!')
+
+      if (user.value.profileImage) preview.value = user.value.profileImage
+      passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
     }
   } catch (error) {
     console.error('Error updating profile:', error)
@@ -283,14 +196,9 @@ const save = async () => {
 }
 
 const cancel = () => {
-  // Reset form to original values
   user.value = auth.user ? { ...auth.user } : {}
   preview.value = user.value?.profileImage || user.value?.profileImageUrl || null
-  passwordForm.value = {
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  }
+  passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
   errors.value = {}
 }
 </script>
@@ -300,9 +208,7 @@ const cancel = () => {
     <AdminHeader v-if="auth.isAdmin" />
     <UserHeader v-else />
 
-    <!-- Main Content -->
     <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Page Header -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900">Account Settings</h1>
         <p class="text-gray-600 mt-2">Manage your personal information.</p>
@@ -312,14 +218,14 @@ const cancel = () => {
         <!-- Profile Picture Section -->
         <div class="mb-8">
           <h2 class="text-xl font-semibold text-gray-900 mb-6">Profile Picture</h2>
-          
           <div class="flex flex-col lg:flex-row gap-8">
-            <!-- Current Profile Picture -->
             <div class="flex flex-col items-center">
-              <div class="w-24 h-24 bg-gray-100 rounded-full overflow-hidden flex items-center justify-center mb-4">
+              <div
+                class="w-24 h-24 bg-gray-100 rounded-full overflow-hidden flex items-center justify-center mb-4"
+              >
                 <img
                   v-if="preview"
-                  :src="preview"
+                  :src="preview.includes('data:image') ? preview : toBase64(preview)"
                   alt="profile"
                   class="w-full h-full object-cover"
                 />
@@ -327,7 +233,7 @@ const cancel = () => {
               </div>
               <div class="flex flex-col gap-2">
                 <button
-                  @click="document.getElementById('profile-upload').click()"
+                  @click="fileInput?.click()"
                   class="text-orange-500 hover:text-orange-600 text-sm font-medium"
                 >
                   Change Photo
@@ -349,15 +255,16 @@ const cancel = () => {
                 @dragover="onDragOver"
                 @dragenter="onDragOver"
                 class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-orange-400 transition-colors cursor-pointer"
-                @click="document.getElementById('profile-upload').click()"
+                @click="fileInput?.click()"
               >
                 <Upload class="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p class="text-gray-600 mb-2">
-                  Drop your image here, or 
+                  Drop your image here, or
                   <span class="text-orange-500 font-medium">browse</span>
                 </p>
                 <p class="text-sm text-gray-400">Supports: JPG, PNG, WEBP (Max 2MB)</p>
                 <input
+                  ref="fileInput"
                   id="profile-upload"
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
@@ -375,9 +282,7 @@ const cancel = () => {
         <!-- Personal Information Section -->
         <div class="mb-8">
           <h2 class="text-xl font-semibold text-gray-900 mb-6">Personal Information</h2>
-          
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- First Name -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
               <input
@@ -390,8 +295,6 @@ const cancel = () => {
                 {{ errors.firstName }}
               </p>
             </div>
-
-            <!-- Last Name -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
               <input
@@ -400,12 +303,8 @@ const cancel = () => {
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 :class="{ 'border-red-500': errors.lastName }"
               />
-              <p v-if="errors.lastName" class="text-red-500 text-sm mt-1">
-                {{ errors.lastName }}
-              </p>
+              <p v-if="errors.lastName" class="text-red-500 text-sm mt-1">{{ errors.lastName }}</p>
             </div>
-
-            <!-- Email Address -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
               <input
@@ -414,12 +313,8 @@ const cancel = () => {
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 :class="{ 'border-red-500': errors.email }"
               />
-              <p v-if="errors.email" class="text-red-500 text-sm mt-1">
-                {{ errors.email }}
-              </p>
+              <p v-if="errors.email" class="text-red-500 text-sm mt-1">{{ errors.email }}</p>
             </div>
-
-            <!-- Phone Number -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
               <input
@@ -428,9 +323,7 @@ const cancel = () => {
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 :class="{ 'border-red-500': errors.phoneNo }"
               />
-              <p v-if="errors.phoneNo" class="text-red-500 text-sm mt-1">
-                {{ errors.phoneNo }}
-              </p>
+              <p v-if="errors.phoneNo" class="text-red-500 text-sm mt-1">{{ errors.phoneNo }}</p>
             </div>
           </div>
         </div>
@@ -438,9 +331,7 @@ const cancel = () => {
         <!-- Change Password Section -->
         <div class="mb-8">
           <h2 class="text-xl font-semibold text-gray-900 mb-6">Change Password</h2>
-          
-          <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
-            <!-- Current Password -->
+          <div class="grid grid-cols-1 gap-6">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
               <div class="relative">
@@ -452,6 +343,7 @@ const cancel = () => {
                 />
                 <button
                   @click="togglePasswordVisibility('current')"
+                  type="button"
                   class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   <Eye v-if="!showPasswords.current" class="w-4 h-4" />
@@ -462,8 +354,6 @@ const cancel = () => {
                 {{ errors.currentPassword }}
               </p>
             </div>
-
-            <!-- New Password -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
               <div class="relative">
@@ -475,6 +365,7 @@ const cancel = () => {
                 />
                 <button
                   @click="togglePasswordVisibility('new')"
+                  type="button"
                   class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   <Eye v-if="!showPasswords.new" class="w-4 h-4" />
@@ -485,8 +376,6 @@ const cancel = () => {
                 {{ errors.newPassword }}
               </p>
             </div>
-
-            <!-- Confirm Password -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
               <div class="relative">
@@ -498,6 +387,7 @@ const cancel = () => {
                 />
                 <button
                   @click="togglePasswordVisibility('confirm')"
+                  type="button"
                   class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   <Eye v-if="!showPasswords.confirm" class="w-4 h-4" />

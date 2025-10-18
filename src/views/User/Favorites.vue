@@ -24,9 +24,7 @@ const selectedCategory = ref('all')
 
 // Computed properties
 const favoritePizzas = computed(() => {
-  return pizza.pizzas.filter((pizza: Pizza) => 
-    favorite.favorites.includes(pizza.pizzaId!)
-  )
+  return pizza.pizzas.filter((pizza: Pizza) => favorite.favorites.includes(pizza.pizzaId!))
 })
 
 const filteredFavorites = computed(() => {
@@ -188,9 +186,7 @@ onMounted(async () => {
                 class="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg"
                 @click.stop="removeFromFavorites(item.pizzaId!)"
               >
-                <Heart
-                  class="w-5 h-5 fill-red-500 text-red-500"
-                />
+                <Heart class="w-5 h-5 fill-red-500 text-red-500" />
               </button>
 
               <!-- Unavailable Overlay -->
@@ -228,13 +224,19 @@ onMounted(async () => {
                 @click.stop="addToCart(item)"
                 class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
                 :class="
-                  item.isAvailable
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  item.isAvailable && !inCart(item.pizzaId!)
+                    ? 'bg-primary hover:bg-primary/80'
+                    : 'bg-gray-300 text-gray-500 cursor-default'
                 "
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
-                {{ item.isAvailable ? 'Add to Cart' : 'Unavailable' }}
+                {{
+                  !item.isAvailable
+                    ? 'Unavailable'
+                    : inCart(item.pizzaId!)
+                      ? 'In Cart'
+                      : 'Add to Cart'
+                }}
               </button>
             </div>
           </div>
@@ -272,7 +274,8 @@ onMounted(async () => {
           </div>
           <h3 class="text-xl font-semibold text-gray-900 mb-2">No Favorites Found</h3>
           <p class="text-gray-600 mb-6">
-            We couldn't find any favorites matching your search criteria. Try adjusting your search terms.
+            We couldn't find any favorites matching your search criteria. Try adjusting your search
+            terms.
           </p>
           <button
             @click="clearAllFilters"
