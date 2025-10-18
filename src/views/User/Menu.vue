@@ -40,12 +40,19 @@ const filteredMenuItems = computed(() => {
   // menuStore.menuItems may be an array of items with different property shapes.
   let items = adminMenuItems.value || []
 
-  // Filter by category
+  // Helper to normalize category strings: remove non-alphanumeric and lowercase
+  const normalize = (s: unknown) =>
+    (s || '')
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+
+  // Filter by category (compare normalized forms so 'meat-lovers' matches 'Meat Lovers')
   if (selectedCategory.value !== 'all') {
+    const target = normalize(selectedCategory.value)
     items = items.filter((item: Pizza) => {
-      // normalize category comparison
-      const cat = (item.pizzaCategory || '').toString().toLowerCase()
-      return cat === selectedCategory.value.toLowerCase()
+      const cat = normalize(item.pizzaCategory)
+      return cat === target
     })
   }
 
