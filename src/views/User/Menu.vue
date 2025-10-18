@@ -2,6 +2,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ShoppingCart, Heart, Star, Search } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
 import Footer from '@/components/Footer.vue'
@@ -14,6 +15,7 @@ import { useCartStore } from '@/stores/cart'
 const favorite = useFavoriteStore()
 const pizza = usePizzaStore()
 const cart = useCartStore()
+const router = useRouter()
 
 const isFavorite = ref<number[]>([])
 // Local UI state
@@ -22,7 +24,7 @@ const categories = ref([
   { id: 'veggie', name: 'Veggie', active: false },
   { id: 'meat-lovers', name: 'Meat Lovers', active: false },
   { id: 'premium-specials', name: 'Premium Specials', active: false },
-  { id: 'seasonal-picks', name: 'Seasonal Picks', active: false },
+  { id: 'seasonal-picks', name: 'Seasonal Picks', active: false }
 ])
 
 // Admin-controlled menu data comes from the store
@@ -31,7 +33,7 @@ const adminMenuItems = computed(() => pizza.pizzas)
 // Search and filter states
 const searchQuery = ref('')
 const selectedCategory = ref('all')
-const sortBy = ref('name')
+const sortBy = ref('')
 
 // Computed properties
 const filteredMenuItems = computed(() => {
@@ -69,7 +71,7 @@ const filteredMenuItems = computed(() => {
       items.sort((a: Pizza, b: Pizza) => (b.pizzaPrice || 0) - (a.pizzaPrice || 0))
       break
     case 'rating':
-      // items.sort((a: Pizza, b: Pizza) => (b.rating || 0) - (a.rating || 0))
+      items.sort((a: Pizza, b: Pizza) => (b.averageRating || 0) - (a.averageRating || 0))
       break
   }
 
@@ -114,13 +116,8 @@ const toggle = (pizzaId: number, delay = 500) => {
   }, delay)
 }
 
-const toggleFavorite = (pizzaId: number, delay = 500) => {
-  if (favorite.favorites.includes(pizzaId)) {
-    isFavorite.value = isFavorite.value.filter((f) => f !== pizzaId)
-  } else {
-    isFavorite.value = [...isFavorite.value, pizzaId]
-  }
-  toggle(pizzaId, delay)
+const toggleFavorite = (pizzaId: number) => {
+  toggle(pizzaId)
 }
 
 const addToCart = (item: Pizza) => {
@@ -148,14 +145,10 @@ const inCart = (id: number) => {
     <section class="bg-[#121A1D] py-8 relative overflow-hidden w-screen mx-auto">
       <div class="absolute inset-0 bg-[url('/src/assets/menu-bg.png')] bg-cover bg-center"></div>
       <div class="absolute inset-0 bg-gradient-to-r from-[#121A1D] to-[#192124] opacity-70"></div>
-      <div
-        class="relative z-10 flex flex-col items-center justify-center h-64 text-center text-white px-4"
-      >
+      <div class="relative z-10 flex flex-col items-center justify-center h-64 text-center text-white px-4">
         <h1 class="text-5xl font-bold mb-4">Explore Our Menu</h1>
         <p class="text-xl mb-8 max-w-2xl">Freshly baked, always delicious — from crust to crave.</p>
-        <button
-          class="bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-        >
+        <button class="bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-lg font-medium transition-colors">
           Start Your Order
         </button>
       </div>
@@ -164,7 +157,7 @@ const inCart = (id: number) => {
     <!-- Category Tabs and Search Bar - Attached to Banner -->
     <div class="bg-white py-4">
       <div
-        class="w-screen px-4 sm:px-8 lg:px-30 flex flex-col lg:flex-row gap-8 lg:gap-40 items-center"
+        class="w-screen px-4 sm:px-8 lg:px-30 flex flex-col lg:flex-row gap-8 lg:gap-25 items-center"
       >
         <!-- Category Tabs -->
         <div class="flex flex-wrap gap-2 justify-center lg:justify-start">
@@ -174,8 +167,8 @@ const inCart = (id: number) => {
             @click="selectCategory(category.id)"
             :class="
               category.active
-                ? 'bg-primary text-white rounded-full'
-                : 'bg-white text-gray-700 hover:bg-gray-100 rounded-full'
+                ? 'bg-primary text-white rounded-lg'
+                : 'bg-white text-gray-700 hover:bg-gray-100 rounded-lg'
             "
             class="px-6 py-3 font-medium transition-colors"
           >
@@ -183,18 +176,35 @@ const inCart = (id: number) => {
           </button>
         </div>
 
-        <!-- Search Bar -->
+        <!-- Search Bar and Sort -->
         <div class="w-full lg:flex-1 lg:ml-auto">
-          <div class="relative max-w-xl lg:max-w-lg mx-auto lg:mx-0">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search orders..."
-              class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
-            <Search
-              class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
-            />
+          <div class="flex flex-col lg:flex-row gap-4 max-w-3xl lg:max-w-5xl mx-auto lg:mx-0">
+            <!-- Search Bar -->
+            <div class="relative flex-1">
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search pizzas..."
+                class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+              <Search
+                class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
+              />
+            </div>
+            
+            <!-- Sort Dropdown -->
+            <div class="lg:w-32">
+              <select
+                v-model="sortBy"
+                class="w-full px-3 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-sm"
+              >
+                <option value="" disabled>Sort by</option>
+                <option value="name">Sort by Name</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="rating">Highest Rated</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -202,13 +212,15 @@ const inCart = (id: number) => {
 
     <!-- Main Content -->
     <main class="w-screen px-4 sm:px-8 lg:px-30 py-8">
+
       <!-- Menu Items Grid -->
       <div v-if="hasMenuItems && filteredMenuItems.length > 0">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
           <div
             v-for="item in filteredMenuItems.slice(0, 8)"
             :key="item.pizzaId!"
-            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+            @click="router.push(`/product/${item.pizzaId}`)"
           >
             <!-- Pizza Image -->
             <div class="relative h-48 bg-gray-700 flex items-center justify-center">
@@ -226,11 +238,11 @@ const inCart = (id: number) => {
                 "
               />
               <div v-else class="text-6xl">🍕</div>
-
+              
               <!-- Heart Icon -->
               <button
                 class="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg"
-                @click="toggleFavorite(item.pizzaId!)"
+                @click.stop="toggleFavorite(item.pizzaId!)"
               >
                 <Heart
                   :class="
@@ -253,11 +265,7 @@ const inCart = (id: number) => {
                 <div class="flex items-center gap-1">
                   <Star class="h-4 w-4 text-yellow-400 fill-current" />
                   <span class="text-white text-sm">
-                    {{
-                      item.averageRating && item.averageRating > 0
-                        ? `${item.averageRating} (${item.totalRatings})`
-                        : '0 (0)'
-                    }}
+                    {{ item.averageRating && item.averageRating > 0 ? `${item.averageRating} (${item.totalRatings})` : '0 (0)' }}
                   </span>
                 </div>
                 <span class="text-xl font-bold text-primary">₱{{ item.pizzaPrice }}</span>
@@ -266,7 +274,7 @@ const inCart = (id: number) => {
               <!-- Action Buttons -->
               <button
                 :disabled="!item.isAvailable || inCart(item.pizzaId!)"
-                @click="addToCart(item)"
+                @click.stop="addToCart(item)"
                 class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
                 :class="
                   item.isAvailable && !inCart(item.pizzaId!)
@@ -275,13 +283,7 @@ const inCart = (id: number) => {
                 "
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
-                {{
-                  !item.isAvailable
-                    ? 'Unavailable'
-                    : inCart(item.pizzaId!)
-                      ? 'In Cart'
-                      : 'Add to Cart'
-                }}
+                Add to Cart
               </button>
             </div>
           </div>
@@ -301,15 +303,12 @@ const inCart = (id: number) => {
       <!-- Empty State - No Menu Items -->
       <div v-else-if="!hasMenuItems" class="text-center py-16">
         <div class="max-w-md mx-auto">
-          <div
-            class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6"
-          >
+          <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
             <ShoppingCart class="w-12 h-12 text-gray-400" />
           </div>
           <h3 class="text-xl font-semibold text-gray-900 mb-2">No Menu Items Available</h3>
           <p class="text-gray-600 mb-6">
-            Our admin hasn't added any menu items yet. Please check back later or contact us for
-            more information.
+            Our admin hasn't added any menu items yet. Please check back later or contact us for more information.
           </p>
           <router-link
             to="/contact"
@@ -323,15 +322,12 @@ const inCart = (id: number) => {
       <!-- Empty State - No Search Results -->
       <div v-else-if="hasMenuItems && filteredMenuItems.length === 0" class="text-center py-16">
         <div class="max-w-md mx-auto">
-          <div
-            class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6"
-          >
+          <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
             <Search class="w-12 h-12 text-gray-400" />
           </div>
           <h3 class="text-xl font-semibold text-gray-900 mb-2">No Results Found</h3>
           <p class="text-gray-600 mb-6">
-            We couldn't find any menu items matching your search criteria. Try adjusting your
-            filters or search terms.
+            We couldn't find any menu items matching your search criteria. Try adjusting your filters or search terms.
           </p>
           <button
             @click="clearFilters"
@@ -346,3 +342,12 @@ const inCart = (id: number) => {
     <Footer />
   </div>
 </template>
+
+<style scoped>
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>

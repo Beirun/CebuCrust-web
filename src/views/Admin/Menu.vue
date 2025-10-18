@@ -3,7 +3,6 @@ import { ref, computed, onMounted } from 'vue'
 import {
   Plus,
   Search,
-  Filter,
   Edit,
   Trash2,
   Star,
@@ -121,10 +120,13 @@ const goToPage = (page: number) => {
 }
 const searchQuery = ref('')
 const selectedCategory = ref('All Pizzas')
+const sortBy = ref('')
+const availabilityFilter = ref('all')
 
 const filteredMenuItems = computed(() => {
   let filtered = pizza.pizzas
 
+  // Filter by search query
   if (searchQuery.value) {
     filtered = filtered.filter(
       (item) =>
@@ -133,8 +135,33 @@ const filteredMenuItems = computed(() => {
     )
   }
 
+  // Filter by category
   if (selectedCategory.value !== 'All Pizzas') {
     filtered = filtered.filter((item) => item.pizzaCategory === selectedCategory.value)
+  }
+
+  // Filter by availability
+  if (availabilityFilter.value !== 'all') {
+    const isAvailable = availabilityFilter.value === 'available'
+    filtered = filtered.filter((item) => item.isAvailable === isAvailable)
+  }
+
+  // Sort items
+  if (sortBy.value) {
+    switch (sortBy.value) {
+      case 'name':
+        filtered.sort((a, b) => (a.pizzaName || '').localeCompare(b.pizzaName || ''))
+        break
+      case 'price-low':
+        filtered.sort((a, b) => (a.pizzaPrice || 0) - (b.pizzaPrice || 0))
+        break
+      case 'price-high':
+        filtered.sort((a, b) => (b.pizzaPrice || 0) - (a.pizzaPrice || 0))
+        break
+      case 'category':
+        filtered.sort((a, b) => (a.pizzaCategory || '').localeCompare(b.pizzaCategory || ''))
+        break
+    }
   }
 
   return filtered
@@ -153,7 +180,7 @@ onMounted(async () => {
     <AdminHeader />
 
     <!-- Main Content -->
-    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8 min-h-[calc(100vh-5rem)]">
+    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8">
       <!-- Page Header -->
       <div class="flex justify-between items-center mb-8">
         <div>
@@ -162,7 +189,7 @@ onMounted(async () => {
         </div>
         <button
           @click="openAddModal"
-          class="bg-orange-400 text-white px-4 py-2 rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm"
+          class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm"
         >
           <Plus class="h-4 w-4" />
           Add New Pizza
@@ -179,7 +206,7 @@ onMounted(async () => {
             :class="[
               'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
               selectedCategory === category
-                ? 'bg-orange-400 text-white'
+                ? 'bg-primary text-white'
                 : 'text-gray-700 hover:text-gray-900',
             ]"
           >
@@ -193,32 +220,33 @@ onMounted(async () => {
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Search orders..."
-              class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 w-64"
+              placeholder="Search pizzas..."
+              class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary w-64"
             />
             <Search class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
           </div>
 
-          <button
-            class="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <Filter class="h-4 w-4" />
-            <span>Filter</span>
-          </button>
+          <div class="flex gap-2">
+            <select
+              v-model="availabilityFilter"
+              class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+            >
+              <option value="all">All Status</option>
+              <option value="available">Available</option>
+              <option value="unavailable">Unavailable</option>
+            </select>
 
-          <button
-            class="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-              />
-            </svg>
-            <span>Sort</span>
-          </button>
+            <select
+              v-model="sortBy"
+              class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+            >
+              <option value="" disabled>Sort by</option>
+              <option value="name">Name</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+              <option value="category">Category</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -247,7 +275,7 @@ onMounted(async () => {
           </div>
 
           <div class="p-4">
-            <h3 class="text-lg font-semibold text-orange-400 mb-1">{{ item.pizzaName }}</h3>
+            <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
             <p class="text-gray-300 text-sm mb-3 line-clamp-2">{{ item.pizzaDescription }}</p>
 
             <div class="flex justify-between items-center mb-4">
@@ -255,7 +283,7 @@ onMounted(async () => {
                 <Star class="h-4 w-4 text-yellow-400 fill-current" />
                 <span class="text-white text-sm">0 (0)</span>
               </div>
-              <span class="text-xl font-bold text-orange-400">₱{{ item.pizzaPrice }}</span>
+              <span class="text-xl font-bold text-primary">₱{{ item.pizzaPrice }}</span>
             </div>
 
             <div class="flex justify-between items-center">
@@ -276,8 +304,8 @@ onMounted(async () => {
 
               <button
                 :class="[
-                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-gray-800',
-                  'bg-orange-400',
+                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-gray-800',
+                  'bg-primary',
                 ]"
               >
                 <span
@@ -299,7 +327,7 @@ onMounted(async () => {
         <p class="text-gray-600 mb-4">Try adjusting your search or filter criteria.</p>
         <button
           @click="openAddModal"
-          class="bg-orange-400 text-white px-4 py-2 rounded-lg hover:bg-orange-500 transition-colors"
+          class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
         >
           Add Your First Pizza
         </button>
@@ -321,7 +349,7 @@ onMounted(async () => {
           @click="goToPage(page)"
           :class="[
             'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-            currentPage === page ? 'bg-orange-400 text-white' : 'text-gray-500 hover:text-gray-700',
+            currentPage === page ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-700',
           ]"
         >
           {{ page }}
@@ -333,7 +361,7 @@ onMounted(async () => {
           @click="goToPage(12)"
           :class="[
             'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-            currentPage === 12 ? 'bg-orange-400 text-white' : 'text-gray-500 hover:text-gray-700',
+            currentPage === 12 ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-700',
           ]"
         >
           12
@@ -391,7 +419,7 @@ onMounted(async () => {
                       type="text"
                       placeholder="e.g. Supreme Margherita"
                       maxlength="50"
-                      class="w-full px-3 py-2 pr-12 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                      class="w-full px-3 py-2 pr-12 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                     />
                     <div class="absolute right-3 top-2 text-xs text-gray-500">
                       {{ formData.pizzaName!.length }}/50
@@ -408,7 +436,7 @@ onMounted(async () => {
                     placeholder="Fresh mozzarella, vine-ripened tomatoes, and aromatic basil on our signature thin crust"
                     maxlength="200"
                     rows="4"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 resize-none"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none"
                   ></textarea>
                   <div class="flex justify-between items-center mt-1">
                     <span class="text-xs text-gray-500"
@@ -427,7 +455,7 @@ onMounted(async () => {
                   <div class="relative">
                     <select
                       v-model="formData.pizzaCategory"
-                      class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 appearance-none bg-white"
+                      class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary appearance-none bg-white"
                     >
                       <option value="">Select a category</option>
                       <option v-for="category in categories" :key="category" :value="category">
@@ -510,7 +538,7 @@ onMounted(async () => {
                       v-model.number="formData.pizzaPrice"
                       type="number"
                       placeholder="695"
-                      class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                      class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                     />
                   </div>
                 </div>
@@ -528,7 +556,7 @@ onMounted(async () => {
           </button>
           <button
             @click="handleSubmit"
-            class="px-4 py-2 bg-orange-400 text-white rounded-md hover:bg-orange-500 transition-colors flex items-center gap-2"
+            class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -576,7 +604,7 @@ onMounted(async () => {
                     type="text"
                     placeholder="e.g., Supreme Margherita"
                     maxlength="50"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                   <p class="text-xs text-gray-500 mt-1">{{ formData.pizzaName!.length }}/50</p>
                 </div>
@@ -584,7 +612,7 @@ onMounted(async () => {
                   <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
                   <select
                     v-model="formData.pizzaCategory"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select a category</option>
                     <option v-for="category in categories" :key="category" :value="category">
@@ -602,7 +630,7 @@ onMounted(async () => {
                   placeholder="Fresh mozzarella, vine-ripened tomatoes, and aromatic basil on our signature thin crust"
                   maxlength="200"
                   rows="3"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 ></textarea>
                 <p class="text-xs text-gray-500 mt-1">
                   {{ formData.pizzaDescription!.length }}/200
@@ -641,7 +669,7 @@ onMounted(async () => {
                       v-model.number="formData.pizzaPrice"
                       type="number"
                       placeholder="695"
-                      class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                 </div>
@@ -649,7 +677,7 @@ onMounted(async () => {
                   <Checkbox
                     v-model="formData.isAvailable"
                     id="edit-available"
-                    class="size-8 text-orange-400 focus:ring-orange-400 border-gray-300 rounded"
+                    class="size-8 text-primary focus:ring-primary border-gray-300 rounded"
                   />
                   <label for="edit-available" class="ml-2 text-base text-gray-700"
                     >Available for order</label
@@ -669,7 +697,7 @@ onMounted(async () => {
           </button>
           <button
             @click="handleUpdateSubmit"
-            class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+            class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
           >
             Update Pizza
           </button>
@@ -679,3 +707,12 @@ onMounted(async () => {
     <Footer />
   </div>
 </template>
+
+<style scoped>
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>

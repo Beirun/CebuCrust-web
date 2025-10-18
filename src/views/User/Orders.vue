@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive, onBeforeMount } from 'vue'
+import { ref, computed, onMounted, reactive, onBeforeMount, watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import UserHeader from '@/components/UserHeader.vue'
 import { Button } from '@/components/ui/button'
@@ -34,14 +34,19 @@ import { toBase64, toDate } from '@/plugins/convert'
 import { useLocationStore } from '@/stores/location'
 import { barangays } from '@/data/barangay'
 import { useOrderStore } from '@/stores/orders'
+import { useRatingStore } from '@/stores/rating'
+import { useAuthStore } from '@/stores/auth'
 import type { Order } from '@/models/order'
 import type { Cart } from '@/models/cart'
+import type { RatingRequest } from '@/models/rating'
 import router from '@/router'
 
 const cart = useCartStore()
 const pizza = usePizzaStore()
 const location = useLocationStore()
 const order = useOrderStore()
+const ratingStore = useRatingStore()
+const auth = useAuthStore()
 const cartItems = ref<
   {
     pizzaId: number
@@ -51,11 +56,21 @@ const cartItems = ref<
 
 const selectedStatus = ref('all')
 const searchQuery = ref('')
+const sortBy = ref('')
+const categoryFilter = ref('all')
 
 const selectedAddressId = ref(0)
 const showAddressModal = ref(false)
 const isEdit = ref(false)
 const cancelConfirmationOpen = ref(false)
+
+// Rating modal state
+const ratingModalOpen = ref(false)
+const selectedOrder = ref<Order | null>(null)
+const currentRating = ref(0)
+const ratingMessage = ref('')
+const isSubmittingRating = ref(false)
+const orderRatedStatus = ref<Map<number, boolean>>(new Map()) // Track which orders are fully rated
 const locationForm = reactive({
   locationId: 0,
   locationCity: 'Cebu City',
@@ -138,6 +153,18 @@ const getTabCountClass = (tabKey: string) => {
 const filteredOrders = computed(() => {
   let filtered = order.orders
 
+  // Filter by pizza category
+  if (categoryFilter.value !== 'all') {
+    filtered = filtered.filter((order) => 
+      order.orderLists.some((item) => {
+        const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
+        const cat = (p?.pizzaCategory || '').toString().toLowerCase()
+        return cat === categoryFilter.value.toLowerCase()
+      })
+    )
+  }
+
+  // Filter by status tabs (existing functionality)
   if (selectedStatus.value !== 'all') {
     filtered = filtered.filter((order) => order.orderStatus === selectedStatus.value)
   }
@@ -154,6 +181,28 @@ const filteredOrders = computed(() => {
           return p?.pizzaName.toLowerCase().includes(searchQuery.value.toLowerCase())
         }),
     )
+  }
+
+  // Sort orders
+  if (sortBy.value) {
+    switch (sortBy.value) {
+      case 'order-number':
+        filtered.sort((a, b) => (b.orderId || 0) - (a.orderId || 0)) // Newest first
+        break
+      case 'order-date':
+        filtered.sort((a, b) => {
+          const dateA = a.dateCreated ? new Date(a.dateCreated).getTime() : 0
+          const dateB = b.dateCreated ? new Date(b.dateCreated).getTime() : 0
+          return dateB - dateA // Newest first
+        })
+        break
+      case 'price-low':
+        filtered.sort((a, b) => (a.orderTotal || 0) - (b.orderTotal || 0))
+        break
+      case 'price-high':
+        filtered.sort((a, b) => (b.orderTotal || 0) - (a.orderTotal || 0))
+        break
+    }
   }
 
   return filtered
@@ -226,9 +275,180 @@ const handleModifyOrder = (currentOrder: Order) => {
   router.push('/order/modify/' + currentOrder.orderId)
 }
 
+const handleReorder = (currentOrder: Order) => {
+  // Set the pending order with the same items from the previous order
+  order.setPendingOrder(currentOrder.orderLists as Cart[])
+  // Navigate to complete order page
+  router.push('/order/complete')
+}
+
+// Computed property to check if an order is fully rated
+const isOrderFullyRated = (order: Order) => {
+  return orderRatedStatus.value.get(order.orderId) || false
+}
+
+// Check and cache rating status for an order
+const checkOrderRatingStatus = async (order: Order) => {
+  if (orderRatedStatus.value.has(order.orderId)) {
+    return orderRatedStatus.value.get(order.orderId)
+  }
+  
+  const isRated = await hasUserRatedAllPizzas(order)
+  orderRatedStatus.value.set(order.orderId, isRated)
+  return isRated
+}
+
+// Check if user has already rated all pizzas from an order
+const hasUserRatedAllPizzas = async (order: Order): Promise<boolean> => {
+  if (!auth.user?.userId || !order.orderLists) return false
+  
+  // Get all pizza IDs from the order
+  const orderPizzaIds = order.orderLists.map(item => item.pizzaId)
+  
+  // Check if user has rated all pizzas in this order
+  for (const pizzaId of orderPizzaIds) {
+    const pizzaRating = await ratingStore.fetchRatingsByPizzaId(pizzaId)
+    if (!pizzaRating) return false
+    
+    // Check if current user has rated this pizza
+    const userRated = pizzaRating.ratings.some(rating => rating.userId === auth.user?.userId)
+    if (!userRated) return false
+  }
+  
+  return true
+}
+
+// Check if user has already rated any pizza from an order
+const hasUserRatedAnyPizza = async (order: Order): Promise<boolean> => {
+  if (!auth.user?.userId || !order.orderLists) return false
+  
+  // Get all pizza IDs from the order
+  const orderPizzaIds = order.orderLists.map(item => item.pizzaId)
+  
+  // Check if user has rated any pizza in this order
+  for (const pizzaId of orderPizzaIds) {
+    const pizzaRating = await ratingStore.fetchRatingsByPizzaId(pizzaId)
+    if (!pizzaRating) continue
+    
+    // Check if current user has rated this pizza
+    const userRated = pizzaRating.ratings.some(rating => rating.userId === auth.user?.userId)
+    if (userRated) return true
+  }
+  
+  return false
+}
+
+// Check if user has already rated a specific pizza
+const hasUserRatedPizza = (pizzaId: number): boolean => {
+  if (!auth.user?.userId) return false
+  
+  const pizzaRating = ratingStore.getPizzaRating(pizzaId)
+  if (!pizzaRating) return false
+  
+  // Check if current user has rated this pizza
+  return pizzaRating.ratings.some(rating => rating.userId === auth.user?.userId)
+}
+
+// Get user's rating for a specific pizza
+const getUserRatingForPizza = (pizzaId: number) => {
+  if (!auth.user?.userId) return null
+  
+  const pizzaRating = ratingStore.getPizzaRating(pizzaId)
+  if (!pizzaRating) return null
+  
+  // Find current user's rating for this pizza
+  return pizzaRating.ratings.find(rating => rating.userId === auth.user?.userId)
+}
+
+// Rating functions
+const handleRateReviewClick = async (order: Order) => {
+  // Check rating status first
+  await checkOrderRatingStatus(order)
+  
+  // If not fully rated, open modal
+  if (!isOrderFullyRated(order)) {
+    openRatingModal(order)
+  }
+}
+
+const openRatingModal = (order: Order) => {
+  selectedOrder.value = order
+  currentRating.value = 0
+  ratingMessage.value = ''
+  ratingModalOpen.value = true
+}
+
+const closeRatingModal = () => {
+  ratingModalOpen.value = false
+  selectedOrder.value = null
+  currentRating.value = 0
+  ratingMessage.value = ''
+}
+
+const submitRating = async (pizzaId: number) => {
+  if (currentRating.value === 0) {
+    alert('Please select a rating')
+    return
+  }
+
+  isSubmittingRating.value = true
+  try {
+    const ratingRequest: RatingRequest = {
+      pizzaId,
+      ratingValue: currentRating.value,
+      ratingMessage: ratingMessage.value || undefined
+    }
+
+    await ratingStore.createRating(ratingRequest)
+    // Refresh rating status for this order
+    if (selectedOrder.value) {
+      await checkOrderRatingStatus(selectedOrder.value)
+    }
+    closeRatingModal()
+  } catch (error) {
+    console.error('Error submitting rating:', error)
+  } finally {
+    isSubmittingRating.value = false
+  }
+}
+
+const handleTrackOrder = (orderId: number) => {
+  router.push(`/order/track/${orderId}`)
+}
+
+const handleViewOrder = (orderId: number) => {
+  router.push(`/order/track/${orderId}`)
+}
+
+const clearAllFilters = () => {
+  searchQuery.value = ''
+  selectedStatus.value = 'all' // Reset status tabs
+  categoryFilter.value = 'all' // Reset category filter
+  sortBy.value = ''
+}
+
 onBeforeMount(async () => {
   await order.fetchUserOrders()
+  // Check rating status for all delivered orders
+  await checkAllDeliveredOrdersRatingStatus()
 })
+
+// Check rating status for all delivered orders
+const checkAllDeliveredOrdersRatingStatus = async () => {
+  const deliveredOrders = order.orders.filter(o => o.orderStatus === 'delivered')
+  
+  // Check rating status for each delivered order
+  for (const orderItem of deliveredOrders) {
+    await checkOrderRatingStatus(orderItem)
+  }
+}
+
+// Watch for orders changes and check rating status
+watch(() => order.orders, async (newOrders) => {
+  if (newOrders && newOrders.length > 0) {
+    await checkAllDeliveredOrdersRatingStatus()
+  }
+}, { immediate: false })
 </script>
 
 <template>
@@ -266,37 +486,69 @@ onBeforeMount(async () => {
         </button>
       </div>
 
-      <!-- Search and Controls -->
-      <div class="flex items-center gap-4 mb-6">
-        <div class="relative flex-1">
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search by order number, pizza name..."
-            class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 w-full"
-          />
-          <Search class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-        </div>
+       <!-- Search and Controls -->
+       <div class="flex items-center gap-4 mb-6">
+         <div class="relative flex-1">
+           <input
+             v-model="searchQuery"
+             type="text"
+             placeholder="Search by order number, pizza name..."
+             class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 w-full"
+           />
+           <Search class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+         </div>
 
-        <div class="flex gap-2">
-          <button
-            class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Filter class="h-4 w-4" />
-            Filter
-          </button>
-          <button
-            class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <ChevronDown class="h-4 w-4" />
-            Sort
-          </button>
-        </div>
-      </div>
+         <div class="flex gap-2">
+           <select
+             v-model="categoryFilter"
+             class="px-4 py-2 h-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 bg-transparent"
+           >
+             <option value="all">All Categories</option>
+             <option value="veggie">Veggie</option>
+             <option value="meat-lovers">Meat Lovers</option>
+             <option value="premium-specials">Premium Specials</option>
+             <option value="seasonal-picks">Seasonal Picks</option>
+           </select>
+           <div class="lg:w-48">
+             <select
+               v-model="sortBy"
+               class="w-full px-4 py-2 h-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 bg-transparent"
+             >
+               <option value="" disabled>Sort by</option>
+               <option value="order-number">Order Number</option>
+               <option value="order-date">Order Date</option>
+               <option value="price-low">Price: Low to High</option>
+               <option value="price-high">Price: High to Low</option>
+             </select>
+           </div>
+         </div>
+       </div>
+
+       <!-- Empty State - No Orders Found -->
+       <div v-if="order.orders.length > 0 && filteredOrders.length === 0" class="text-center py-16">
+         <div class="max-w-md mx-auto">
+           <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+             <Search class="w-12 h-12 text-gray-400" />
+           </div>
+           <h3 class="text-xl font-semibold text-gray-900 mb-2">No Orders Found</h3>
+           <p class="text-gray-600 mb-6">
+             We couldn't find any orders matching your search criteria. Try adjusting your filters.
+           </p>
+           <button
+             @click="clearAllFilters"
+             class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium"
+           >
+             Clear Filters
+           </button>
+         </div>
+       </div>
 
       <div class="space-y-6">
         <div v-for="o in filteredOrders" :key="o.orderId" class="bg-white rounded-lg shadow">
-          <Card class="w-full rounded-xl shadow-sm border-0 bg-white">
+          <Card 
+            @click="handleViewOrder(o.orderId)"
+            class="w-full rounded-xl shadow-sm border-0 bg-white cursor-pointer hover:shadow-md transition-shadow duration-200"
+          >
             <CardHeader class="flex justify-between items-start">
               <div>
                 <p class="font-semibold text-sm">ORDER #{{ o.orderId }}</p>
@@ -328,6 +580,7 @@ onBeforeMount(async () => {
               class="flex items-center gap-2 py-2"
             >
               <img
+                v-if="po.pizzaImage"
                 :src="toBase64(po.pizzaImage as string)"
                 alt="Hawaiian Delight"
                 class="size-20 rounded-md object-cover"
@@ -358,16 +611,16 @@ onBeforeMount(async () => {
                   }}
                 </p>
               </div>
-              <div v-if="o.orderStatus === 'pending'" class="space-x-4">
+              <div v-if="o.orderStatus === 'pending'" class="space-x-4" @click.stop>
                 <!-- Confirm Cancel Dialog -->
                 <Dialog v-model:open="cancelConfirmationOpen">
                   <DialogTrigger>
                     <Button variant="outline" class="h-12 rounded-md px-4 py-2"> Cancel </Button>
                   </DialogTrigger>
                   <DialogContent class="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Confirm Checkout</DialogTitle>
-                    </DialogHeader>
+                      <DialogHeader>
+                        <DialogTitle>Cancel Order</DialogTitle>
+                      </DialogHeader>
                     <div>Are you sure you want to cancel this order?</div>
                     <div
                       v-for="po in o.orderLists?.map((item) => {
@@ -384,6 +637,7 @@ onBeforeMount(async () => {
                       class="flex items-center gap-4 py-2"
                     >
                       <img
+                        v-if="po.pizzaImage"
                         :src="toBase64(po.pizzaImage as string)"
                         alt="Hawaiian Delight"
                         class="size-16 rounded-md object-cover"
@@ -409,18 +663,31 @@ onBeforeMount(async () => {
               <div
                 v-else-if="o.orderStatus === 'delivered' || o.orderStatus === 'cancelled'"
                 class="space-x-4"
+                @click.stop
               >
-                <Button
-                  v-if="o.orderStatus === 'delivered'"
-                  variant="outline"
-                  class="h-12 rounded-md px-4 py-2"
-                >
-                  Rate & Review
-                </Button>
-                <Button class="h-12 rounded-md px-4 py-2"> Reorder </Button>
+                 <Button 
+                   v-if="o.orderStatus === 'delivered'"
+                   variant="outline"
+                   class="h-12 rounded-md px-4 py-2"
+                   :disabled="isOrderFullyRated(o)"
+                   @click="handleRateReviewClick(o)"
+                 >
+                   {{ isOrderFullyRated(o) ? 'Already Rated' : 'Rate & Review' }}
+                 </Button>
+                 <Button 
+                   @click="handleReorder(o)" 
+                   class="h-12 rounded-md px-4 py-2"
+                 > 
+                   Reorder 
+                 </Button>
               </div>
-              <div v-else class="space-x-4">
-                <Button class="h-12 rounded-md px-4 py-2"> Track Order </Button>
+              <div v-else class="space-x-4" @click.stop>
+                <Button 
+                  @click="handleTrackOrder(o.orderId)"
+                  class="h-12 rounded-md px-4 py-2"
+                > 
+                  Track Order 
+                </Button>
               </div>
             </CardFooter>
           </Card>
@@ -536,6 +803,124 @@ onBeforeMount(async () => {
         </DialogContent>
       </Dialog>
     </div>
+
+    <!-- Rating Modal -->
+    <Dialog v-model:open="ratingModalOpen">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Rate & Review Your Order</DialogTitle>
+          <DialogDescription>
+            Share your experience with the pizzas from this order
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div v-if="selectedOrder" class="space-y-6">
+          <!-- Order Items -->
+          <div class="space-y-4">
+            <h3 class="font-semibold text-gray-900">Rate each pizza:</h3>
+            
+            <div 
+              v-for="orderItem in selectedOrder.orderLists?.map((item) => {
+                const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
+                const userRating = getUserRatingForPizza(item.pizzaId)
+                return {
+                  pizzaId: item.pizzaId,
+                  pizzaName: p?.pizzaName || 'Unknown Pizza',
+                  quantity: item.quantity,
+                  pizzaPrice: p?.pizzaPrice || 0,
+                  pizzaImage: p?.pizzaImage,
+                  alreadyRated: hasUserRatedPizza(item.pizzaId),
+                  userRating: userRating
+                }
+              })"
+              :key="orderItem.pizzaId"
+              class="border border-gray-200 rounded-lg p-4"
+            >
+              <div class="flex items-center gap-4 mb-4">
+                <img
+                  v-if="orderItem.pizzaImage"
+                  :src="toBase64(orderItem.pizzaImage as string)"
+                  :alt="orderItem.pizzaName"
+                  class="w-16 h-16 rounded-lg object-cover"
+                />
+                <div class="flex-1">
+                  <h4 class="font-semibold text-gray-900">{{ orderItem.pizzaName }}</h4>
+                  <p class="text-sm text-gray-600">Qty: {{ orderItem.quantity }}</p>
+                  <p v-if="orderItem.alreadyRated" class="text-sm text-green-600 font-medium">
+                    ✓ Already rated ({{ orderItem.userRating?.ratingValue }} stars)
+                  </p>
+                </div>
+              </div>
+              
+              <!-- Star Rating -->
+              <div class="space-y-2" v-if="!orderItem.alreadyRated">
+                <label class="text-sm font-medium text-gray-700">Rating:</label>
+                <div class="flex gap-1">
+                  <button
+                    v-for="star in 5"
+                    :key="star"
+                    @click="currentRating = star"
+                    :class="[
+                      'text-2xl transition-colors',
+                      star <= currentRating ? 'text-yellow-400' : 'text-gray-300'
+                    ]"
+                  >
+                    ★
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Show existing rating if already rated -->
+              <div v-else class="space-y-2">
+                <label class="text-sm font-medium text-gray-700">Your Rating:</label>
+                <div class="flex gap-1">
+                  <span
+                    v-for="star in 5"
+                    :key="star"
+                    :class="[
+                      'text-2xl',
+                      star <= (orderItem.userRating?.ratingValue || 0) ? 'text-yellow-400' : 'text-gray-300'
+                    ]"
+                  >
+                    ★
+                  </span>
+                </div>
+                <p v-if="orderItem.userRating?.ratingMessage" class="text-sm text-gray-600 mt-2">
+                  "{{ orderItem.userRating.ratingMessage }}"
+                </p>
+              </div>
+              
+              <!-- Review Message -->
+              <div class="space-y-2" v-if="!orderItem.alreadyRated">
+                <label class="text-sm font-medium text-gray-700">Review (optional):</label>
+                <textarea
+                  v-model="ratingMessage"
+                  placeholder="Share your thoughts about this pizza..."
+                  class="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  rows="3"
+                ></textarea>
+              </div>
+              
+              <!-- Submit Button -->
+              <div class="flex justify-end" v-if="!orderItem.alreadyRated">
+                <Button
+                  @click="submitRating(orderItem.pizzaId)"
+                  :disabled="isSubmittingRating || currentRating === 0"
+                  class="bg-primary hover:bg-primary/90"
+                >
+                  {{ isSubmittingRating ? 'Submitting...' : 'Submit Rating' }}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" @click="closeRatingModal">Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <Footer />
   </div>
 </template>

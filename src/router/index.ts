@@ -20,6 +20,8 @@ import { usePizzaStore } from '@/stores/pizza'
 import { useFavoriteStore } from '@/stores/favorite'
 import { useLocationStore } from '@/stores/location'
 import ModifyOrder from '@/views/User/ModifyOrder.vue'
+import ProductDetail from '@/views/User/ProductDetail.vue'
+import TrackOrder from '@/views/User/TrackOrder.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -104,6 +106,16 @@ const router = createRouter({
       path: '/order/modify/:id',
       name: 'ModifyOrder',
       component: ModifyOrder,
+    },
+    {
+      path: '/product/:id',
+      name: 'ProductDetail',
+      component: ProductDetail,
+    },
+    {
+      path: '/order/track/:id',
+      name: 'TrackOrder',
+      component: TrackOrder,
     },
   ],
 })

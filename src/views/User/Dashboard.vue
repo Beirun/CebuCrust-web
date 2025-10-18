@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { ShoppingCart, Heart, Star, MapPin, Clock } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
@@ -45,6 +46,7 @@ const order = useOrderStore()
 const favorite = useFavoriteStore()
 const pizza = usePizzaStore()
 const location = useLocationStore()
+const router = useRouter()
 const isFavorite = ref<number[]>([])
 const auth = useAuthStore()
 
@@ -52,8 +54,11 @@ const favoritePizzas = computed(() =>
   pizza.pizzas.filter((p) => isFavorite.value.includes(p.pizzaId!)),
 )
 
-// Current selected order (first recent order)
-const currentOrder = ref<Order | null>(null)
+// Current active order (most recent non-delivered order)
+const currentOrder = computed(() => {
+  const activeOrders = order.orders.filter(o => o.orderStatus !== 'delivered' && o.orderStatus !== 'cancelled')
+  return activeOrders.length > 0 ? activeOrders[0] : null
+})
 
 // Order status steps template
 const orderSteps = ref([
@@ -79,7 +84,7 @@ const addToCart = (item: Pizza) => {
 
 const trackOrder = () => {
   if (!currentOrder.value) return
-  console.log('Tracking order:', currentOrder.value)
+  router.push(`/order/track/${currentOrder.value.orderId}`)
 }
 
 const showAddressModal = ref(false)
@@ -187,10 +192,11 @@ onMounted(async () => {
   isFavorite.value = favorite.favorites
   // fetch user orders and set current order if any
   if (order.orders.length > 0) {
-    // pick the latest order
-    currentOrder.value = order.orders[0]
-    // map order status to steps
-    updateStepsFromStatus(currentOrder.value.orderStatus!)
+    // map order status to steps for the current active order
+    const activeOrder = order.orders.find(o => o.orderStatus !== 'delivered' && o.orderStatus !== 'cancelled')
+    if (activeOrder) {
+      updateStepsFromStatus(activeOrder.orderStatus!)
+    }
   }
 })
 
@@ -550,28 +556,33 @@ const inCart = (id: number) => {
             View All Favorites
           </router-link>
         </div>
-        <!-- Empty state for favorites -->
-        <div v-if="isFavorite.length === 0" class="text-center p-12">
-          <Heart class="w-16 h-16 text-[#797B78] mx-auto mb-4" />
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">You have no favorites yet</h3>
-          <p class="text-gray-600 mb-6">
-            Start exploring our menu and add your favorite pizzas to see them here!
-          </p>
-          <router-link
-            to="/menu"
-            class="inline-flex items-center bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-          >
-            Browse Menu
-          </router-link>
-        </div>
+         <!-- Empty state for favorites -->
+         <div v-if="favoritePizzas.length === 0" class="text-center py-16">
+           <div class="max-w-md mx-auto">
+             <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+               <Heart class="w-12 h-12 text-gray-400" />
+             </div>
+             <h3 class="text-xl font-semibold text-gray-900 mb-2">You have no favorites yet</h3>
+             <p class="text-gray-600 mb-6">
+               Start exploring our menu and add your favorite pizzas to see them here!
+             </p>
+             <router-link
+               to="/menu"
+               class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium"
+             >
+               Browse Menu
+             </router-link>
+           </div>
+         </div>
 
         <!-- Favorites grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div
-            v-for="item in favoritePizzas"
-            :key="item.pizzaId!"
-            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
-          >
+           <div
+             v-for="item in favoritePizzas"
+             :key="item.pizzaId!"
+             class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+             @click="router.push(`/product/${item.pizzaId}`)"
+           >
             <div class="h-48 bg-gray-700 flex items-center justify-center relative">
               <img
                 v-if="item.pizzaImage"
@@ -589,7 +600,7 @@ const inCart = (id: number) => {
               <div v-else class="text-6xl">🍕</div>
               <button
                 class="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg"
-                @click="toggleFavorite(item.pizzaId!)"
+                @click.stop="toggleFavorite(item.pizzaId!)"
               >
                 <Heart
                   class="w-5 h-5"
@@ -620,7 +631,7 @@ const inCart = (id: number) => {
               </div>
               <button
                 :disabled="!item.isAvailable || inCart(item.pizzaId!)"
-                @click="addToCart(item)"
+                @click.stop="addToCart(item)"
                 class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
                 :class="
                   item.isAvailable && !inCart(item.pizzaId!)
@@ -649,29 +660,33 @@ const inCart = (id: number) => {
             View All Menu
           </router-link>
         </div>
-        <!-- Empty state for today's specials -->
-        <div v-if="pizza.pizzas.length === 0" class="text-center p-12">
-          <Star class="w-16 h-16 text-[#797B78] mx-auto mb-4" />
-          <h3 class="text-lg font-semibold text-white mb-2">No specials today</h3>
-          <p class="text-[#D1D5DB] mb-6">
-            Our admin hasn't added any special offers for today. Check back later or explore our
-            regular menu!
-          </p>
-          <router-link
-            to="/menu"
-            class="inline-flex items-center bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-          >
-            View Full Menu
-          </router-link>
-        </div>
+         <!-- Empty state for today's specials -->
+         <div v-if="pizza.pizzas.length === 0" class="text-center py-16">
+           <div class="max-w-md mx-auto">
+             <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+               <Star class="w-12 h-12 text-gray-400" />
+             </div>
+             <h3 class="text-xl font-semibold text-gray-900 mb-2">No specials today</h3>
+             <p class="text-gray-600 mb-6">
+               Our admin hasn't added any special offers for today. Check back later or explore our regular menu!
+             </p>
+             <router-link
+               to="/menu"
+               class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium"
+             >
+               Browse Menu
+             </router-link>
+           </div>
+         </div>
 
         <!-- Today's specials grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div
-            v-for="item in pizza.pizzas.slice(0, 4)"
-            :key="item.pizzaId!"
-            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
-          >
+           <div
+             v-for="item in pizza.pizzas.slice(0, 4)"
+             :key="item.pizzaId!"
+             class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+             @click="router.push(`/product/${item.pizzaId}`)"
+           >
             <div class="h-48 bg-gray-700 flex items-center justify-center relative">
               <img
                 v-if="item.pizzaImage"
@@ -689,7 +704,7 @@ const inCart = (id: number) => {
               <div v-else class="text-6xl">🍕</div>
               <button
                 class="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg"
-                @click="toggleFavorite(item.pizzaId!)"
+                @click.stop="toggleFavorite(item.pizzaId!)"
               >
                 <Heart
                   class="w-5 h-5"
@@ -720,7 +735,7 @@ const inCart = (id: number) => {
               </div>
               <button
                 :disabled="!item.isAvailable || inCart(item.pizzaId!)"
-                @click="addToCart(item)"
+                @click.stop="addToCart(item)"
                 class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
                 :class="
                   item.isAvailable && !inCart(item.pizzaId!)
