@@ -29,8 +29,15 @@ const submitClick = () => {
 }
 
 async function google() {
-  const object = await googleTokenLogin()
-  auth.continueWithGoogle(object)
+  try {
+    const object = await googleTokenLogin()
+    await auth.continueWithGoogle(object)
+    // Refresh the page to show filled fields
+    window.location.reload()
+  } catch (error) {
+    console.error('Google Login Error:', error)
+    sonner.error('Google Login is not available. Please use email and password.')
+  }
 }
 
 const togglePassword = () => (showPassword.value = !showPassword.value)
