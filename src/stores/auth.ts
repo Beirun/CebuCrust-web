@@ -187,13 +187,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const update = async (updates: {
-    firstName?: string
-    lastName?: string
-    email?: string
-    phoneNumber?: string
-    phoneNo?: string
-    profileImage?: string
-    oldPassword?: string
+    userFName?: string
+    userLName?: string
+    userEmail?: string
+    userPhoneNo?: string
+    image?: File | string
+    currentPassword?: string
     newPassword?: string
     confirmPassword?: string
   }) => {
@@ -201,72 +200,35 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       console.log('Updating user with ID:', userInfo.value.userId)
       console.log('Updates being sent:', updates)
+      const fd = new FormData()
+      if (updates.userFName) fd.append('UserFName', updates.userFName)
+      if (updates.userLName) fd.append('UserLName', updates.userLName)
+      if (updates.userEmail) fd.append('UserEmail', updates.userEmail)
+      if (updates.userPhoneNo) fd.append('UserPhoneNo', updates.userPhoneNo)
+      if (updates.image instanceof File) fd.append('Image', updates.image)
+      else if (typeof updates.image === 'string') fd.append('Image', updates.image)
+      if (updates.currentPassword) fd.append('CurrentPassword', updates.currentPassword)
+      if (updates.newPassword) fd.append('NewPassword', updates.newPassword)
+      if (updates.confirmPassword) fd.append('ConfirmPassword', updates.confirmPassword)
 
-      // Try different possible API endpoints
-      const possibleEndpoints = [
-        `${URL}/account/${userInfo.value.userId}`,
-        `${URL}/account/update`,
-        `${URL}/account/profile`,
-        `${URL}/user/${userInfo.value.userId}`,
-        `${URL}/user/update`,
-      ]
-
-      let res: Response | null = null
-      let lastError: string = ''
-
-      for (const endpoint of possibleEndpoints) {
-        try {
-          console.log('Trying endpoint:', endpoint)
-          res = await useFetch(endpoint, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updates),
-            credentials: 'include',
-          })
-
-          if (res.ok) {
-            console.log('Success with endpoint:', endpoint)
-            break
-          } else {
-            lastError = `Endpoint ${endpoint} returned ${res.status}: ${res.statusText}`
-            console.log(lastError)
-          }
-        } catch (err) {
-          lastError = `Endpoint ${endpoint} failed: ${err instanceof Error ? err.message : 'Unknown error'}`
-          console.log(lastError)
-        }
-      }
-
-      if (!res || !res.ok) {
-        sonner.error(`Failed to update profile. ${lastError}`)
+      const res = await useFetch(`${URL}/user/${userInfo.value.userId}`, {
+        method: 'PUT',
+        body: fd,
+        credentials: 'include',
+      })
+      const data = await res.json()
+      console.log('data', data)
+      if (!res.ok) {
+        sonner.error(`Failed to update profile. ${data.message}`)
         return false
       }
-
-      // Try to parse JSON response
-      let data
-      try {
-        data = await res.json()
-        console.log('Response data:', data)
-      } catch (parseError) {
-        console.error('Failed to parse JSON response:', parseError)
-        // If we can't parse JSON but the request was successful, assume it worked
-        data = { message: 'Profile updated successfully' }
-      }
-
-      // Show success message
-      if (data.message) {
-        sonner.success(data.message)
-      } else {
-        sonner.success('Profile updated successfully')
-      }
-
       // Update user data in store
       if (data.user) {
         user.value = { ...user.value, ...data.user }
         localStorage.setItem('user', JSON.stringify(user.value))
       } else {
         // Update local user data with the updates we sent
-        user.value = { ...user.value, ...updates }
+        user.value = { ...user.value, ...data }
         localStorage.setItem('user', JSON.stringify(user.value))
       }
 
