@@ -55,6 +55,9 @@ const cartItems = ref<
 const selectedItems = ref<number[]>([])
 const selectAll = ref(false)
 const confirmationOpen = ref(false)
+const deleteConfirmationOpen = ref(false)
+const individualDeleteConfirmationOpen = ref(false)
+const itemToDelete = ref<number | null>(null)
 const showAddressModal = ref(false)
 const selectedAddressId = ref(0)
 const showChangeAddressModal = ref(false)
@@ -148,6 +151,24 @@ const deleteSelected = () => {
   })
   selectedItems.value = []
   selectAll.value = false
+  deleteConfirmationOpen.value = false
+}
+
+const confirmDeleteSelected = () => {
+  deleteConfirmationOpen.value = true
+}
+
+const confirmDeleteIndividual = (pizzaId: number) => {
+  itemToDelete.value = pizzaId
+  individualDeleteConfirmationOpen.value = true
+}
+
+const deleteIndividualItem = async () => {
+  if (itemToDelete.value) {
+    await cart.removeFromCart(itemToDelete.value)
+    individualDeleteConfirmationOpen.value = false
+    itemToDelete.value = null
+  }
 }
 
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null
@@ -294,7 +315,7 @@ onBeforeMount(async () => {
                 <span class="text-gray-500">{{ cartItems.length }} items in your cart</span>
               </div>
               <button
-                @click="deleteSelected"
+                @click="confirmDeleteSelected"
                 :disabled="selectedItems.length === 0"
                 class="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg font-medium transition-colors"
               >
@@ -362,7 +383,7 @@ onBeforeMount(async () => {
                         />
                       </button>
                       <button
-                        @click="cart.removeFromCart(item.pizzaId!)"
+                        @click="confirmDeleteIndividual(item.pizzaId!)"
                         class="p-2 hover:bg-gray-100 rounded-full transition-colors"
                       >
                         <Trash2 class="w-5 h-5 text-gray-400 hover:text-red-500" />
@@ -703,6 +724,38 @@ onBeforeMount(async () => {
         <DialogFooter class="flex justify-end space-x-2">
           <Button variant="outline" @click="confirmationOpen = false">Cancel</Button>
           <Button @click="checkout">Proceed</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Delete Confirmation Modal -->
+    <Dialog v-model:open="deleteConfirmationOpen">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Delete Items</DialogTitle>
+        </DialogHeader>
+        <div>
+          Are you sure you want to delete {{ selectedItems.length }} selected item(s) from your cart? This action cannot be undone.
+        </div>
+        <DialogFooter class="flex justify-end space-x-2">
+          <Button variant="outline" @click="deleteConfirmationOpen = false">Cancel</Button>
+          <Button @click="deleteSelected" class="bg-red-500 hover:bg-red-600">Delete</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Individual Item Delete Confirmation Modal -->
+    <Dialog v-model:open="individualDeleteConfirmationOpen">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Delete Item</DialogTitle>
+        </DialogHeader>
+        <div>
+          Are you sure you want to remove this item from your cart? This action cannot be undone.
+        </div>
+        <DialogFooter class="flex justify-end space-x-2">
+          <Button variant="outline" @click="individualDeleteConfirmationOpen = false">Cancel</Button>
+          <Button @click="deleteIndividualItem" class="bg-red-500 hover:bg-red-600">Delete</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
