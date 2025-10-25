@@ -81,6 +81,7 @@ export const useResetStore = defineStore('reset', () => {
       if (!res.ok) return sonner.error(data.message)
 
       sonner.success(data.message)
+      router.push('/signin')
       return true
     } catch (err: unknown) {
       if (err instanceof Error) sonner.error(err.message)
