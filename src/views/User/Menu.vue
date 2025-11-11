@@ -28,7 +28,7 @@ const categories = ref([
 ])
 
 // Admin-controlled menu data comes from the store
-const adminMenuItems = computed(() => pizza.pizzas)
+const adminMenuItems = computed(() => pizza.pizzas.filter((p) => !p.isDeleted))
 
 // Search and filter states
 const searchQuery = ref('')
@@ -157,11 +157,6 @@ const inCart = (id: number) => {
       >
         <h1 class="text-5xl font-bold mb-4">Explore Our Menu</h1>
         <p class="text-xl mb-8 max-w-2xl">Freshly baked, always delicious — from crust to crave.</p>
-        <button
-          class="bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-        >
-          Start Your Order
-        </button>
       </div>
     </section>
 
