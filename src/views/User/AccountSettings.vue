@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router'
 import { toBase64 } from '@/plugins/convert'
-import { Eye, EyeOff, Upload, X } from 'lucide-vue-next'
+import { Eye, EyeOff, Upload } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
 import AdminHeader from '@/components/AdminHeader.vue'
 import Footer from '@/components/Footer.vue'
 
 const auth = useAuthStore()
-const router = useRouter()
 
 // Form state
 const user = ref(auth.user ? { ...auth.user } : {})
 const preview = ref<string | null>(user.value?.profileImage || user.value?.profileImageUrl || null)
-const isUploading = ref(false)
 const isSaving = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null) // added ref
 const newProfileImage = ref<File | null>()
@@ -51,13 +48,6 @@ watch(
   },
   { immediate: true },
 )
-
-// Computed
-const displayName = computed(() => {
-  return user.value?.name || (user.value?.firstName && user.value?.lastName)
-    ? `${user.value.firstName} ${user.value.lastName}`
-    : user.value?.userName || user.value?.username || user.value?.userEmail || ''
-})
 
 const hasProfileImage = computed(() => !!preview.value)
 
