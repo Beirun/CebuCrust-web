@@ -5,6 +5,7 @@ export type Location = {
   locationStreet: string
   locationHouseNo: string
   isDefault: boolean
+  isDeleted: boolean
   locationPostal?: string | null
   locationLandmark?: string | null
 }
