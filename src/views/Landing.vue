@@ -159,7 +159,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-full max-w-7xl px-4 sm:px-8 lg:px-0"
       >
         <div
-          v-for="pizza in pizzaStore.pizzas.slice(0, 8)"
+          v-for="pizza in pizzaStore.pizzas.filter((p) => !p.isDeleted).slice(0, 8)"
           :key="pizza.pizzaId!"
           class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
         >
