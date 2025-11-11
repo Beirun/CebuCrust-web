@@ -1,24 +1,25 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import {
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  Star,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-vue-next'
+import { Plus, Search, Edit, Trash2, Star, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import AdminHeader from '@/components/AdminHeader.vue'
 import Footer from '@/components/Footer.vue'
 import { usePizzaStore } from '@/stores/pizza'
 import type { Pizza } from '@/models/pizza'
 import { toBase64 } from '@/plugins/convert'
 import { Checkbox } from '@/components/ui/checkbox'
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 const pizza = usePizzaStore()
 const isAddModalOpen = ref(false)
 const isEditModalOpen = ref(false)
+const deleteConfirmationOpen = ref(false)
 
 // Form data for adding/editing items
 const formData = ref<Partial<Pizza>>({
@@ -124,7 +125,7 @@ const sortBy = ref('')
 const availabilityFilter = ref('all')
 
 const filteredMenuItems = computed(() => {
-  let filtered = pizza.pizzas
+  let filtered = pizza.pizzas.filter((p) => !p.isDeleted)
 
   // Filter by search query
   if (searchQuery.value) {
@@ -294,27 +295,25 @@ onMounted(async () => {
                 >
                   <Edit class="h-4 w-4" />
                 </button>
-                <button
-                  @click="handleDelete(item.pizzaId!)"
-                  class="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                >
-                  <Trash2 class="h-4 w-4" />
-                </button>
-              </div>
+                <Dialog v-model:open="deleteConfirmationOpen">
+                  <DialogTrigger>
+                    <button class="p-2 text-gray-400 hover:text-red-400 transition-colors">
+                      <Trash2 class="h-4 w-4" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent class="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Cancel Order</DialogTitle>
+                    </DialogHeader>
+                    <div>Are you sure you want to cancel this order?</div>
 
-              <button
-                :class="[
-                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-gray-800',
-                  'bg-primary',
-                ]"
-              >
-                <span
-                  :class="[
-                    'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                    'translate-x-6',
-                  ]"
-                />
-              </button>
+                    <DialogFooter class="flex justify-end space-x-2">
+                      <Button variant="outline" @click="deleteConfirmationOpen = false">No</Button>
+                      <Button @click="handleDelete(item.pizzaId!)">Yes</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </div>
         </div>

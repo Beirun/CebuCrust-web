@@ -8,6 +8,9 @@ import { usePizzaStore } from './pizza'
 import { type Cart } from '@/models/cart'
 import router from '@/router'
 import { useCartStore } from './cart'
+import { useNotificationStore } from './notification'
+import type { Notification } from '@/models/notification'
+type Status = 'preparing' | 'ready' | 'out for delivery' | 'delivered' | 'cancelled'
 
 export const useOrderStore = defineStore('order', () => {
   const cart = useCartStore()
@@ -18,6 +21,7 @@ export const useOrderStore = defineStore('order', () => {
   const isLoading = ref(false)
   const pendingOrder = ref<Cart[]>(JSON.parse(localStorage.getItem('pendingOrders') || '[]'))
 
+  const notification = useNotificationStore()
   const fetchUserOrders = async () => {
     isLoading.value = true
     try {
@@ -88,6 +92,12 @@ export const useOrderStore = defineStore('order', () => {
       const data = await res.json()
       if (!res.ok) return sonner.error(data.message ?? 'Failed to create order')
       sonner.success('Order created')
+      const notificationPayload = {
+        userId: 1,
+        notificationTitle: 'New Order',
+        notificationMessage: 'A new order has just been placed by a customer.',
+      }
+      await notification.createNotification(notificationPayload)
       orders.value.push(data)
       await router.push('/orders')
       setPendingOrder([])
@@ -120,14 +130,14 @@ export const useOrderStore = defineStore('order', () => {
         credentials: 'include',
       })
       const data = await res.json()
-      if (!res.ok) return sonner.error(data.message ?? 'Failed to create order')
+      if (!res.ok) return sonner.error(data.message ?? 'Failed to update order')
       await router.push('/orders')
       sonner.success('Order modified')
       setPendingOrder([])
       const i = orders.value.findIndex((o) => o.orderId === orderId)
       if (i !== -1) orders.value[i] = data
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error creating order'
+      const msg = err instanceof Error ? err.message : 'Error update order'
       sonner.error(msg)
     } finally {
       isLoading.value = false
@@ -146,6 +156,39 @@ export const useOrderStore = defineStore('order', () => {
       const data = await res.json()
       if (!res.ok) return sonner.error(data.message ?? 'Failed to update status')
       sonner.success('Order status updated')
+      const userId = orders.value.find((o) => o.orderId === orderId)?.userId
+      const payloads: Record<Status, Notification> = {
+        preparing: {
+          userId: userId ?? 1,
+          notificationTitle: 'Order Preparing',
+          notificationMessage: 'The kitchen has started preparing the order.',
+        },
+        ready: {
+          userId: userId ?? 1,
+          notificationTitle: 'Order Ready',
+          notificationMessage: 'The order is ready for pickup or dispatch.',
+        },
+        'out for delivery': {
+          userId: userId ?? 1,
+          notificationTitle: 'Out for Delivery',
+          notificationMessage: 'The rider has picked up the order and is on the way.',
+        },
+        delivered: {
+          userId: userId ?? 1,
+          notificationTitle: 'Order Delivered',
+          notificationMessage: 'The order has been delivered successfully.',
+        },
+        cancelled: {
+          userId: 1,
+          notificationTitle: 'Order Cancelled',
+          notificationMessage: 'The order has been cancelled.',
+        },
+      }
+
+      const p = payloads[status as Status]
+
+      await notification.createNotification(p)
+
       const i = orders.value.findIndex((o) => o.orderId === orderId)
       if (i !== -1) orders.value[i].orderStatus = status
     } catch (err: unknown) {

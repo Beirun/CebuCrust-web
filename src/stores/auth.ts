@@ -88,9 +88,9 @@ export const useAuthStore = defineStore('auth', () => {
       })
       const data = await res.json()
       if (data.isSignedUp === false) {
-        localStorage.setItem('email', fetchedUser.email)
-        localStorage.setItem('firstname', fetchedUser.given_name)
-        localStorage.setItem('lastname', fetchedUser.family_name)
+        localStorage.setItem('email', fetchedUser.email || '')
+        localStorage.setItem('firstname', fetchedUser.given_name || '')
+        localStorage.setItem('lastname', fetchedUser.family_name || '')
         sonner.message(`You're Almost There`, data.message)
         router.push('/signup')
         return

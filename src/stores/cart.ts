@@ -34,6 +34,12 @@ export const useCartStore = defineStore('cart', () => {
   const addToCart = async (item: { pizzaId: number; quantity: number }) => {
     isLoading.value = true
     try {
+      const itemCart = cart.value.find((c) => c.pizzaId === item.pizzaId)
+      if (itemCart) {
+        await updateCart(item.pizzaId, item.quantity + itemCart.quantity)
+        sonner.success('Added to cart')
+        return
+      }
       const res = await useFetch(`${URL}/cart`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

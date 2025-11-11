@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { onBeforeMount, onBeforeUnmount, reactive, ref } from 'vue'
 import LandingNavbar from '@/components/LandingNavbar.vue'
 import Footer from '@/components/Footer.vue'
 import router from '@/router'
@@ -32,8 +32,6 @@ async function google() {
   try {
     const object = await googleTokenLogin()
     await auth.continueWithGoogle(object)
-    // Refresh the page to show filled fields
-    window.location.reload()
   } catch (error) {
     console.error('Google Login Error:', error)
     sonner.error('Google Login is not available. Please use email and password.')
@@ -43,12 +41,12 @@ async function google() {
 const togglePassword = () => (showPassword.value = !showPassword.value)
 const toggleConfirmPassword = () => (showConfirmPassword.value = !showConfirmPassword.value)
 
-onMounted(() => {
+onBeforeMount(() => {
   sonner.setTheme('dark')
 
-  form.email = localStorage.getItem('email') ?? ''
-  form.firstName = localStorage.getItem('firstname') ?? ''
-  form.lastName = localStorage.getItem('lastname') ?? ''
+  form.email = localStorage.getItem('email') || ''
+  form.firstName = localStorage.getItem('firstname') || ''
+  form.lastName = localStorage.getItem('lastname') || ''
 
   localStorage.removeItem('email')
   localStorage.removeItem('firstname')

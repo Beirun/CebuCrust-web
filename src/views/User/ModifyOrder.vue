@@ -327,7 +327,7 @@ const removeCount = (pizzaId: number) => {
 
             <div v-if="location.locations.length" class="space-y-3">
               <div
-                v-for="a in location.locations"
+                v-for="a in location.locations.filter((l) => !l.isDeleted)"
                 :key="a.locationId"
                 class="flex items-center justify-between p-4 border rounded-lg shadow-sm relative"
                 :class="

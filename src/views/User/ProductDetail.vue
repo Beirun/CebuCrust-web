@@ -20,10 +20,11 @@ import { useCartStore } from '@/stores/cart'
 import { useFavoriteStore } from '@/stores/favorite'
 import { useRatingStore } from '@/stores/rating'
 import { useOrderStore } from '@/stores/orders'
-import { toBase64 } from '@/plugins/convert'
+import { toBase64, toDate } from '@/plugins/convert'
 import { useFetch } from '@/plugins/api'
 import type { Pizza } from '@/models/pizza'
 import type { User } from '@/models/user'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,6 +32,7 @@ const pizza = usePizzaStore()
 const cart = useCartStore()
 const favorite = useFavoriteStore()
 const rating = useRatingStore()
+const user = useUserStore()
 const order = useOrderStore()
 
 const pizzaId = computed(() => parseInt(route.params.id as string))
@@ -52,14 +54,18 @@ const ratingStats = ref({
     4: 0,
     3: 0,
     2: 0,
-    1: 0
-  }
+    1: 0,
+  },
 })
 
 const relatedPizzas = computed(() => {
   if (!currentPizza.value) return []
   return pizza.pizzas
-    .filter(p => p.pizzaId !== currentPizza.value?.pizzaId && p.pizzaCategory === currentPizza.value?.pizzaCategory)
+    .filter(
+      (p) =>
+        p.pizzaId !== currentPizza.value?.pizzaId &&
+        p.pizzaCategory === currentPizza.value?.pizzaCategory,
+    )
     .slice(0, 4)
 })
 
@@ -84,13 +90,13 @@ const soldCount = computed(() => {
 // Get the actual height of the product information section
 const productInfoHeight = computed(() => {
   if (!productInfoRef.value) return '400px'
-  
+
   const actualHeight = productInfoRef.value.offsetHeight
-  
+
   // Debug logging
   console.log('=== ACTUAL PRODUCT INFO HEIGHT ===')
   console.log('Actual product info height:', actualHeight)
-  
+
   return `${actualHeight}px`
 })
 
@@ -98,14 +104,14 @@ const filteredReviews = computed(() => {
   let filtered = reviews.value
   if (selectedReviewFilter.value !== 'all') {
     const rating = parseInt(selectedReviewFilter.value)
-    filtered = reviews.value.filter(review => review.rating === rating)
+    filtered = reviews.value.filter((review) => review.rating === rating)
   }
-  
+
   // Show only first 5 reviews unless showAllReviews is true
   if (!showAllReviews.value && filtered.length > 5) {
     return filtered.slice(0, 5)
   }
-  
+
   return filtered
 })
 
@@ -113,7 +119,7 @@ const hasMoreReviews = computed(() => {
   let filtered = reviews.value
   if (selectedReviewFilter.value !== 'all') {
     const rating = parseInt(selectedReviewFilter.value)
-    filtered = reviews.value.filter(review => review.rating === rating)
+    filtered = reviews.value.filter((review) => review.rating === rating)
   }
   return filtered.length > 5
 })
@@ -128,76 +134,44 @@ watch(selectedReviewFilter, () => {
 })
 
 const addToCart = async () => {
+  console.log('val', currentPizza.value)
   if (!currentPizza.value) return
-  
+
   await cart.addToCart({ pizzaId: currentPizza.value.pizzaId!, quantity: quantity.value })
-}
-
-// Get user name from orders data
-const getUserNameFromOrders = (userId: number): string => {
-  console.log('Looking for user ID:', userId)
-  console.log('Available orders:', order.orders.length)
-  
-  // Find an order from this user to get their name
-  const userOrder = order.orders.find(o => o.userId === userId)
-  console.log('Found user order:', userOrder)
-  
-  if (userOrder && userOrder.firstName && userOrder.lastName) {
-    const fullName = `${userOrder.firstName} ${userOrder.lastName}`
-    console.log('Returning full name:', fullName)
-    return fullName
-  }
-  
-  console.log('Returning fallback name for user:', userId)
-  return `User ${userId}`
-}
-
-// Fetch user data by userId
-const fetchUserById = async (userId: number): Promise<User | null> => {
-  try {
-    const URL = import.meta.env.VITE_BASE_URL ?? 'http://localhost:5135/api'
-    const res = await useFetch(`${URL}/user/${userId}`, {
-      method: 'GET',
-      credentials: 'include',
-    })
-    const data = await res.json()
-    if (!res.ok) return null
-    return data
-  } catch (error) {
-    console.error('Error fetching user:', error)
-    return null
-  }
 }
 
 // Fetch reviews for current pizza
 const fetchReviews = async () => {
   if (!pizzaId.value) return
-  
+
   try {
     const pizzaRating = await rating.fetchRatingsByPizzaId(pizzaId.value)
     if (pizzaRating) {
       // Transform the rating data to match the expected format
       reviews.value = pizzaRating.ratings.map((rating, index) => ({
         id: index + 1,
-        user: getUserNameFromOrders(rating.userId),
-        avatar: `https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&seed=${rating.userId}`,
+        user:
+          user.users.find((u) => u.userId === rating.userId)?.firstName +
+          ' ' +
+          user.users.find((u) => u.userId === rating.userId)?.lastName,
+        avatar: user.users.find((u) => u.userId === rating.userId)?.profileImage,
         rating: rating.ratingValue,
         comment: rating.ratingMessage || 'No comment provided',
-        date: new Date().toISOString().split('T')[0], // You might want to use actual dates
-        size: 'Medium' // Default size since this info isn't in the rating data
+        date: toDate(rating.dateCreated), // You might want to use actual dates
+        size: 'Medium', // Default size since this info isn't in the rating data
       }))
-      
+
       // Update rating stats
       ratingStats.value = {
         average: pizzaRating.averageRating,
         totalReviews: pizzaRating.totalRatings,
         distribution: {
-          5: pizzaRating.ratings.filter(r => r.ratingValue === 5).length,
-          4: pizzaRating.ratings.filter(r => r.ratingValue === 4).length,
-          3: pizzaRating.ratings.filter(r => r.ratingValue === 3).length,
-          2: pizzaRating.ratings.filter(r => r.ratingValue === 2).length,
-          1: pizzaRating.ratings.filter(r => r.ratingValue === 1).length
-        }
+          5: pizzaRating.ratings.filter((r) => r.ratingValue === 5).length,
+          4: pizzaRating.ratings.filter((r) => r.ratingValue === 4).length,
+          3: pizzaRating.ratings.filter((r) => r.ratingValue === 3).length,
+          2: pizzaRating.ratings.filter((r) => r.ratingValue === 2).length,
+          1: pizzaRating.ratings.filter((r) => r.ratingValue === 1).length,
+        },
       }
     }
   } catch (error) {
@@ -212,7 +186,7 @@ const orderNow = () => {
 
 const proceedToCheckout = () => {
   if (!currentPizza.value) return
-  
+
   // Set the pending order with the current pizza and quantity
   order.setPendingOrder([{ pizzaId: currentPizza.value.pizzaId!, quantity: quantity.value }])
   // Navigate to complete order page
@@ -248,14 +222,16 @@ onMounted(async () => {
   await pizza.fetchAll()
   await favorite.fetchFavorites()
   await order.fetchUserOrders() // Fetch orders to get user names
+  await user.getAllUsers()
+  await cart.fetchCart()
   isFavorite.value = favorite.favorites
-  
-  currentPizza.value = pizza.pizzas.find(p => p.pizzaId === pizzaId.value) || null
-  
+
+  currentPizza.value = pizza.pizzas.find((p) => p.pizzaId === pizzaId.value) || null
+
   if (!currentPizza.value) {
     router.push('/menu')
   }
-  
+
   // Fetch reviews for this pizza
   await fetchReviews()
 })
@@ -278,7 +254,10 @@ watch(pizzaId, async () => {
         <div class="flex flex-col lg:flex-row gap-8">
           <!-- Product Image -->
           <div class="relative lg:w-1/2">
-            <div class="bg-gray-200 rounded-lg overflow-hidden" :style="{ height: productInfoHeight }">
+            <div
+              class="bg-gray-200 rounded-lg overflow-hidden"
+              :style="{ height: productInfoHeight }"
+            >
               <img
                 v-if="currentPizza.pizzaImage"
                 :src="toBase64(currentPizza.pizzaImage as string)"
@@ -301,13 +280,17 @@ watch(pizzaId, async () => {
             <!-- Row 1: Title and Favorite Count -->
             <div class="flex items-center justify-between">
               <h1 class="text-3xl font-bold text-gray-900">{{ currentPizza.pizzaName }}</h1>
-              <button 
+              <button
                 @click="toggleFavorite(currentPizza.pizzaId!)"
                 class="flex items-center gap-2 text-gray-600 hover:text-primary transition-colors"
               >
-                <Heart 
-                  :class="isFavorite.includes(currentPizza.pizzaId!) ? 'fill-red-500 text-red-500' : 'text-gray-400'"
-                  class="w-5 h-5" 
+                <Heart
+                  :class="
+                    isFavorite.includes(currentPizza.pizzaId!)
+                      ? 'fill-red-500 text-red-500'
+                      : 'text-gray-400'
+                  "
+                  class="w-5 h-5"
                 />
                 <span>{{ favoriteCount }}</span>
               </button>
@@ -317,13 +300,19 @@ watch(pizzaId, async () => {
             <div class="flex items-center gap-4">
               <div class="flex items-center gap-2">
                 <div class="flex">
-                  <Star 
-                    v-for="i in 5" 
-                    :key="i" 
-                    :class="i <= Math.round(averageRating || currentPizza.averageRating || 0) ? 'w-5 h-5 text-primary fill-current' : 'w-5 h-5 text-gray-300'"
+                  <Star
+                    v-for="i in 5"
+                    :key="i"
+                    :class="
+                      i <= Math.round(averageRating || currentPizza.averageRating || 0)
+                        ? 'w-5 h-5 text-primary fill-current'
+                        : 'w-5 h-5 text-gray-300'
+                    "
                   />
                 </div>
-                <span class="font-semibold text-gray-900">{{ averageRating || currentPizza.averageRating || '0.0' }}</span>
+                <span class="font-semibold text-gray-900">{{
+                  averageRating || currentPizza.averageRating || '0.0'
+                }}</span>
               </div>
               <span class="text-gray-400">•</span>
               <span class="text-gray-600">{{ totalReviews }} Reviews</span>
@@ -397,7 +386,7 @@ watch(pizzaId, async () => {
       <!-- Customer Feedback Section -->
       <div class="mb-12">
         <h2 class="text-2xl font-bold text-gray-900 mb-6">Customer Feedback</h2>
-        
+
         <!-- Rating Summary -->
         <div class="grid grid-cols-1 md:grid-cols-6 gap-8 mb-8">
           <div class="text-left flex flex-col justify-center">
@@ -407,15 +396,17 @@ watch(pizzaId, async () => {
             </div>
             <div class="text-gray-600">{{ ratingStats.totalReviews.toLocaleString() }} Reviews</div>
           </div>
-          
+
           <div class="md:col-span-5 space-y-2">
             <div v-for="rating in [5, 4, 3, 2, 1]" :key="rating" class="flex items-center gap-3">
               <span class="w-8 text-sm text-gray-900">{{ rating }}</span>
               <Star class="w-4 h-4 text-primary fill-current" />
               <div class="flex-1 bg-gray-200 rounded-full h-2">
-                <div 
-                  class="bg-primary h-2 rounded-full" 
-                  :style="{ width: `${(ratingStats.distribution[rating] / ratingStats.totalReviews) * 100}%` }"
+                <div
+                  class="bg-primary h-2 rounded-full"
+                  :style="{
+                    width: `${(ratingStats.distribution[rating] / ratingStats.totalReviews) * 100}%`,
+                  }"
                 ></div>
               </div>
               <span class="text-sm text-gray-600 w-12">{{ ratingStats.distribution[rating] }}</span>
@@ -427,7 +418,11 @@ watch(pizzaId, async () => {
         <div class="flex flex-wrap gap-2 mb-6">
           <button
             @click="selectedReviewFilter = 'all'"
-            :class="selectedReviewFilter === 'all' ? 'bg-primary text-white' : 'bg-white border border-gray-300 text-gray-700'"
+            :class="
+              selectedReviewFilter === 'all'
+                ? 'bg-primary text-white'
+                : 'bg-white border border-gray-300 text-gray-700'
+            "
             class="px-4 py-2 rounded-full text-sm font-medium transition-colors"
           >
             All
@@ -436,7 +431,11 @@ watch(pizzaId, async () => {
             v-for="rating in [5, 4, 3, 2, 1]"
             :key="rating"
             @click="selectedReviewFilter = rating.toString()"
-            :class="selectedReviewFilter === rating.toString() ? 'bg-primary text-white' : 'bg-white border border-gray-300 text-gray-700'"
+            :class="
+              selectedReviewFilter === rating.toString()
+                ? 'bg-primary text-white'
+                : 'bg-white border border-gray-300 text-gray-700'
+            "
             class="px-4 py-2 rounded-full text-sm font-medium transition-colors"
           >
             {{ rating }} Stars ({{ ratingStats.distribution[rating] }})
@@ -452,7 +451,7 @@ watch(pizzaId, async () => {
           >
             <div class="flex items-start gap-4">
               <img
-                :src="review.avatar"
+                :src="toBase64(review.avatar)"
                 :alt="review.user"
                 class="w-10 h-10 rounded-full object-cover"
               />
@@ -478,7 +477,7 @@ watch(pizzaId, async () => {
           </div>
         </div>
 
-        <button 
+        <button
           v-if="hasMoreReviews"
           @click="toggleShowAllReviews"
           class="w-full mt-6 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-lg font-medium transition-colors"
@@ -517,7 +516,7 @@ watch(pizzaId, async () => {
                 "
               />
               <div v-else class="w-full h-full flex items-center justify-center text-4xl">🍕</div>
-              
+
               <button
                 class="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg"
                 @click="toggleFavorite(item.pizzaId!)"
@@ -541,7 +540,11 @@ watch(pizzaId, async () => {
                 <div class="flex items-center">
                   <Star class="w-4 h-4 text-yellow-400 fill-current" />
                   <span class="text-sm text-[#D1D5DB] ml-1">
-                    {{ item.averageRating && item.averageRating > 0 ? `${item.averageRating} (${item.totalRatings})` : '0 (0)' }}
+                    {{
+                      item.averageRating && item.averageRating > 0
+                        ? `${item.averageRating} (${item.totalRatings})`
+                        : '0 (0)'
+                    }}
                   </span>
                 </div>
               </div>
@@ -572,7 +575,8 @@ watch(pizzaId, async () => {
         <DialogHeader>
           <DialogTitle>Confirm Checkout</DialogTitle>
           <DialogDescription>
-            Would you like to proceed to checkout? You will be redirected to complete your order details.
+            Would you like to proceed to checkout? You will be redirected to complete your order
+            details.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter class="flex justify-end space-x-2">
