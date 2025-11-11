@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Notification from './ui/Notification.vue'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -19,12 +20,14 @@ import {
   Package,
   Heart,
 } from 'lucide-vue-next'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onBeforeMount } from 'vue'
 import { useRoute } from 'vue-router'
 import router from '@/router'
+import { useNotificationStore } from '@/stores/notification'
 
 const auth = useAuthStore()
 const cart = useCartStore()
+const notification = useNotificationStore()
 const route = useRoute()
 const user = ref(auth.user ? { ...auth.user } : {})
 
@@ -78,6 +81,11 @@ watch(
   },
   { immediate: true },
 )
+
+onBeforeMount(async () => {
+  await notification.fetchMyNotifications()
+  console.log('notif', notification.notifications)
+})
 </script>
 
 <template>
@@ -130,10 +138,7 @@ watch(
           </router-link>
 
           <!-- Notifications -->
-          <button class="relative p-2 text-gray-300 hover:text-white transition-colors">
-            <Bell class="w-6 h-6" />
-            <span class="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
-          </button>
+          <Notification :notifications="notification.notifications" />
 
           <!-- User Profile Dropdown -->
           <div class="relative">
