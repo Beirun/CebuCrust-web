@@ -519,9 +519,9 @@ onBeforeMount(async () => {
           <DialogTitle>Select Delivery Address</DialogTitle>
           <DialogDescription>Select an address for delivery within Cebu City.</DialogDescription>
         </DialogHeader>
-        <div v-if="location.locations.length" class="space-y-3">
+        <div v-if="location.locations.filter((l) => !l.isDeleted).length" class="space-y-3">
           <div
-            v-for="a in location.locations"
+            v-for="a in location.locations.filter((l) => !l.isDeleted)"
             :key="a.locationId"
             class="flex items-center justify-between p-3 border rounded relative"
           >
@@ -735,7 +735,8 @@ onBeforeMount(async () => {
           <DialogTitle>Delete Items</DialogTitle>
         </DialogHeader>
         <div>
-          Are you sure you want to delete {{ selectedItems.length }} selected item(s) from your cart? This action cannot be undone.
+          Are you sure you want to delete {{ selectedItems.length }} selected item(s) from your
+          cart? This action cannot be undone.
         </div>
         <DialogFooter class="flex justify-end space-x-2">
           <Button variant="outline" @click="deleteConfirmationOpen = false">Cancel</Button>
@@ -754,7 +755,9 @@ onBeforeMount(async () => {
           Are you sure you want to remove this item from your cart? This action cannot be undone.
         </div>
         <DialogFooter class="flex justify-end space-x-2">
-          <Button variant="outline" @click="individualDeleteConfirmationOpen = false">Cancel</Button>
+          <Button variant="outline" @click="individualDeleteConfirmationOpen = false"
+            >Cancel</Button
+          >
           <Button @click="deleteIndividualItem" class="bg-red-500 hover:bg-red-600">Delete</Button>
         </DialogFooter>
       </DialogContent>
