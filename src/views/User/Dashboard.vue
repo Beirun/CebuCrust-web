@@ -36,7 +36,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Edit, Trash2 } from 'lucide-vue-next'
-import type { Order } from '@/models/order'
 import { useLocationStore } from '@/stores/location'
 import { barangays } from '@/data/barangay'
 import type { Location } from '@/models/location'
@@ -51,12 +50,14 @@ const isFavorite = ref<number[]>([])
 const auth = useAuthStore()
 
 const favoritePizzas = computed(() =>
-  pizza.pizzas.filter((p) => isFavorite.value.includes(p.pizzaId!)),
+  pizza.pizzas.filter((p) => !p.isDeleted && isFavorite.value.includes(p.pizzaId!)),
 )
 
 // Current active order (most recent non-delivered order)
 const currentOrder = computed(() => {
-  const activeOrders = order.orders.filter(o => o.orderStatus !== 'delivered' && o.orderStatus !== 'cancelled')
+  const activeOrders = order.orders.filter(
+    (o) => o.orderStatus !== 'delivered' && o.orderStatus !== 'cancelled',
+  )
   return activeOrders.length > 0 ? activeOrders[0] : null
 })
 
@@ -193,7 +194,9 @@ onMounted(async () => {
   // fetch user orders and set current order if any
   if (order.orders.length > 0) {
     // map order status to steps for the current active order
-    const activeOrder = order.orders.find(o => o.orderStatus !== 'delivered' && o.orderStatus !== 'cancelled')
+    const activeOrder = order.orders.find(
+      (o) => o.orderStatus !== 'delivered' && o.orderStatus !== 'cancelled',
+    )
     if (activeOrder) {
       updateStepsFromStatus(activeOrder.orderStatus!)
     }
@@ -293,9 +296,9 @@ const inCart = (id: number) => {
             <DialogTitle>Select Delivery Address</DialogTitle>
             <DialogDescription>Select an address for delivery within Cebu City.</DialogDescription>
           </DialogHeader>
-          <div v-if="location.locations.length" class="space-y-3">
+          <div v-if="location.locations.filter((l) => !l.isDeleted).length" class="space-y-3">
             <div
-              v-for="a in location.locations"
+              v-for="a in location.locations.filter((l) => !l.isDeleted)"
               :key="a.locationId"
               class="flex items-center justify-between p-4 border rounded-lg shadow-sm relative"
               :class="
@@ -556,33 +559,35 @@ const inCart = (id: number) => {
             View All Favorites
           </router-link>
         </div>
-         <!-- Empty state for favorites -->
-         <div v-if="favoritePizzas.length === 0" class="text-center py-16">
-           <div class="max-w-md mx-auto">
-             <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
-               <Heart class="w-12 h-12 text-gray-400" />
-             </div>
-             <h3 class="text-xl font-semibold text-gray-900 mb-2">You have no favorites yet</h3>
-             <p class="text-gray-600 mb-6">
-               Start exploring our menu and add your favorite pizzas to see them here!
-             </p>
-             <router-link
-               to="/menu"
-               class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium"
-             >
-               Browse Menu
-             </router-link>
-           </div>
-         </div>
+        <!-- Empty state for favorites -->
+        <div v-if="favoritePizzas.length === 0" class="text-center py-16">
+          <div class="max-w-md mx-auto">
+            <div
+              class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6"
+            >
+              <Heart class="w-12 h-12 text-gray-400" />
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">You have no favorites yet</h3>
+            <p class="text-gray-600 mb-6">
+              Start exploring our menu and add your favorite pizzas to see them here!
+            </p>
+            <router-link
+              to="/menu"
+              class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium"
+            >
+              Browse Menu
+            </router-link>
+          </div>
+        </div>
 
         <!-- Favorites grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-           <div
-             v-for="item in favoritePizzas"
-             :key="item.pizzaId!"
-             class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-             @click="router.push(`/product/${item.pizzaId}`)"
-           >
+          <div
+            v-for="item in favoritePizzas"
+            :key="item.pizzaId!"
+            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+            @click="router.push(`/product/${item.pizzaId}`)"
+          >
             <div class="h-48 bg-gray-700 flex items-center justify-center relative">
               <img
                 v-if="item.pizzaImage"
@@ -660,33 +665,36 @@ const inCart = (id: number) => {
             View All Menu
           </router-link>
         </div>
-         <!-- Empty state for today's specials -->
-         <div v-if="pizza.pizzas.length === 0" class="text-center py-16">
-           <div class="max-w-md mx-auto">
-             <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
-               <Star class="w-12 h-12 text-gray-400" />
-             </div>
-             <h3 class="text-xl font-semibold text-gray-900 mb-2">No specials today</h3>
-             <p class="text-gray-600 mb-6">
-               Our admin hasn't added any special offers for today. Check back later or explore our regular menu!
-             </p>
-             <router-link
-               to="/menu"
-               class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium"
-             >
-               Browse Menu
-             </router-link>
-           </div>
-         </div>
+        <!-- Empty state for today's specials -->
+        <div v-if="pizza.pizzas.filter((p) => !p.isDeleted).length === 0" class="text-center py-16">
+          <div class="max-w-md mx-auto">
+            <div
+              class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6"
+            >
+              <Star class="w-12 h-12 text-gray-400" />
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">No specials today</h3>
+            <p class="text-gray-600 mb-6">
+              Our admin hasn't added any special offers for today. Check back later or explore our
+              regular menu!
+            </p>
+            <router-link
+              to="/menu"
+              class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium"
+            >
+              Browse Menu
+            </router-link>
+          </div>
+        </div>
 
         <!-- Today's specials grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-           <div
-             v-for="item in pizza.pizzas.slice(0, 4)"
-             :key="item.pizzaId!"
-             class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-             @click="router.push(`/product/${item.pizzaId}`)"
-           >
+          <div
+            v-for="item in pizza.pizzas.filter((p) => !p.isDeleted).slice(0, 4)"
+            :key="item.pizzaId!"
+            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+            @click="router.push(`/product/${item.pizzaId}`)"
+          >
             <div class="h-48 bg-gray-700 flex items-center justify-center relative">
               <img
                 v-if="item.pizzaImage"
