@@ -138,7 +138,18 @@ onBeforeMount(async () => {
           </router-link>
 
           <!-- Notifications -->
-          <Notification :notifications="notification.notifications" />
+          <Notification :notifications="notification.notifications">
+            <button class="relative p-2 text-gray-300 hover:text-white transition-colors">
+              <Bell class="w-6 h-6" />
+
+              <span
+                v-if="
+                  notification.notifications.filter((n) => n.notificationStatus === 'unread').length
+                "
+                class="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"
+              ></span>
+            </button>
+          </Notification>
 
           <!-- User Profile Dropdown -->
           <div class="relative">
@@ -167,7 +178,7 @@ onBeforeMount(async () => {
 
               <!-- Profile Dropdown Menu -->
               <DropdownMenuContent
-                class="mt-2 w-48 bg-[#192124] rounded-lg shadow-lg border border-[#D3D3D3]/30 py-2"
+                class="hidden lg:block mt-2 w-48 bg-[#192124] rounded-lg shadow-lg border border-[#D3D3D3]/30 py-2"
               >
                 <button
                   v-for="item in profileItems"
@@ -270,13 +281,15 @@ onBeforeMount(async () => {
           </router-link>
 
           <!-- Notifications -->
-          <button
-            class="flex items-center space-x-3 text-white text-xl hover:text-primary transition-colors"
-          >
-            <Bell class="w-5 h-5" />
-            <span>Notifications</span>
-            <span class="ml-auto w-2 h-2 bg-primary rounded-full"></span>
-          </button>
+          <Notification :notifications="notification.notifications">
+            <button
+              class="flex items-center space-x-3 text-white text-xl hover:text-primary transition-colors"
+            >
+              <Bell class="w-5 h-5" />
+              <span>Notifications</span>
+              <span class="ml-auto w-2 h-2 bg-primary rounded-full"></span>
+            </button>
+          </Notification>
         </div>
 
         <!-- Mobile Profile Actions -->
