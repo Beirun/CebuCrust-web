@@ -20,6 +20,7 @@ export interface RatingResponse {
   pizzaId: number
   ratingValue: number
   ratingMessage?: string
+  dateCreated: string
 }
 
 export interface PizzaRating {
