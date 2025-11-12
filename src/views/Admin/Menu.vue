@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Plus, Search, Edit, Trash2, Star, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import AdminHeader from '@/components/AdminHeader.vue'
 import Footer from '@/components/Footer.vue'
@@ -109,21 +109,20 @@ const paginatedItems = computed(() => {
   return filteredMenuItems.value.slice(start, end)
 })
 
-// Always show multiple pages like in the GUI (minimum 3 pages)
-const totalPages = computed(() => {
-  return Math.ceil(filteredMenuItems.value.length / itemsPerPage)
-})
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredMenuItems.value.length / itemsPerPage)),
+)
+
+const pageNumbers = computed(() => Array.from({ length: totalPages.value }, (_, i) => i + 1))
 
 const goToPage = (page: number) => {
-  if (page >= 1 && page <= 12) {
+  if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page
   }
 }
 const searchQuery = ref('')
 const selectedCategory = ref('All Pizzas')
 const sortBy = ref('')
-const availabilityFilter = ref('all')
-
 const filteredMenuItems = computed(() => {
   let filtered = pizza.pizzas.filter((p) => !p.isDeleted)
 
@@ -139,12 +138,6 @@ const filteredMenuItems = computed(() => {
   // Filter by category
   if (selectedCategory.value !== 'All Pizzas') {
     filtered = filtered.filter((item) => item.pizzaCategory === selectedCategory.value)
-  }
-
-  // Filter by availability
-  if (availabilityFilter.value !== 'all') {
-    const isAvailable = availabilityFilter.value === 'available'
-    filtered = filtered.filter((item) => item.isAvailable === isAvailable)
   }
 
   // Sort items
@@ -166,6 +159,12 @@ const filteredMenuItems = computed(() => {
   }
 
   return filtered
+})
+
+watch(totalPages, (newTotal) => {
+  if (currentPage.value > newTotal) {
+    currentPage.value = newTotal
+  }
 })
 
 onMounted(async () => {
@@ -228,15 +227,6 @@ onMounted(async () => {
           </div>
 
           <div class="flex gap-2">
-            <select
-              v-model="availabilityFilter"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
-            >
-              <option value="all">All Status</option>
-              <option value="available">Available</option>
-              <option value="unavailable">Unavailable</option>
-            </select>
-
             <select
               v-model="sortBy"
               class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
@@ -343,7 +333,7 @@ onMounted(async () => {
         </button>
 
         <button
-          v-for="page in 3"
+          v-for="page in pageNumbers"
           :key="page"
           @click="goToPage(page)"
           :class="[
@@ -352,18 +342,6 @@ onMounted(async () => {
           ]"
         >
           {{ page }}
-        </button>
-
-        <span class="px-2 text-gray-500">...</span>
-
-        <button
-          @click="goToPage(12)"
-          :class="[
-            'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-            currentPage === 12 ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-700',
-          ]"
-        >
-          12
         </button>
 
         <button
@@ -671,16 +649,6 @@ onMounted(async () => {
                       class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
-                </div>
-                <div class="flex items-center mt-7 ml-7">
-                  <Checkbox
-                    v-model="formData.isAvailable"
-                    id="edit-available"
-                    class="size-8 text-primary focus:ring-primary border-gray-300 rounded"
-                  />
-                  <label for="edit-available" class="ml-2 text-base text-gray-700"
-                    >Available for order</label
-                  >
                 </div>
               </div>
             </div>

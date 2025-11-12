@@ -310,14 +310,6 @@ const inCart = (id: number) => {
         </div>
 
         <!-- Load More Button -->
-        <div v-if="hasMoreItems" class="text-center">
-          <button
-            @click="loadMore"
-            class="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-medium transition-colors"
-          >
-            Load More Delicious Pizzas
-          </button>
-        </div>
       </div>
 
       <!-- Empty State - No Menu Items -->

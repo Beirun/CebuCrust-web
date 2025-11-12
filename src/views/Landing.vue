@@ -1,7 +1,7 @@
 # /
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { usePizzaStore } from '@/stores/pizza'
 import ScrollToTopButton from '@/components/ScrollToTopButton.vue'
 import LandingNavbar from '@/components/LandingNavbar.vue'
@@ -13,12 +13,28 @@ import { toBase64 } from '@/plugins/convert'
 
 const sonner = useSonnerStore()
 const pizzaStore = usePizzaStore()
+const showAllPizzas = ref(false)
 
 // Fetch pizzas on component mount
 onMounted(async () => {
   sonner.setTheme('dark')
   await pizzaStore.fetchAll()
 })
+
+const availablePizzas = computed(() =>
+  pizzaStore.pizzas.filter((pizza) => !pizza.isDeleted),
+)
+
+const displayedPizzas = computed(() =>
+  showAllPizzas.value ? availablePizzas.value : availablePizzas.value.slice(0, 4),
+)
+
+const togglePizzaVisibility = () => {
+  showAllPizzas.value = !showAllPizzas.value
+}
+
+const formatRatingValue = (rating?: number) => (rating ?? 0).toFixed(1)
+const formatRatingCount = (count?: number) => count ?? 0
 
 const aboutSection = [
   {
@@ -159,7 +175,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-full max-w-7xl px-4 sm:px-8 lg:px-0"
       >
         <div
-          v-for="pizza in pizzaStore.pizzas.filter((p) => !p.isDeleted).slice(0, 8)"
+          v-for="pizza in displayedPizzas"
           :key="pizza.pizzaId!"
           class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
         >
@@ -189,7 +205,9 @@ onBeforeUnmount(() => sonner.setTheme('light'))
             <div class="flex justify-between items-center mb-4">
               <div class="flex items-center gap-1">
                 <span class="icon-[material-symbols--star-rounded] text-primary size-4"></span>
-                <span class="text-white text-sm">4.8 (124)</span>
+                <span class="text-white text-sm">
+                  {{ formatRatingValue(pizza.averageRating) }} ({{ formatRatingCount(pizza.totalRatings) }})
+                </span>
               </div>
               <span class="text-xl font-bold text-primary">₱{{ pizza.pizzaPrice }}</span>
             </div>
@@ -206,11 +224,12 @@ onBeforeUnmount(() => sonner.setTheme('light'))
       </div>
 
       <!-- Load More Button -->
-      <div v-if="pizzaStore.pizzas.length > 8" class="flex justify-center mt-8">
+      <div v-if="availablePizzas.length > 4" class="flex justify-center mt-8">
         <button
           class="bg-primary text-white px-8 py-3 rounded-lg hover:bg-primary/90 transition-colors"
+          @click="togglePizzaVisibility"
         >
-          LOAD MORE
+          {{ showAllPizzas ? 'SHOW LESS' : 'LOAD MORE' }}
         </button>
       </div>
     </div>

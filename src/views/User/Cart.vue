@@ -275,11 +275,11 @@ onBeforeMount(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen flex flex-col bg-gray-50">
     <UserHeader />
 
     <main
-      class="w-screen px-4 sm:px-8 lg:px-30 py-16 min-h-[calc(100vh-5rem)] h-[calc(100vh-5rem)]"
+      class="w-screen flex-1 px-4 sm:px-8 lg:px-30 py-16 min-h-[calc(100vh-5rem)]"
       :class="!hasItems ? 'grid place-items-center' : ''"
     >
       <div v-if="!hasItems" class="text-center py-12">

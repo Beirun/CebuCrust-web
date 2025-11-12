@@ -24,15 +24,25 @@
 
       <div class="flex flex-col w-full sm:w-100 gap-4 sm:gap-6">
         <div class="text-white text-lg sm:text-xl font-bold">User Link</div>
-        <div class="text-sm sm:text-base hover:text-white transition-colors cursor-pointer">
+        <button
+          class="text-sm sm:text-base hover:text-white transition-colors text-left"
+          @click="scrollToSection('about')"
+        >
           About Us
-        </div>
-        <div class="text-sm sm:text-base hover:text-white transition-colors cursor-pointer">
+        </button>
+        <button
+          class="text-sm sm:text-base hover:text-white transition-colors text-left"
+          @click="scrollToSection('contact')"
+        >
           Contact Us
-        </div>
-        <div class="text-sm sm:text-base hover:text-white transition-colors cursor-pointer">
+        </button>
+        <button
+          class="text-sm sm:text-base hover:text-white transition-colors text-left disabled:opacity-60 disabled:cursor-not-allowed"
+          :disabled="isAdmin"
+          @click="handleOrderDelivery"
+        >
           Order Delivery
-        </div>
+        </button>
       </div>
 
       <div class="flex flex-col w-full sm:w-100 gap-4 sm:gap-6">
@@ -50,24 +60,49 @@
     <div v-if="!copyrightOnly" class="border-b border-dashed border-[#797B78] mb-4"></div>
 
     <!-- Copyright Section -->
-    <div class="flex justify-between flex-col sm:flex-row gap-4 sm:gap-0">
-      <div class="text-sm sm:text-base">©2024 ARR, All right reserved</div>
-      <div class="flex gap-4 sm:gap-8">
-        <button class="text-sm sm:text-base hover:text-white transition-colors">
-          Privacy Policy
-        </button>
-        <button class="text-sm sm:text-base hover:text-white transition-colors">
-          Terms of Use
-        </button>
-      </div>
+    <div class="flex justify-center">
+      <div class="text-sm sm:text-base text-center">©2025 CebuCrust, All right reserved</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
+import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
 interface Props {
   copyrightOnly?: boolean
 }
 
 defineProps<Props>()
+
+const router = useRouter()
+const route = useRoute()
+const auth = useAuthStore()
+const { isAdmin, isAuthenticated } = storeToRefs(auth)
+
+const scrollToSection = async (sectionId: string) => {
+  const selector = `#${sectionId}`
+  if (route.name !== 'Landing') {
+    await router.push({ name: 'Landing', hash: selector })
+    requestAnimationFrame(() => {
+      document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth' })
+    })
+  } else {
+    document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth' })
+  }
+}
+
+const handleOrderDelivery = () => {
+  if (!isAuthenticated.value) {
+    sessionStorage.setItem('redirectAfterLogin', '/menu')
+    router.push('/signin')
+    return
+  }
+
+  if (isAdmin.value) return
+
+  router.push('/menu')
+}
 </script>
