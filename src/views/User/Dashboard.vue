@@ -760,7 +760,6 @@ const inCart = (id: number) => {
               <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
               <p class="text-[#D1D5DB] text-sm mb-3 line-clamp-2">{{ item.pizzaDescription }}</p>
               <div class="flex items-center justify-between mb-3">
-                <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
                 <div class="flex items-center">
                   <Star class="w-4 h-4 text-yellow-400 fill-current" />
                   <span class="text-sm text-[#D1D5DB] ml-1">
@@ -771,6 +770,7 @@ const inCart = (id: number) => {
                     }}
                   </span>
                 </div>
+                <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
               </div>
               <button
                 :disabled="!item.isAvailable || inCart(item.pizzaId!)"
