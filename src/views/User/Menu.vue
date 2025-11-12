@@ -124,6 +124,11 @@ const toggle = (pizzaId: number, delay = 500) => {
 }
 
 const toggleFavorite = (pizzaId: number) => {
+  if (favorite.favorites.includes(pizzaId)) {
+    isFavorite.value = isFavorite.value.filter((f) => f !== pizzaId)
+  } else {
+    isFavorite.value = [...isFavorite.value, pizzaId]
+  }
   toggle(pizzaId)
 }
 
