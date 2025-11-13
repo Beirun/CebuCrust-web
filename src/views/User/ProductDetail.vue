@@ -140,6 +140,14 @@ const addToCart = async () => {
   await cart.addToCart({ pizzaId: currentPizza.value.pizzaId!, quantity: quantity.value })
 }
 
+const addItemToCart = async (item: Pizza) => {
+  await cart.addToCart({ pizzaId: item.pizzaId!, quantity: 1 })
+}
+
+const inCart = (id: number) => {
+  return cart.cart.some((c) => c.pizzaId === id)
+}
+
 // Fetch reviews for current pizza
 const fetchReviews = async () => {
   if (!pizzaId.value) return
@@ -499,9 +507,10 @@ watch(pizzaId, async () => {
           <div
             v-for="item in relatedPizzas"
             :key="item.pizzaId!"
-            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+            class="bg-[#121A1D] rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+            @click="router.push(`/product/${item.pizzaId}`)"
           >
-            <div class="relative h-48 bg-gray-200">
+            <div class="relative h-48 bg-gray-700 flex items-center justify-center">
               <img
                 v-if="item.pizzaImage"
                 :src="toBase64(item.pizzaImage as string)"
@@ -515,11 +524,11 @@ watch(pizzaId, async () => {
                   }
                 "
               />
-              <div v-else class="w-full h-full flex items-center justify-center text-4xl">🍕</div>
+              <div v-else class="text-6xl">🍕</div>
 
               <button
                 class="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg"
-                @click="toggleFavorite(item.pizzaId!)"
+                @click.stop="toggleFavorite(item.pizzaId!)"
               >
                 <Heart
                   :class="
@@ -533,13 +542,12 @@ watch(pizzaId, async () => {
             </div>
 
             <div class="p-4">
-              <h3 class="font-semibold text-white mb-1">{{ item.pizzaName }}</h3>
-              <p class="text-[#D1D5DB] text-sm mb-2 line-clamp-2">{{ item.pizzaDescription }}</p>
-              <div class="flex items-center justify-between mb-3">
-                <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
-                <div class="flex items-center">
-                  <Star class="w-4 h-4 text-yellow-400 fill-current" />
-                  <span class="text-sm text-[#D1D5DB] ml-1">
+              <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
+              <p class="text-[#D1D5DB] text-sm mb-3 line-clamp-2">{{ item.pizzaDescription }}</p>
+              <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-1">
+                  <Star class="h-4 w-4 text-yellow-400 fill-current" />
+                  <span class="text-white text-sm">
                     {{
                       item.averageRating && item.averageRating > 0
                         ? `${item.averageRating} (${item.totalRatings})`
@@ -547,22 +555,27 @@ watch(pizzaId, async () => {
                     }}
                   </span>
                 </div>
+                <span class="text-xl font-bold text-primary">₱{{ item.pizzaPrice }}</span>
               </div>
-              <div class="flex gap-2">
-                <button
-                  @click="addToCart"
-                  class="flex-1 bg-white border border-primary text-primary hover:bg-primary hover:text-white py-2 rounded-lg font-medium flex items-center justify-center gap-1 text-sm transition-colors"
-                >
-                  <ShoppingCart class="w-4 h-4" />
-                  Add to Cart
-                </button>
-                <button
-                  @click="orderNow"
-                  class="flex-1 bg-primary hover:bg-primary/90 text-white py-2 rounded-lg font-medium text-sm transition-colors"
-                >
-                  Order Now
-                </button>
-              </div>
+              <button
+                :disabled="!item.isAvailable || inCart(item.pizzaId!)"
+                @click.stop="addItemToCart(item)"
+                class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
+                :class="
+                  item.isAvailable && !inCart(item.pizzaId!)
+                    ? 'bg-primary hover:bg-primary/80'
+                    : 'bg-gray-300 text-gray-500 cursor-default'
+                "
+              >
+                <ShoppingCart class="w-4 h-4 mr-2" />
+                {{
+                  !item.isAvailable
+                    ? 'Unavailable'
+                    : inCart(item.pizzaId!)
+                      ? 'In Cart'
+                      : 'Add to Cart'
+                }}
+              </button>
             </div>
           </div>
         </div>
