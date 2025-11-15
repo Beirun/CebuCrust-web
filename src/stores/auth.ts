@@ -192,6 +192,7 @@ export const useAuthStore = defineStore('auth', () => {
     userEmail?: string
     userPhoneNo?: string
     image?: File | string
+    removeImage?: boolean
     currentPassword?: string
     newPassword?: string
     confirmPassword?: string
@@ -205,8 +206,18 @@ export const useAuthStore = defineStore('auth', () => {
       if (updates.userLName) fd.append('UserLName', updates.userLName)
       if (updates.userEmail) fd.append('UserEmail', updates.userEmail)
       if (updates.userPhoneNo) fd.append('UserPhoneNo', updates.userPhoneNo)
-      if (updates.image instanceof File) fd.append('Image', updates.image)
-      else if (typeof updates.image === 'string') fd.append('Image', updates.image)
+      
+      // Handle image removal or update
+      if (updates.removeImage) {
+        // Send empty string to signal removal
+        fd.append('Image', '')
+        fd.append('RemoveImage', 'true')
+      } else if (updates.image instanceof File) {
+        fd.append('Image', updates.image)
+      } else if (typeof updates.image === 'string' && updates.image) {
+        fd.append('Image', updates.image)
+      }
+      
       if (updates.currentPassword) fd.append('CurrentPassword', updates.currentPassword)
       if (updates.newPassword) fd.append('NewPassword', updates.newPassword)
       if (updates.confirmPassword) fd.append('ConfirmPassword', updates.confirmPassword)
@@ -229,6 +240,11 @@ export const useAuthStore = defineStore('auth', () => {
       } else {
         // Update local user data with the updates we sent
         user.value = { ...user.value, ...data }
+        // Explicitly handle image removal
+        if (updates.removeImage) {
+          user.value.profileImage = null
+          user.value.profileImageUrl = null
+        }
         localStorage.setItem('user', JSON.stringify(user.value))
       }
 

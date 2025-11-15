@@ -88,10 +88,21 @@ const saveAddress = async () => {
     if (res) {
       showAddressModal.value = false
       isEdit.value = false
+      // Update selectedAddressId if the edited address was selected or is now default
+      if (locationForm.isDefault) {
+        selectedAddressId.value = locationForm.locationId
+      }
     }
   } else {
     const res = await location.addLocation(locationForm)
-    if (res) showAddressModal.value = false
+    if (res) {
+      showAddressModal.value = false
+      // Update selectedAddressId to the newly added address or the newly set default
+      const newLocation = location.locations[location.locations.length - 1]
+      if (newLocation) {
+        selectedAddressId.value = newLocation.locationId
+      }
+    }
   }
 }
 
