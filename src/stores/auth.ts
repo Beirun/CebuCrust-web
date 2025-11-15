@@ -21,20 +21,6 @@ export const useAuthStore = defineStore('auth', () => {
   )
   const userInfo = computed(() => user.value)
 
-  // Helper function to safely store user data without image fields if needed
-  const storeUserData = (userData: any, removeImageFields: boolean = false) => {
-    if (removeImageFields) {
-      const cleanedUser = { ...userData }
-      delete cleanedUser.profileImage
-      delete cleanedUser.profileImageUrl
-      user.value = cleanedUser
-      localStorage.setItem('user', JSON.stringify(cleanedUser))
-    } else {
-      user.value = userData
-      localStorage.setItem('user', JSON.stringify(userData))
-    }
-  }
-
   const register = async (credentials: {
     firstName: string
     lastName: string
@@ -220,20 +206,8 @@ export const useAuthStore = defineStore('auth', () => {
       if (updates.userLName) fd.append('UserLName', updates.userLName)
       if (updates.userEmail) fd.append('UserEmail', updates.userEmail)
       if (updates.userPhoneNo) fd.append('UserPhoneNo', updates.userPhoneNo)
-      
-      // Handle image removal or update
-      if (updates.removeImage) {
-        // Send removal flag to backend - do NOT send empty Image field
-        fd.append('RemoveImage', 'true')
-        console.log('Setting RemoveImage flag to true')
-      } else if (updates.image instanceof File) {
-        fd.append('Image', updates.image)
-        console.log('Sending new image file')
-      } else if (typeof updates.image === 'string' && updates.image) {
-        fd.append('Image', updates.image)
-        console.log('Sending image string')
-      }
-      
+      if (updates.image instanceof File) fd.append('Image', updates.image)
+      else if (typeof updates.image === 'string') fd.append('Image', updates.image)
       if (updates.currentPassword) fd.append('CurrentPassword', updates.currentPassword)
       if (updates.newPassword) fd.append('NewPassword', updates.newPassword)
       if (updates.confirmPassword) fd.append('ConfirmPassword', updates.confirmPassword)
@@ -250,21 +224,14 @@ export const useAuthStore = defineStore('auth', () => {
         sonner.error(`${data.message}`)
         return false
       }
-      
-      // CRITICAL: Always merge updates first, then handle image removal
+
       if (data.user) {
         user.value = { ...user.value, ...data.user }
+        localStorage.setItem('user', JSON.stringify(user.value))
       } else {
+        // Update local user data with the updates we sent
         user.value = { ...user.value, ...data }
-      }
-      
-      // CRITICAL: If removeImage was requested, use the helper to clean image fields
-      if (updates.removeImage) {
-        console.log('REMOVING IMAGE: Using storeUserData with removeImageFields=true')
-        storeUserData(user.value, true)
-      } else {
-        // Normal storage
-        storeUserData(user.value, false)
+        localStorage.setItem('user', JSON.stringify(user.value))
       }
 
       return true

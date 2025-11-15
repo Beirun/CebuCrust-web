@@ -30,31 +30,49 @@ const router = createRouter({
       path: '/',
       name: 'Landing',
       component: Landing,
+      meta: {
+        requiresGuest: true,
+      },
     },
     {
       path: '/signin',
       name: 'SignIn',
       component: SignIn,
+      meta: {
+        requiresGuest: true,
+      },
     },
     {
       path: '/signup',
       name: 'SignUp',
       component: SignUp,
+      meta: {
+        requiresGuest: true,
+      },
     },
     {
       path: '/forgot',
       name: 'ForgotPassword',
       component: ForgotPassword,
+      meta: {
+        requiresGuest: true,
+      },
     },
     {
       path: '/reset/:code',
       name: 'ResetPassword',
       component: ResetPassword,
+      meta: {
+        requiresGuest: true,
+      },
     },
     {
       path: '/settings',
       name: 'Settings',
       component: Settings,
+      meta: {
+        requiresAuth: true,
+      },
     },
     // Admin routes - all prefixed with /admin
     {
@@ -158,7 +176,16 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
-
+  if (to.meta.requiresGuest) {
+    if (auth.isAuthenticated) {
+      if (auth.isAdmin) {
+        next('/dashboard/admin')
+      } else next('/dashboard')
+    }
+  }
+  if (to.meta.requiresAuth) {
+    if (!auth.isAuthenticated) next('/signin')
+  }
   if (to.meta.requiresAdmin) {
     if (!auth.isAdmin) {
       next('/dashboard')
