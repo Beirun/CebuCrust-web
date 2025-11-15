@@ -62,7 +62,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
       class="bg-[#0A1316] grid place-items-center p-4 sm:p-8 lg:p-45 py-8 sm:py-12 lg:py-15 min-h-screen"
     >
       <div
-        class="h-auto min-h-[135vh] lg:h-[135vh] w-full max-w-6xl mx-auto rounded-xl overflow-hidden flex flex-col lg:flex-row"
+        class="h-auto min-h-[115vh] lg:h-[115vh] w-full max-w-6xl mx-auto rounded-xl overflow-hidden flex flex-col lg:flex-row"
       >
         <div class="relative h-64 sm:h-80 lg:h-full w-full lg:w-1/2 min-h-64">
           <div class="absolute inset-0 bg-[url('@/assets/sign-bg.png')] bg-cover bg-center"></div>
@@ -80,7 +80,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
 
           <div class="w-full flex flex-col sm:flex-row my-3 gap-4 sm:gap-6">
             <div class="flex flex-col w-full gap-2 text-base">
-              <label class="text-white">First Name</label>
+              <label class="text-white">First Name <span class="text-red-400">*</span></label>
               <input
                 v-model="form.firstName"
                 type="text"
@@ -89,7 +89,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
               />
             </div>
             <div class="flex flex-col w-full gap-2 text-base">
-              <label class="text-white">Last Name</label>
+              <label class="text-white">Last Name <span class="text-red-400">*</span></label>
               <input
                 v-model="form.lastName"
                 type="text"
@@ -100,7 +100,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           </div>
 
           <div class="flex flex-col w-full gap-2 text-base my-3">
-            <label class="text-white">Email Address</label>
+            <label class="text-white">Email Address <span class="text-red-400">*</span></label>
             <input
               v-model="form.email"
               type="text"
@@ -110,7 +110,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           </div>
 
           <div class="flex flex-col w-full gap-2 text-base my-3">
-            <label class="text-white">Phone Number</label>
+            <label class="text-white">Phone Number <span class="text-red-400">*</span></label>
             <input
               v-model="form.phoneNumber"
               type="text"
@@ -120,7 +120,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           </div>
 
           <div class="flex flex-col w-full gap-2 text-base my-3">
-            <label class="text-white">Password</label>
+            <label class="text-white">Password <span class="text-red-400">*</span></label>
             <div class="relative flex w-full">
               <input
                 v-model="form.password"
@@ -142,7 +142,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           </div>
 
           <div class="flex flex-col w-full gap-2 text-base my-3">
-            <label class="text-white">Confirm Password</label>
+            <label class="text-white">Confirm Password <span class="text-red-400">*</span></label>
             <div class="relative flex w-full">
               <input
                 v-model="form.confirmPassword"
@@ -166,7 +166,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           <div class="flex my-3 items-center w-full gap-2 text-[#A19E9B] text-base">
             <Checkbox v-model="form.agree" class="size-5" />
             I agree to the <span class="text-primary">Terms of Use</span> and
-            <span class="text-primary">Privacy Policy</span>
+            <span class="text-primary">Privacy Policy</span> <span class="text-red-400">*</span>
           </div>
 
           <button

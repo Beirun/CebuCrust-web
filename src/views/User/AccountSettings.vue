@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { toBase64 } from '@/plugins/convert'
+import { base64ToFile, toBase64 } from '@/plugins/convert'
 import { Eye, EyeOff, Upload } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
 import AdminHeader from '@/components/AdminHeader.vue'
@@ -151,12 +151,11 @@ const save = async () => {
   if (!validateForm()) return
   isSaving.value = true
   try {
-    const originalProfileImage = auth.user?.profileImage || '' //Grab the user’s current profile image from the auth store
-    const hasProfileImageChanged =
-      user.value.profileImage !== originalProfileImage //checker if the user changed profile
-    const isProfileImageRemoved =
-      originalProfileImage && !user.value.profileImage //checker if the user removed profile
-    const hasPersonalInfoChanged = //checker if the user changed any personal information
+    const hasProfileImageChanged = !!(
+      (user.value.profileImage && user.value.profileImage !== (auth.user?.profileImage || '')) ||
+      !preview.value
+    )
+    const hasPersonalInfoChanged =
       user.value.firstName !== auth.user?.firstName ||
       user.value.lastName !== auth.user?.lastName ||
       user.value.email !== auth.user?.email ||
@@ -165,6 +164,8 @@ const save = async () => {
       passwordForm.value.currentPassword &&
       passwordForm.value.newPassword &&
       passwordForm.value.confirmPassword
+    console.log('test', hasProfileImageChanged)
+    console.log('pre', preview.value)
 
     //updates function where it sends the package of new info to the backend
     const updates: Record<string, unknown> = {
@@ -172,6 +173,11 @@ const save = async () => {
       userLName: user.value.lastName,
       userEmail: user.value.email,
       userPhoneNo: user.value.phoneNo,
+      image:
+        newProfileImage.value ??
+        (preview.value
+          ? base64ToFile(toBase64(auth.user.profileImage), `${auth.user.userId}.png`)
+          : null),
     }
 
     // If user removed the image, send a flag to backend
@@ -261,7 +267,12 @@ const cancel = () => {
                   alt="profile"
                   class="w-full h-full object-cover"
                 />
-                <div v-else class="text-gray-400 text-sm">No Image</div>
+                <img
+                  v-else
+                  src="@/assets/default.png"
+                  alt="profile"
+                  class="w-full h-full object-cover"
+                />
               </div>
               <div class="flex flex-col gap-2">
                 <button

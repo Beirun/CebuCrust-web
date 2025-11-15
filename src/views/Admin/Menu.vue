@@ -93,6 +93,7 @@ const handleDelete = async (id: number) => {
   //   menuStore.deleteMenuItem(id)
   // }
   await pizza.deletePizza(id)
+  deleteConfirmationOpen.value = false
 }
 
 // const toggleAvailability = (item: MenuItem) => {

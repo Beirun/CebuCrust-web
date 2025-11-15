@@ -61,74 +61,121 @@ const router = createRouter({
       path: '/dashboard/admin',
       name: 'AdminDashboard',
       component: AdminDashboard,
+      meta: {
+        requiresAdmin: true,
+      },
     },
     {
       path: '/admin/menu',
       name: 'AdminMenu',
       component: AdminMenu,
+      meta: {
+        requiresAdmin: true,
+      },
     },
     {
       path: '/admin/orders',
       name: 'AdminOrders',
       component: AdminOrders,
+      meta: {
+        requiresAdmin: true,
+      },
     },
     {
       path: '/dashboard',
       name: 'Dashboard',
       component: Dashboard,
+      meta: {
+        requiresUser: true,
+      },
     },
     {
       path: '/favorites',
       name: 'Favorites',
       component: Favorites,
+      meta: {
+        requiresUser: true,
+      },
     },
     {
       path: '/menu',
       name: 'Menu',
       component: Menu,
+      meta: {
+        requiresUser: true,
+      },
     },
     {
       path: '/orders',
       name: 'Orders',
       component: Orders,
+      meta: {
+        requiresUser: true,
+      },
     },
     {
       path: '/cart',
       name: 'Cart',
       component: Cart,
+      meta: {
+        requiresUser: true,
+      },
     },
     {
       path: '/order/complete',
       name: 'CompleteOrder',
       component: CompleteOrder,
+      meta: {
+        requiresUser: true,
+      },
     },
     {
       path: '/order/modify/:id',
       name: 'ModifyOrder',
       component: ModifyOrder,
+      meta: {
+        requiresUser: true,
+      },
     },
     {
       path: '/product/:id',
       name: 'ProductDetail',
       component: ProductDetail,
+      meta: {
+        requiresUser: true,
+      },
     },
     {
       path: '/order/track/:id',
       name: 'TrackOrder',
       component: TrackOrder,
+      meta: {
+        requiresUser: true,
+      },
     },
   ],
 })
 
-router.beforeEach(async () => {
+router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
 
+  if (to.meta.requiresAdmin) {
+    if (!auth.isAdmin) {
+      next('/dashboard')
+    }
+  }
+  if (to.meta.requiresUser) {
+    if (auth.isAdmin) {
+      next('/dashboard/admin')
+    }
+  }
   if (auth.isAuthenticated) {
     await useCartStore().fetchCart()
     await usePizzaStore().fetchAll()
     await useFavoriteStore().fetchFavorites()
     await useLocationStore().fetchLocations()
   }
+  next()
 })
 
 export default router

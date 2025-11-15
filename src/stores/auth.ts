@@ -247,7 +247,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('Backend response:', data)
       console.log('removeImage flag was set:', updates.removeImage)
       if (!res.ok) {
-        sonner.error(`Failed to update profile. ${data.message}`)
+        sonner.error(`${data.message}`)
         return false
       }
       
