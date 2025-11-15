@@ -1,5 +1,9 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
+import { useFetch } from '@/plugins/api'
+import { toBase64, toDate } from '@/plugins/convert'
+import type { Order } from '@/models/order'
+import type { Pizza } from '@/models/pizza'
 
 export interface DashboardStats {
   totalOrders: number
@@ -43,143 +47,234 @@ export interface ChartData {
   revenue: number
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  preparing: 'Preparing',
+  ready: 'Ready',
+  out_for_delivery: 'Out for Delivery',
+  outfordelivery: 'Out for Delivery',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+}
+
+const normalizeStatus = (status?: string | null) =>
+  status ? status.toLowerCase().replace(/\s+/g, '_') : 'pending'
+
+const formatStatusLabel = (status?: string | null) =>
+  STATUS_LABELS[normalizeStatus(status)] ?? (status ?? 'Unknown')
+
+const monthLabel = (year: number, monthIndex: number) =>
+  new Date(year, monthIndex).toLocaleString('en-US', { month: 'short', year: '2-digit' })
+
+const percentChange = (current: number, previous: number) => {
+  if (previous <= 0) return current > 0 ? 100 : 0
+  return Number((((current - previous) / previous) * 100).toFixed(1))
+}
+
 export const useDashboardStore = defineStore('dashboard', () => {
-  // Initialize with sample data matching the image
+  const URL = import.meta.env.VITE_BASE_URL ?? 'http://localhost:5135/api'
+
   const stats = ref<DashboardStats>({
-    totalOrders: 2847,
-    totalRevenue: 18450,
-    avgOrderValue: 18450,
-    menuItems: 24,
-    ordersGrowth: 12,
-    revenueGrowth: 8,
-    avgOrderGrowth: -2.1
+    totalOrders: 0,
+    totalRevenue: 0,
+    avgOrderValue: 0,
+    menuItems: 0,
+    ordersGrowth: 0,
+    revenueGrowth: 0,
+    avgOrderGrowth: 0,
   })
 
-  const popularMenuItems = ref<PopularMenuItem[]>([
-    {
-      id: '1',
-      name: 'Classic Margherita',
-      description: 'Fresh basil, mozzarella, tomato sauce',
-      image: '/pizza-margherita.jpg',
-      orders: 45
-    },
-    {
-      id: '2',
-      name: 'Supreme Pepperoni',
-      description: 'Pepperoni, bell peppers, mushrooms',
-      image: '/pizza-pepperoni.jpg',
-      orders: 38
-    },
-    {
-      id: '3',
-      name: 'Hawaiian Special',
-      description: 'Ham, pineapple, mozzarella',
-      image: '/pizza-hawaiian.jpg',
-      orders: 32
-    },
-    {
-      id: '4',
-      name: 'Meat Lovers',
-      description: 'Pepperoni, sausage, bacon, ham',
-      image: '/pizza-meat-lovers.jpg',
-      orders: 28
-    },
-    {
-      id: '5',
-      name: 'Veggie Deluxe',
-      description: 'Bell peppers, mushrooms, olives',
-      image: '/pizza-veggie.jpg',
-      orders: 24
-    }
-  ])
-
+  const popularMenuItems = ref<PopularMenuItem[]>([])
   const orderStatus = ref<OrderStatus>({
-    pending: 2,
-    preparing: 1,
-    ready: 1,
-    outForDelivery: 1,
-    delivered: 18,
-    cancelled: 3
+    pending: 0,
+    preparing: 0,
+    ready: 0,
+    outForDelivery: 0,
+    delivered: 0,
+    cancelled: 0,
   })
+  const recentOrders = ref<RecentOrder[]>([])
+  const ordersChartData = ref<ChartData[]>([])
+  const revenueChartData = ref<ChartData[]>([])
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
 
-  const recentOrders = ref<RecentOrder[]>([
-    {
-      id: 'ORD-001',
-      customer: 'John Doe',
-      items: 'Margherita Pizza',
-      total: 450,
-      status: 'Ready',
-      orderTime: 'Oct 15, 2024 2:30 PM'
-    },
-    {
-      id: 'ORD-002',
-      customer: 'Jane Smith',
-      items: 'Pepperoni Pizza',
-      total: 450,
-      status: 'Preparing',
-      orderTime: 'Oct 15, 2024 2:30 PM'
-    },
-    {
-      id: 'ORD-003',
-      customer: 'Carlos Santos',
-      items: 'Supreme Pizza, Pasta',
-      total: 780,
-      status: 'Pending',
-      orderTime: 'Oct 15, 2024 2:30 PM'
-    },
-    {
-      id: 'ORD-004',
-      customer: 'Carlos Santos',
-      items: 'Supreme Pizza, Pasta',
-      total: 780,
-      status: 'Out for Delivery',
-      orderTime: 'Oct 15, 2024 2:30 PM'
-    },
-    {
-      id: 'ORD-005',
-      customer: 'Carlos Santos',
-      items: 'Supreme Pizza, Pasta',
-      total: 780,
-      status: 'Delivered',
-      orderTime: 'Oct 15, 2024 2:30 PM'
-    }
-  ])
+  const filteredPopularItems = computed(() => popularMenuItems.value.slice(0, 5))
+  const filteredRecentOrders = computed(() => recentOrders.value.slice(0, 5))
 
-  const ordersChartData = ref<ChartData[]>([
-    { month: 'Jan', orders: 120, revenue: 15000 },
-    { month: 'Feb', orders: 150, revenue: 18000 },
-    { month: 'Mar', orders: 180, revenue: 22000 },
-    { month: 'Apr', orders: 220, revenue: 24000 },
-    { month: 'May', orders: 260, revenue: 28000 },
-    { month: 'Jun', orders: 300, revenue: 30000 }
-  ])
-
-  const revenueChartData = ref<ChartData[]>([
-    { month: 'Jan', orders: 120, revenue: 15000 },
-    { month: 'Feb', orders: 150, revenue: 18000 },
-    { month: 'Mar', orders: 180, revenue: 22000 },
-    { month: 'Apr', orders: 220, revenue: 24000 },
-    { month: 'May', orders: 260, revenue: 28000 },
-    { month: 'Jun', orders: 300, revenue: 30000 }
-  ])
-
-  // Computed properties for filtered data
-  const filteredPopularItems = computed(() => {
-    return popularMenuItems.value.slice(0, 5) // Show top 5
-  })
-
-  const filteredRecentOrders = computed(() => {
-    return recentOrders.value.slice(0, 5) // Show latest 5
-  })
-
-  // Actions for API integration
   const fetchDashboardData = async () => {
+    isLoading.value = true
+    error.value = null
+
     try {
-      // For now, we're using the sample data already initialized above
-      // In a real app, this would fetch from an API
-      console.log('Dashboard data loaded with sample data')
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      const [ordersRes, pizzasRes] = await Promise.all([
+        useFetch(`${URL}/order`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        }),
+        useFetch(`${URL}/pizza`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        }),
+      ])
+
+      const [ordersData, pizzasData] = await Promise.all([ordersRes.json(), pizzasRes.json()])
+
+      if (!ordersRes.ok) throw new Error(ordersData.message ?? 'Failed to load orders')
+      if (!pizzasRes.ok) throw new Error(pizzasData.message ?? 'Failed to load pizzas')
+
+      const pizzas: Pizza[] = Array.isArray(pizzasData) ? pizzasData : []
+      const pizzaMap = new Map<number, Pizza>()
+      pizzas.forEach((pizza) => pizzaMap.set(pizza.pizzaId as number, pizza))
+
+      const orders: (Order & { orderTotal: number })[] = (Array.isArray(ordersData) ? ordersData : []).map(
+        (order: Order) => {
+          const total = order.orderLists.reduce((sum, item) => {
+            const pizza = pizzaMap.get(item.pizzaId)
+            return sum + (pizza?.pizzaPrice ?? 0) * item.quantity
+          }, 0)
+          return {
+            ...order,
+            orderTotal: total,
+          }
+        },
+      )
+
+      const totalOrders = orders.length
+      const totalRevenue = orders.reduce((sum, order) => sum + (order.orderTotal ?? 0), 0)
+      const avgOrderValue = totalOrders ? totalRevenue / totalOrders : 0
+      const activeMenuItems = pizzas.filter((pizza) => !pizza.isDeleted).length
+
+      // Monthly aggregation (last 6 months)
+      const monthlyMap = new Map<string, { orders: number; revenue: number }>()
+      orders.forEach((order) => {
+        const date = order.dateCreated ? new Date(order.dateCreated) : new Date()
+        const key = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`
+        const current = monthlyMap.get(key) ?? { orders: 0, revenue: 0 }
+        current.orders += 1
+        current.revenue += order.orderTotal ?? 0
+        monthlyMap.set(key, current)
+      })
+
+      const sortedMonthlyKeys = Array.from(monthlyMap.keys()).sort()
+      const lastSixKeys = sortedMonthlyKeys.slice(-6)
+      const monthlyData = lastSixKeys.map((key) => {
+        const [year, month] = key.split('-').map(Number)
+        const payload = monthlyMap.get(key)!
+        return {
+          month: monthLabel(year, month),
+          orders: payload.orders,
+          revenue: payload.revenue,
+        }
+      })
+
+      ordersChartData.value = monthlyData
+      revenueChartData.value = monthlyData
+
+      const currentMonthData = monthlyData[monthlyData.length - 1] ?? { orders: 0, revenue: 0 }
+      const previousMonthData = monthlyData[monthlyData.length - 2] ?? { orders: 0, revenue: 0 }
+      const currentAvg = currentMonthData.orders
+        ? currentMonthData.revenue / currentMonthData.orders
+        : 0
+      const prevAvg = previousMonthData.orders
+        ? previousMonthData.revenue / previousMonthData.orders
+        : 0
+
+      stats.value = {
+        totalOrders,
+        totalRevenue,
+        avgOrderValue,
+        menuItems: activeMenuItems,
+        ordersGrowth: percentChange(currentMonthData.orders, previousMonthData.orders),
+        revenueGrowth: percentChange(currentMonthData.revenue, previousMonthData.revenue),
+        avgOrderGrowth: percentChange(currentAvg, prevAvg),
+      }
+
+      const statusCounts: OrderStatus = {
+        pending: 0,
+        preparing: 0,
+        ready: 0,
+        outForDelivery: 0,
+        delivered: 0,
+        cancelled: 0,
+      }
+
+      orders.forEach((order) => {
+        const normalized = normalizeStatus(order.orderStatus)
+        switch (normalized) {
+          case 'preparing':
+            statusCounts.preparing += 1
+            break
+          case 'ready':
+            statusCounts.ready += 1
+            break
+          case 'out_for_delivery':
+          case 'outfordelivery':
+            statusCounts.outForDelivery += 1
+            break
+          case 'delivered':
+            statusCounts.delivered += 1
+            break
+          case 'cancelled':
+            statusCounts.cancelled += 1
+            break
+          default:
+            statusCounts.pending += 1
+            break
+        }
+      })
+
+      orderStatus.value = statusCounts
+
+      const pizzaOrderCount = new Map<number, number>()
+      orders.forEach((order) => {
+        order.orderLists.forEach((item) => {
+          const prev = pizzaOrderCount.get(item.pizzaId) ?? 0
+          pizzaOrderCount.set(item.pizzaId, prev + item.quantity)
+        })
+      })
+
+      popularMenuItems.value = Array.from(pizzaOrderCount.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([pizzaId, count]) => {
+          const pizza = pizzaMap.get(pizzaId)
+          return {
+            id: String(pizzaId),
+            name: pizza?.pizzaName ?? `Pizza #${pizzaId}`,
+            description: pizza?.pizzaDescription ?? 'No description available',
+            image: pizza?.pizzaImage ? toBase64(pizza.pizzaImage as string) : '/placeholder.png',
+            orders: count,
+          }
+        })
+
+      recentOrders.value = orders
+        .slice()
+        .sort((a, b) => {
+          const dateA = a.dateCreated ? new Date(a.dateCreated).getTime() : 0
+          const dateB = b.dateCreated ? new Date(b.dateCreated).getTime() : 0
+          return dateB - dateA
+        })
+        .slice(0, 5)
+        .map((order) => ({
+          id: `#${order.orderId}`,
+          customer: `${order.firstName ?? ''} ${order.lastName ?? ''}`.trim() || 'Guest User',
+          items:
+            order.orderLists
+              .map((item) => pizzaMap.get(item.pizzaId)?.pizzaName ?? `Pizza #${item.pizzaId}`)
+              .join(', ') || 'No items',
+          total: order.orderTotal ?? 0,
+          status: formatStatusLabel(order.orderStatus),
+          orderTime: order.dateCreated ? toDate(order.dateCreated) : '',
+        }))
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load dashboard data'
+      error.value = message
+      console.error('[Dashboard]', message)
+    } finally {
+      isLoading.value = false
     }
   }
 
@@ -197,6 +292,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     filteredPopularItems,
     filteredRecentOrders,
     fetchDashboardData,
-    refreshData
+    refreshData,
+    isLoading,
+    error,
   }
 })

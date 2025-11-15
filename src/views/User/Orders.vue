@@ -67,8 +67,8 @@ const cancelConfirmationOpen = ref(false)
 // Rating modal state
 const ratingModalOpen = ref(false)
 const selectedOrder = ref<Order | null>(null)
-const currentRating = ref(0)
-const ratingMessage = ref('')
+const pizzaRatings = ref<Map<number, number>>(new Map()) // Track rating for each pizza (pizzaId -> rating)
+const pizzaMessages = ref<Map<number, string>>(new Map()) // Track message for each pizza (pizzaId -> message)
 const isSubmittingRating = ref(false)
 const orderRatedStatus = ref<Map<number, boolean>>(new Map()) // Track which orders are fully rated
 const locationForm = reactive({
@@ -88,10 +88,21 @@ const saveAddress = async () => {
     if (res) {
       showAddressModal.value = false
       isEdit.value = false
+      // Update selectedAddressId if the edited address was selected or is now default
+      if (locationForm.isDefault) {
+        selectedAddressId.value = locationForm.locationId
+      }
     }
   } else {
     const res = await location.addLocation(locationForm)
-    if (res) showAddressModal.value = false
+    if (res) {
+      showAddressModal.value = false
+      // Update selectedAddressId to the newly added address or the newly set default
+      const newLocation = location.locations[location.locations.length - 1]
+      if (newLocation) {
+        selectedAddressId.value = newLocation.locationId
+      }
+    }
   }
 }
 
@@ -299,20 +310,37 @@ const checkOrderRatingStatus = async (order: Order) => {
 }
 
 // Check if user has already rated all pizzas from an order
-const hasUserRatedAllPizzas = async (order: Order): Promise<boolean> => {
-  if (!auth.user?.userId || !order.orderLists) return false
+const hasUserRatedAllPizzas = async (targetOrder: Order): Promise<boolean> => {
+  if (!auth.user?.userId || !targetOrder.orderLists) return false
+  
+  // Ensure orders are loaded
+  if (!order.orders || order.orders.length === 0) {
+    await order.fetchUserOrders()
+  }
   
   // Get all pizza IDs from the order
-  const orderPizzaIds = order.orderLists.map(item => item.pizzaId)
+  const orderPizzaIds = targetOrder.orderLists.map(item => item.pizzaId)
   
   // Check if user has rated all pizzas in this order
   for (const pizzaId of orderPizzaIds) {
     const pizzaRating = await ratingStore.fetchRatingsByPizzaId(pizzaId)
     if (!pizzaRating) return false
     
-    // Check if current user has rated this pizza
-    const userRated = pizzaRating.ratings.some(rating => rating.userId === auth.user?.userId)
-    if (!userRated) return false
+    // Check if current user has a rating for this pizza that belongs to this order
+    const userRatings = pizzaRating.ratings.filter(rating => rating.userId === auth.user?.userId)
+    if (userRatings.length === 0) return false
+    
+    // Check if any rating belongs to this order
+    let hasRatingForThisOrder = false
+    for (const rating of userRatings) {
+      const ratingDate = new Date(rating.dateCreated)
+      if (ratingBelongsToOrder(ratingDate, targetOrder, pizzaId)) {
+        hasRatingForThisOrder = true
+        break
+      }
+    }
+    
+    if (!hasRatingForThisOrder) return false
   }
   
   return true
@@ -338,26 +366,145 @@ const hasUserRatedAnyPizza = async (order: Order): Promise<boolean> => {
   return false
 }
 
-// Check if user has already rated a specific pizza
-const hasUserRatedPizza = (pizzaId: number): boolean => {
-  if (!auth.user?.userId) return false
+// Helper function to find which order a rating belongs to
+// SIMPLE RULE: If preferredOrderId is provided, assign to that order (if valid and doesn't have rating)
+// Otherwise, find the most recent order without a rating
+const findOrderForRatingByDate = (ratingDate: Date, pizzaId: number, preferredOrderId?: number, checkingExistingRating: boolean = false): number | null => {
+  if (!order.orders || order.orders.length === 0) return null
+  
+  // If preferredOrderId is provided and we're creating a NEW rating, ALWAYS assign to it if valid
+  // (hasUserRatedPizza should have already checked if it has a rating)
+  if (preferredOrderId && !checkingExistingRating) {
+    const preferredOrder = order.orders.find(o => o.orderId === preferredOrderId)
+    if (preferredOrder) {
+      // Check if order is delivered and contains the pizza
+      if (preferredOrder.orderStatus === 'delivered' && 
+          preferredOrder.orderLists?.some(item => item.pizzaId === pizzaId)) {
+        const preferredOrderDate = preferredOrder.dateCreated ? (typeof preferredOrder.dateCreated === 'string' ? new Date(preferredOrder.dateCreated) : preferredOrder.dateCreated) : null
+        
+        // Check if order was delivered before rating date
+        if (preferredOrderDate && preferredOrderDate <= ratingDate) {
+          // For NEW ratings, just return preferredOrderId - hasUserRatedPizza already verified it doesn't have a rating
+          return preferredOrderId
+        }
+      }
+    }
+  }
+  
+  // Fallback: find most recent order without rating (for checking where existing ratings belong)
+  const candidateOrders = order.orders
+    .filter(o => {
+      if (!o.dateCreated || o.orderStatus !== 'delivered') return false
+      const oDate = typeof o.dateCreated === 'string' ? new Date(o.dateCreated) : o.dateCreated
+      return oDate <= ratingDate && o.orderLists?.some(item => item.pizzaId === pizzaId)
+    })
+    .sort((a, b) => {
+      const dateA = typeof a.dateCreated === 'string' ? new Date(a.dateCreated).getTime() : (a.dateCreated?.getTime() || 0)
+      const dateB = typeof b.dateCreated === 'string' ? new Date(b.dateCreated).getTime() : (b.dateCreated?.getTime() || 0)
+      if (dateB !== dateA) return dateB - dateA
+      return (b.orderId || 0) - (a.orderId || 0)
+    })
+  
+  if (candidateOrders.length === 0) return null
+  
+  // Get existing ratings (excluding the one we're checking)
+  const pizzaRating = ratingStore.getPizzaRating(pizzaId)
+  const userRatings = pizzaRating ? pizzaRating.ratings.filter(r => r.userId === auth.user?.userId) : []
+  
+  // Create a map to track which orders have ratings
+  // Process ratings chronologically to assign them correctly
+  const orderHasRating = new Map<number, boolean>()
+  
+  // Sort ratings by date (oldest first) to process them in order
+  const sortedRatings = [...userRatings].sort((a, b) => 
+    new Date(a.dateCreated).getTime() - new Date(b.dateCreated).getTime()
+  )
+  
+  for (const rating of sortedRatings) {
+    const rDate = new Date(rating.dateCreated)
+    if (rDate > ratingDate) continue // Skip ratings after target date
+    
+    // Find the most recent order (by date, then orderId) that:
+    // 1. Was delivered before this rating
+    // 2. Doesn't already have a rating assigned
+    let assignedOrderId: number | null = null
+    for (const candidateOrder of candidateOrders) {
+      const candidateOrderDate = candidateOrder.dateCreated ? (typeof candidateOrder.dateCreated === 'string' ? new Date(candidateOrder.dateCreated) : candidateOrder.dateCreated) : null
+      if (!candidateOrderDate || candidateOrderDate > rDate) continue
+      
+      if (!orderHasRating.get(candidateOrder.orderId)) {
+        assignedOrderId = candidateOrder.orderId
+        break
+      }
+    }
+    
+    if (assignedOrderId) {
+      orderHasRating.set(assignedOrderId, true)
+    }
+  }
+  
+  // Find the first order (newest first) that doesn't have a rating
+  for (const candidateOrder of candidateOrders) {
+    if (!orderHasRating.get(candidateOrder.orderId)) {
+      return candidateOrder.orderId
+    }
+  }
+  
+  // All orders have ratings, return the most recent one
+  return candidateOrders[0].orderId
+}
+
+// Helper function to determine which order a rating belongs to
+// A rating belongs to a target order if it's the order that the rating should be assigned to
+// IMPORTANT: This checks where an EXISTING rating (with ratingDate) belongs, not where a new rating would go
+const ratingBelongsToOrder = (ratingDate: Date, targetOrder: Order, pizzaId: number): boolean => {
+  // Don't pass preferredOrderId when checking existing ratings - we want to know where it actually belongs
+  const orderId = findOrderForRatingByDate(ratingDate, pizzaId)
+  return orderId === targetOrder.orderId
+}
+
+// Check if user has already rated a specific pizza for this order
+const hasUserRatedPizza = (pizzaId: number, targetOrder: Order): boolean => {
+  if (!auth.user?.userId || !targetOrder) return false
   
   const pizzaRating = ratingStore.getPizzaRating(pizzaId)
   if (!pizzaRating) return false
   
   // Check if current user has rated this pizza
-  return pizzaRating.ratings.some(rating => rating.userId === auth.user?.userId)
+  const userRatings = pizzaRating.ratings.filter(rating => rating.userId === auth.user?.userId)
+  if (userRatings.length === 0) return false
+  
+  // Check if any rating belongs to this order
+  for (const rating of userRatings) {
+    const ratingDate = new Date(rating.dateCreated)
+    if (ratingBelongsToOrder(ratingDate, targetOrder, pizzaId)) {
+      return true
+    }
+  }
+  
+  return false
 }
 
-// Get user's rating for a specific pizza
-const getUserRatingForPizza = (pizzaId: number) => {
-  if (!auth.user?.userId) return null
+// Get user's rating for a specific pizza for this order
+const getUserRatingForPizza = (pizzaId: number, targetOrder: Order) => {
+  if (!auth.user?.userId || !targetOrder) return null
   
   const pizzaRating = ratingStore.getPizzaRating(pizzaId)
   if (!pizzaRating) return null
   
-  // Find current user's rating for this pizza
-  return pizzaRating.ratings.find(rating => rating.userId === auth.user?.userId)
+  // Find current user's ratings for this pizza
+  const userRatings = pizzaRating.ratings.filter(rating => rating.userId === auth.user?.userId)
+  if (userRatings.length === 0) return null
+  
+  // Find the rating that belongs to this order
+  for (const rating of userRatings) {
+    const ratingDate = new Date(rating.dateCreated)
+    if (ratingBelongsToOrder(ratingDate, targetOrder, pizzaId)) {
+      return rating
+    }
+  }
+  
+  return null
 }
 
 // Rating functions
@@ -367,27 +514,111 @@ const handleRateReviewClick = async (order: Order) => {
   
   // If not fully rated, open modal
   if (!isOrderFullyRated(order)) {
-    openRatingModal(order)
+    await openRatingModal(order)
   }
 }
 
-const openRatingModal = (order: Order) => {
+const openRatingModal = async (order: Order) => {
   selectedOrder.value = order
-  currentRating.value = 0
-  ratingMessage.value = ''
+  
+  // Fetch ratings for all pizzas in the order to show "already rated" status
+  if (order.orderLists) {
+    for (const item of order.orderLists) {
+      await ratingStore.fetchRatingsByPizzaId(item.pizzaId)
+      // Initialize rating and message for each pizza
+      if (!pizzaRatings.value.has(item.pizzaId)) {
+        pizzaRatings.value.set(item.pizzaId, 0)
+      }
+      if (!pizzaMessages.value.has(item.pizzaId)) {
+        pizzaMessages.value.set(item.pizzaId, '')
+      }
+    }
+  }
+  
   ratingModalOpen.value = true
 }
 
 const closeRatingModal = () => {
   ratingModalOpen.value = false
   selectedOrder.value = null
-  currentRating.value = 0
-  ratingMessage.value = ''
+  pizzaRatings.value.clear()
+  pizzaMessages.value.clear()
+}
+
+// Find which order a rating should belong to when submitting
+// Returns the most recent order with this pizza that doesn't have a rating yet
+const findOrderForRating = (pizzaId: number): Order | null => {
+  if (!order.orders || order.orders.length === 0) return null
+  
+  // Get all delivered orders with this pizza, sorted by date (newest first)
+  const candidateOrders = order.orders
+    .filter(o => {
+      if (!o.dateCreated || o.orderStatus !== 'delivered') return false
+      return o.orderLists?.some(item => item.pizzaId === pizzaId)
+    })
+    .sort((a, b) => {
+      const dateA = typeof a.dateCreated === 'string' ? new Date(a.dateCreated).getTime() : (a.dateCreated?.getTime() || 0)
+      const dateB = typeof b.dateCreated === 'string' ? new Date(b.dateCreated).getTime() : (b.dateCreated?.getTime() || 0)
+      if (dateB !== dateA) return dateB - dateA
+      return (b.orderId || 0) - (a.orderId || 0)
+    })
+  
+  if (candidateOrders.length === 0) return null
+  
+  // Check which order doesn't have a rating yet
+  const pizzaRating = ratingStore.getPizzaRating(pizzaId)
+  const userRatings = pizzaRating ? pizzaRating.ratings.filter(r => r.userId === auth.user?.userId) : []
+  
+  for (const candidateOrder of candidateOrders) {
+    const candidateOrderDate = candidateOrder.dateCreated ? (typeof candidateOrder.dateCreated === 'string' ? new Date(candidateOrder.dateCreated) : candidateOrder.dateCreated) : null
+    if (!candidateOrderDate) continue
+    
+    // Check if this order already has a rating
+    const hasRating = userRatings.some(rating => {
+      const ratingDate = new Date(rating.dateCreated)
+      // Simulate: if we create a rating now, would it belong to this order?
+      const now = new Date()
+      return ratingBelongsToOrder(ratingDate, candidateOrder, pizzaId)
+    })
+    
+    if (!hasRating) {
+      return candidateOrder
+    }
+  }
+  
+  // All orders have ratings, return the most recent one (shouldn't happen in practice)
+  return candidateOrders[0]
 }
 
 const submitRating = async (pizzaId: number) => {
-  if (currentRating.value === 0) {
+  const rating = pizzaRatings.value.get(pizzaId) || 0
+  if (rating === 0) {
     alert('Please select a rating')
+    return
+  }
+
+  if (!selectedOrder.value) return
+
+  // Ensure orders are loaded
+  if (!order.orders || order.orders.length === 0) {
+    await order.fetchUserOrders()
+  }
+
+  // Check if current order already has a rating for this pizza
+  if (hasUserRatedPizza(pizzaId, selectedOrder.value)) {
+    alert('This pizza has already been rated for this order.')
+    return
+  }
+
+  // Verify that the rating will be assigned to the current order
+  // We do this by checking what order findOrderForRatingByDate would assign it to
+  const now = new Date()
+  const targetOrderId = findOrderForRatingByDate(now, pizzaId, selectedOrder.value.orderId)
+  
+  // If it would be assigned to a different order, that means the current order already has a rating
+  // (This shouldn't happen if hasUserRatedPizza is working correctly, but double-check)
+  if (targetOrderId && targetOrderId !== selectedOrder.value.orderId) {
+    alert('This pizza has already been rated for this order.')
     return
   }
 
@@ -395,16 +626,34 @@ const submitRating = async (pizzaId: number) => {
   try {
     const ratingRequest: RatingRequest = {
       pizzaId,
-      ratingValue: currentRating.value,
-      ratingMessage: ratingMessage.value || undefined
+      ratingValue: rating,
+      ratingMessage: pizzaMessages.value.get(pizzaId) || undefined
     }
 
     await ratingStore.createRating(ratingRequest)
-    // Refresh rating status for this order
-    if (selectedOrder.value) {
-      await checkOrderRatingStatus(selectedOrder.value)
+    
+    // Small delay to ensure backend has processed the rating
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // Refresh ratings for this pizza to update the UI immediately
+    await ratingStore.fetchRatingsByPizzaId(pizzaId)
+    
+    // Clear the cached rating status for this order to force a refresh
+    orderRatedStatus.value.delete(selectedOrder.value.orderId)
+    
+    // Refresh rating status for the current order
+    await checkOrderRatingStatus(selectedOrder.value)
+    
+    // Clear rating and message for this pizza to show the preview
+    // The UI will automatically update to show "Already rated" status
+    pizzaRatings.value.set(pizzaId, 0)
+    pizzaMessages.value.set(pizzaId, '')
+    
+    // Check if all pizzas are now rated
+    if (isOrderFullyRated(selectedOrder.value)) {
+      closeRatingModal()
     }
-    closeRatingModal()
+    // Otherwise, keep modal open to show the preview and allow rating other items
   } catch (error) {
     console.error('Error submitting rating:', error)
   } finally {
@@ -822,14 +1071,14 @@ watch(() => order.orders, async (newOrders) => {
             <div 
               v-for="orderItem in selectedOrder.orderLists?.map((item) => {
                 const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
-                const userRating = getUserRatingForPizza(item.pizzaId)
+                const userRating = getUserRatingForPizza(item.pizzaId, selectedOrder)
                 return {
                   pizzaId: item.pizzaId,
                   pizzaName: p?.pizzaName || 'Unknown Pizza',
                   quantity: item.quantity,
                   pizzaPrice: p?.pizzaPrice || 0,
                   pizzaImage: p?.pizzaImage,
-                  alreadyRated: hasUserRatedPizza(item.pizzaId),
+                  alreadyRated: hasUserRatedPizza(item.pizzaId, selectedOrder),
                   userRating: userRating
                 }
               })"
@@ -859,10 +1108,10 @@ watch(() => order.orders, async (newOrders) => {
                   <button
                     v-for="star in 5"
                     :key="star"
-                    @click="currentRating = star"
+                    @click="pizzaRatings.set(orderItem.pizzaId, star)"
                     :class="[
                       'text-2xl transition-colors',
-                      star <= currentRating ? 'text-yellow-400' : 'text-gray-300'
+                      star <= (pizzaRatings.get(orderItem.pizzaId) || 0) ? 'text-yellow-400' : 'text-gray-300'
                     ]"
                   >
                     ★
@@ -894,7 +1143,8 @@ watch(() => order.orders, async (newOrders) => {
               <div class="space-y-2" v-if="!orderItem.alreadyRated">
                 <label class="text-sm font-medium text-gray-700">Review (optional):</label>
                 <textarea
-                  v-model="ratingMessage"
+                  :value="pizzaMessages.get(orderItem.pizzaId) || ''"
+                  @input="pizzaMessages.set(orderItem.pizzaId, ($event.target as HTMLTextAreaElement).value)"
                   placeholder="Share your thoughts about this pizza..."
                   class="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   rows="3"
@@ -905,7 +1155,7 @@ watch(() => order.orders, async (newOrders) => {
               <div class="flex justify-end" v-if="!orderItem.alreadyRated">
                 <Button
                   @click="submitRating(orderItem.pizzaId)"
-                  :disabled="isSubmittingRating || currentRating === 0"
+                  :disabled="isSubmittingRating || (pizzaRatings.get(orderItem.pizzaId) || 0) === 0"
                   class="bg-primary hover:bg-primary/90"
                 >
                   {{ isSubmittingRating ? 'Submitting...' : 'Submit Rating' }}

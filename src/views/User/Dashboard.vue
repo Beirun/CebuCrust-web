@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { ShoppingCart, Heart, Star, MapPin, Clock } from 'lucide-vue-next'
@@ -70,6 +70,20 @@ const orderSteps = ref([
   { id: 'delivered', label: 'Delivered', completed: false, active: false },
 ])
 
+const completedSegments = computed(
+  () => orderSteps.value.filter((step) => step.completed).length,
+)
+
+const totalSegments = computed(() => Math.max(orderSteps.value.length - 1, 0))
+
+const progressLineStyle = computed(() => {
+  if (totalSegments.value === 0) return { width: '0' }
+  const fraction = completedSegments.value / totalSegments.value
+  return {
+    width: `calc(${fraction} * (100% - 2rem))`,
+  }
+})
+
 // Computed properties
 const currentTime = computed(() => {
   const hour = new Date().getHours()
@@ -138,8 +152,24 @@ const UpdateShowAddressModal = (val: boolean) => {
   if (fromSelectAddress.value) showChangeAddressModal.value = true
 }
 
+// Auto-confirm selection when user picks a radio in the Select Address dialog.
+// This lets us remove the visible Cancel/Save buttons in that dialog while
+// still applying the selected address immediately.
+watch(selectedAddressId, (val) => {
+  if (!val) return
+  const sel = location.locations.find((l) => l.locationId === val)
+  if (sel) {
+    location.selectedLocation = sel
+    showChangeAddressModal.value = false
+  }
+})
+
 const deleteAddress = async (loc: Location) => {
-  await location.removeLocation(loc.locationId)
+  const deleted = await location.removeLocation(loc.locationId)
+  if (deleted) {
+    // Sync selectedAddressId with the store's selectedLocation after deletion
+    selectedAddressId.value = location.selectedLocation?.locationId ?? 0
+  }
 }
 
 const setAsDefault = async (loc: Location) => {
@@ -153,10 +183,21 @@ const saveAddress = async () => {
     if (res) {
       showAddressModal.value = false
       isEdit.value = false
+      // Update selectedAddressId if the edited address was selected or is now default
+      if (locationForm.isDefault) {
+        selectedAddressId.value = locationForm.locationId
+      }
     }
   } else {
     const res = await location.addLocation(locationForm)
-    if (res) showAddressModal.value = false
+    if (res) {
+      showAddressModal.value = false
+      // Update selectedAddressId to the newly added address or the newly set default
+      const newLocation = location.locations[location.locations.length - 1]
+      if (newLocation) {
+        selectedAddressId.value = newLocation.locationId
+      }
+    }
   }
   if (fromSelectAddress.value) showChangeAddressModal.value = true
 }
@@ -372,24 +413,7 @@ const inCart = (id: number) => {
             </Button>
           </div>
 
-          <!-- Buttons -->
-          <div class="flex justify-between gap-3">
-            <Button
-              class="w-[calc(50%-6px)] h-12"
-              variant="outline"
-              @click="showChangeAddressModal = false"
-            >
-              Cancel
-            </Button>
-            <Button
-              :disabled="location.isLoading"
-              @click="saveAddress"
-              class="w-[calc(50%-6px)] h-12 bg-primary hover:bg-primary/90"
-            >
-              <span v-if="location.isLoading">Saving...</span>
-              <span v-else>Save Address</span>
-            </Button>
-          </div>
+          <!-- Footer removed: selection is applied immediately when user picks a radio -->
         </DialogContent>
       </Dialog>
       <!-- Change address modal -->
@@ -519,11 +543,25 @@ const inCart = (id: number) => {
             </button>
           </div>
 
-          <div class="flex items-center justify-between mb-4">
-            <div v-for="(step, index) in orderSteps" :key="step.id" class="flex items-center">
-              <div class="flex flex-col items-center">
+          <div class="relative mb-6">
+            <div class="absolute top-4 left-4 right-4 h-0.5 bg-white/10"></div>
+            <div
+              class="absolute top-4 left-4 h-0.5 bg-green-500 transition-all duration-300"
+              :style="progressLineStyle"
+            ></div>
+
+            <div class="relative grid grid-cols-5">
+              <div
+                v-for="(step, index) in orderSteps"
+                :key="step.id"
+                :class="[
+                  'relative flex flex-col items-center text-center gap-1',
+                  index === 0 ? 'justify-self-start items-start' : '',
+                  index === orderSteps.length - 1 ? 'justify-self-end items-end' : '',
+                ]"
+              >
                 <div
-                  class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                  class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium self-center"
                   :class="
                     step.completed
                       ? 'bg-green-500 text-white'
@@ -536,13 +574,16 @@ const inCart = (id: number) => {
                   <span v-else-if="step.id === 'delivered'">🏠</span>
                   <span v-else>{{ index + 1 }}</span>
                 </div>
-                <span class="text-xs text-[#D1D5DB] mt-1 text-center">{{ step.label }}</span>
+                <span
+                  :class="[
+                    'mt-1 text-xs text-[#D1D5DB]',
+                    index === 0 ? 'self-start text-left' : '',
+                    index === orderSteps.length - 1 ? 'self-end text-right' : '',
+                  ]"
+                >
+                  {{ step.label }}
+                </span>
               </div>
-              <div
-                v-if="index < orderSteps.length - 1"
-                class="flex-1 h-0.5 mx-2"
-                :class="step.completed ? 'bg-green-500' : 'bg-[#797B78]'"
-              ></div>
             </div>
           </div>
 
@@ -622,7 +663,6 @@ const inCart = (id: number) => {
               <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
               <p class="text-[#D1D5DB] text-sm mb-3 line-clamp-2">{{ item.pizzaDescription }}</p>
               <div class="flex items-center justify-between mb-3">
-                <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
                 <div class="flex items-center">
                   <Star class="w-4 h-4 text-yellow-400 fill-current" />
                   <span class="text-sm text-[#D1D5DB] ml-1">
@@ -633,6 +673,7 @@ const inCart = (id: number) => {
                     }}
                   </span>
                 </div>
+                <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
               </div>
               <button
                 :disabled="!item.isAvailable || inCart(item.pizzaId!)"
@@ -729,7 +770,6 @@ const inCart = (id: number) => {
               <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
               <p class="text-[#D1D5DB] text-sm mb-3 line-clamp-2">{{ item.pizzaDescription }}</p>
               <div class="flex items-center justify-between mb-3">
-                <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
                 <div class="flex items-center">
                   <Star class="w-4 h-4 text-yellow-400 fill-current" />
                   <span class="text-sm text-[#D1D5DB] ml-1">
@@ -740,6 +780,7 @@ const inCart = (id: number) => {
                     }}
                   </span>
                 </div>
+                <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
               </div>
               <button
                 :disabled="!item.isAvailable || inCart(item.pizzaId!)"

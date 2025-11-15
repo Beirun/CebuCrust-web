@@ -27,6 +27,14 @@ const createChart = () => {
   const ctx = chartRef.value.getContext('2d')
   if (!ctx) return
 
+  const revenueValues = props.data.map(item => item.revenue)
+  const minRevenue = revenueValues.length ? Math.min(...revenueValues) : 0
+  const maxRevenue = revenueValues.length ? Math.max(...revenueValues) : 0
+  const padding =
+    revenueValues.length > 1 ? Math.max((maxRevenue - minRevenue) * 0.1, maxRevenue * 0.05) : 100
+  const suggestedMin = Math.max(0, minRevenue - padding)
+  const suggestedMax = maxRevenue + padding
+
   // Destroy existing chart
   if (chartInstance) {
     chartInstance.destroy()
@@ -64,8 +72,8 @@ const createChart = () => {
       scales: {
         y: {
           beginAtZero: false,
-          min: 10000,
-          max: 35000,
+          min: suggestedMin,
+          max: suggestedMax || 1000,
           grid: {
             color: 'rgba(0, 0, 0, 0.1)'
           },

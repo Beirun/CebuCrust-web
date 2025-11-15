@@ -2,7 +2,7 @@
 import { ref, computed, onBeforeMount } from 'vue'
 import { useOrderStore } from '@/stores/orders'
 import { type Order } from '@/models/order'
-import { Search, Filter, ChevronDown, Eye } from 'lucide-vue-next'
+import { Search, Eye } from 'lucide-vue-next'
 import AdminHeader from '@/components/AdminHeader.vue'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
@@ -23,6 +23,7 @@ import { toDate } from '@/plugins/convert'
 const order = useOrderStore()
 const pizza = usePizzaStore()
 const selectedStatus = ref('all')
+const sortBy = ref<'date_desc' | 'date_asc' | 'total_desc' | 'total_asc'>('date_desc')
 const searchQuery = ref('')
 const isOrderModalOpen = ref(false)
 const selectedOrder = ref<Order | null>(null)
@@ -75,25 +76,39 @@ const statusTabs = computed(() => [
 ])
 
 const filteredOrders = computed(() => {
-  let filtered = order.orders
+  let filtered = order.orders.slice()
 
   if (selectedStatus.value !== 'all') {
     filtered = filtered.filter((order) => order.orderStatus === selectedStatus.value)
   }
 
   if (searchQuery.value) {
-    filtered = filtered.filter(
-      (order) =>
-        order.orderId.toString().includes(searchQuery.value.toLowerCase()) ||
-        (order.firstName + ' ' + order.lastName)
-          .toLowerCase()
-          .includes(searchQuery.value.toLowerCase()) ||
-        order.orderLists.some((item) => {
-          const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
-          return p?.pizzaName.toLowerCase().includes(searchQuery.value.toLowerCase())
-        }),
-    )
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter((order) => {
+      const idMatch = order.orderId.toString().includes(query)
+      const name = `${order.firstName ?? ''} ${order.lastName ?? ''}`.trim().toLowerCase()
+      const nameMatch = name.includes(query)
+      const itemMatch = order.orderLists.some((item) => {
+        const p = pizza.pizzas.find((pz) => pz.pizzaId === item.pizzaId)
+        return p?.pizzaName.toLowerCase().includes(query)
+      })
+      return idMatch || nameMatch || itemMatch
+    })
   }
+
+  filtered.sort((a, b) => {
+    switch (sortBy.value) {
+      case 'date_asc':
+        return new Date(a.dateCreated ?? 0).getTime() - new Date(b.dateCreated ?? 0).getTime()
+      case 'total_desc':
+        return (b.orderTotal ?? 0) - (a.orderTotal ?? 0)
+      case 'total_asc':
+        return (a.orderTotal ?? 0) - (b.orderTotal ?? 0)
+      case 'date_desc':
+      default:
+        return new Date(b.dateCreated ?? 0).getTime() - new Date(a.dateCreated ?? 0).getTime()
+    }
+  })
 
   return filtered
 })
@@ -228,18 +243,17 @@ onBeforeMount(async () => {
         </div>
 
         <div class="flex gap-2">
-          <button
-            class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Filter class="h-4 w-4" />
-            Filter
-          </button>
-          <button
-            class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <ChevronDown class="h-4 w-4" />
-            Sort
-          </button>
+          <Select v-model="sortBy">
+            <SelectTrigger class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white w-40">
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date_desc">Newest First</SelectItem>
+              <SelectItem value="date_asc">Oldest First</SelectItem>
+              <SelectItem value="total_desc">Total: High to Low</SelectItem>
+              <SelectItem value="total_asc">Total: Low to High</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -350,7 +364,7 @@ onBeforeMount(async () => {
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <!-- Left Column -->
             <div class="space-y-3">
-              <Card class="bg-gray-50 border border-gray-200">
+              <Card class="bg-gray-50 border border-gray-200 py-2">
                 <CardContent class="p-3">
                   <CardTitle class="text-sm font-semibold text-gray-900 mb-2">
                     Customer Information
@@ -422,7 +436,7 @@ onBeforeMount(async () => {
                 </CardContent>
               </Card>
 
-              <Card class="bg-gray-50 border border-gray-200">
+              <Card class="bg-gray-50 border border-gray-200 py-2">
                 <CardContent class="p-3">
                   <CardTitle class="text-sm font-semibold text-gray-900 mb-2">
                     Delivery Address
@@ -458,7 +472,7 @@ onBeforeMount(async () => {
                 </CardContent>
               </Card>
 
-              <Card class="bg-gray-50 border border-gray-200">
+              <Card class="bg-gray-50 border border-gray-200 py-2">
                 <CardContent class="p-3">
                   <CardTitle class="text-sm font-semibold text-gray-900 mb-2">
                     Special Instructions
@@ -491,7 +505,7 @@ onBeforeMount(async () => {
 
             <!-- Right Column -->
             <div class="space-y-3">
-              <Card class="bg-gray-50 border border-gray-200">
+              <Card class="bg-gray-50 border border-gray-200 py-2">
                 <CardContent class="p-3">
                   <CardTitle class="text-sm font-semibold text-gray-900 mb-2">
                     Order Details
@@ -551,7 +565,7 @@ onBeforeMount(async () => {
                 </CardContent>
               </Card>
 
-              <Card class="bg-gray-50 border border-gray-200">
+              <Card class="bg-gray-50 border border-gray-200 py-2">
                 <CardContent class="p-3">
                   <CardTitle class="text-sm font-semibold text-gray-900 mb-2">
                     Status Management

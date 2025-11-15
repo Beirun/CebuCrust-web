@@ -233,10 +233,21 @@ const saveAddress = async () => {
     if (res) {
       showAddressModal.value = false
       isEdit.value = false
+      // Update selectedAddressId if the edited address was selected or is now default
+      if (locationForm.isDefault) {
+        selectedAddressId.value = locationForm.locationId
+      }
     }
   } else {
     const res = await location.addLocation(locationForm)
-    if (res) showAddressModal.value = false
+    if (res) {
+      showAddressModal.value = false
+      // Update selectedAddressId to the newly added address or the newly set default
+      const newLocation = location.locations[location.locations.length - 1]
+      if (newLocation) {
+        selectedAddressId.value = newLocation.locationId
+      }
+    }
   }
   if (fromSelectAddress.value) showChangeAddressModal.value = true
 }
@@ -275,11 +286,11 @@ onBeforeMount(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen flex flex-col bg-gray-50">
     <UserHeader />
 
     <main
-      class="w-screen px-4 sm:px-8 lg:px-30 py-16 min-h-[calc(100vh-5rem)] h-[calc(100vh-5rem)]"
+      class="w-screen flex-1 px-4 sm:px-8 lg:px-30 py-16 min-h-[calc(100vh-5rem)]"
       :class="!hasItems ? 'grid place-items-center' : ''"
     >
       <div v-if="!hasItems" class="text-center py-12">

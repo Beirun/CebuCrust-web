@@ -37,7 +37,9 @@ const displayName = computed(() => {
     : user.value?.userName || user.value?.username || user.value?.userEmail || ''
 })
 
-const preview = ref<string | null>(auth.userInfo.profileImage)
+const preview = computed(() => {
+  return auth.user?.profileImage || auth.user?.profileImageUrl || null
+})
 
 // Dropdown states
 const isProfileDropdownOpen = ref(false)
@@ -77,7 +79,6 @@ watch(
   () => auth.user,
   (val) => {
     user.value = val ? { ...val } : {}
-    preview.value = user.value?.profileImage || user.value?.profileImageUrl || null
   },
   { immediate: true },
 )

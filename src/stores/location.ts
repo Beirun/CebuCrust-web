@@ -54,6 +54,10 @@ export const useLocationStore = defineStore('location', () => {
         locations.value.forEach((l) => (l.isDefault = false))
       }
       locations.value.push(data)
+      // Update selectedLocation: if it's the first address or marked as default, select it
+      if (locations.value.length === 1 || loc.isDefault) {
+        selectedLocation.value = data
+      }
       return true
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error adding location'
@@ -80,7 +84,16 @@ export const useLocationStore = defineStore('location', () => {
         locations.value.forEach((l) => (l.isDefault = false))
       }
       const i = locations.value.findIndex((l: Location) => l.locationId === id)
-      if (i !== -1) locations.value[i] = data
+      if (i !== -1) {
+        locations.value[i] = data
+      }
+      // If the updated location is set as default, or it is the currently selected location,
+      // update the store's selectedLocation so views reflect the change immediately.
+      if (loc.isDefault) {
+        selectedLocation.value = data
+      } else if (selectedLocation.value?.locationId === id) {
+        selectedLocation.value = data
+      }
       return true
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error updating location'
@@ -104,9 +117,16 @@ export const useLocationStore = defineStore('location', () => {
       }
       sonner.success('Location deleted')
       locations.value = locations.value.filter((l: Location) => l.locationId !== id)
+      
+      // If the deleted address was the selected one, update selectedLocation
+      if (selectedLocation.value?.locationId === id) {
+        selectedLocation.value = locations.value.find((l) => l.isDefault === true) ?? locations.value[0] ?? null
+      }
+      return true
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error deleting location'
       sonner.error(msg)
+      return false
     } finally {
       isLoading.value = false
     }
