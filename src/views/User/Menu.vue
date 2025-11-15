@@ -86,7 +86,6 @@ const filteredMenuItems = computed(() => {
 })
 
 const hasMenuItems = computed(() => adminMenuItems.value && adminMenuItems.value.length > 0)
-const hasMoreItems = computed(() => filteredMenuItems.value.length > 8)
 
 // Methods
 const selectCategory = (categoryId: string) => {
@@ -102,11 +101,6 @@ const clearFilters = () => {
   categories.value.forEach((cat) => {
     cat.active = cat.id === 'all'
   })
-}
-
-const loadMore = () => {
-  // Implement load more logic here
-  console.log('Load more clicked')
 }
 
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null
