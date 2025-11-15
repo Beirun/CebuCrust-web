@@ -565,11 +565,43 @@ onBeforeMount(async () => {
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="preparing">Preparing</SelectItem>
-                        <SelectItem value="ready">Ready</SelectItem>
-                        <SelectItem value="out for delivery">Out for Delivery</SelectItem>
-                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem
+                          v-if="selectedOrder?.orderStatus === 'pending'"
+                          value="cancelled"
+                          >Cancelled</SelectItem
+                        >
+                        <SelectItem v-if="selectedOrder?.orderStatus === 'pending'" value="pending"
+                          >Pending</SelectItem
+                        >
+                        <SelectItem
+                          v-if="
+                            selectedOrder?.orderStatus === 'pending' ||
+                            selectedOrder?.orderStatus === 'preparing'
+                          "
+                          value="preparing"
+                          >Preparing</SelectItem
+                        >
+                        <SelectItem
+                          v-if="
+                            selectedOrder?.orderStatus === 'pending' ||
+                            selectedOrder?.orderStatus === 'ready'
+                          "
+                          value="ready"
+                          >Ready</SelectItem
+                        >
+                        <SelectItem
+                          v-if="
+                            selectedOrder?.orderStatus === 'ready' ||
+                            selectedOrder?.orderStatus === 'out for delivery'
+                          "
+                          value="out for delivery"
+                          >Out for Delivery</SelectItem
+                        >
+                        <SelectItem
+                          v-if="selectedOrder?.orderStatus === 'out for delivery'"
+                          value="delivered"
+                          >Delivered</SelectItem
+                        >
                       </SelectContent>
                     </Select>
                   </div>
