@@ -201,16 +201,22 @@ const save = async () => {
       // Clear the form and ensure preview reflects the new state
       if (isProfileImageRemoved) {
         preview.value = null
-        // Ensure the auth store also has no profile image
+        user.value.profileImage = null
+        user.value.profileImageUrl = null
+        // The auth store has already been updated in the auth.update() method
+        // but let's ensure consistency by syncing from auth.user
         if (auth.user) {
           auth.user.profileImage = null
           auth.user.profileImageUrl = null
-          // Persist the change to localStorage
-          localStorage.setItem('user', JSON.stringify(auth.user))
+          delete auth.user.profileImage
+          delete auth.user.profileImageUrl
         }
       } else if (user.value.profileImage) {
         preview.value = user.value.profileImage
       }
+      
+      // Reset new file upload reference
+      newProfileImage.value = null
       
       passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' } //erases all in the field
     }
