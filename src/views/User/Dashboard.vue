@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { ShoppingCart, Heart, Star, MapPin, Clock } from 'lucide-vue-next'
@@ -151,6 +151,18 @@ const UpdateShowAddressModal = (val: boolean) => {
   showAddressModal.value = val
   if (fromSelectAddress.value) showChangeAddressModal.value = true
 }
+
+// Auto-confirm selection when user picks a radio in the Select Address dialog.
+// This lets us remove the visible Cancel/Save buttons in that dialog while
+// still applying the selected address immediately.
+watch(selectedAddressId, (val) => {
+  if (!val) return
+  const sel = location.locations.find((l) => l.locationId === val)
+  if (sel) {
+    location.selectedLocation = sel
+    showChangeAddressModal.value = false
+  }
+})
 
 const deleteAddress = async (loc: Location) => {
   const deleted = await location.removeLocation(loc.locationId)
@@ -401,24 +413,7 @@ const inCart = (id: number) => {
             </Button>
           </div>
 
-          <!-- Buttons -->
-          <div class="flex justify-between gap-3">
-            <Button
-              class="w-[calc(50%-6px)] h-12"
-              variant="outline"
-              @click="showChangeAddressModal = false"
-            >
-              Cancel
-            </Button>
-            <Button
-              :disabled="location.isLoading"
-              @click="saveAddress"
-              class="w-[calc(50%-6px)] h-12 bg-primary hover:bg-primary/90"
-            >
-              <span v-if="location.isLoading">Saving...</span>
-              <span v-else>Save Address</span>
-            </Button>
-          </div>
+          <!-- Footer removed: selection is applied immediately when user picks a radio -->
         </DialogContent>
       </Dialog>
       <!-- Change address modal -->
