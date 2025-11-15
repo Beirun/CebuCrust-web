@@ -219,7 +219,7 @@ export const useAuthStore = defineStore('auth', () => {
       const data = await res.json()
       console.log('data', data)
       if (!res.ok) {
-        sonner.error(`Failed to update profile. ${data.message}`)
+        sonner.error(`${data.message}`)
         return false
       }
       // Update user data in store
