@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { toBase64 } from '@/plugins/convert'
+import { base64ToFile, toBase64 } from '@/plugins/convert'
 import { Eye, EyeOff, Upload } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
 import AdminHeader from '@/components/AdminHeader.vue'
@@ -97,6 +97,7 @@ const onDragOver = (e: DragEvent) => e.preventDefault()
 const removePhoto = () => {
   preview.value = null
   user.value.profileImage = null
+
   delete errors.value.profileImage
 }
 
@@ -141,8 +142,10 @@ const save = async () => {
   if (!validateForm()) return
   isSaving.value = true
   try {
-    const hasProfileImageChanged =
-      user.value.profileImage && user.value.profileImage !== (auth.user?.profileImage || '')
+    const hasProfileImageChanged = !!(
+      (user.value.profileImage && user.value.profileImage !== (auth.user?.profileImage || '')) ||
+      !preview.value
+    )
     const hasPersonalInfoChanged =
       user.value.firstName !== auth.user?.firstName ||
       user.value.lastName !== auth.user?.lastName ||
@@ -152,13 +155,19 @@ const save = async () => {
       passwordForm.value.currentPassword &&
       passwordForm.value.newPassword &&
       passwordForm.value.confirmPassword
+    console.log('test', hasProfileImageChanged)
+    console.log('pre', preview.value)
 
     const updates: Record<string, unknown> = {
       userFName: user.value.firstName,
       userLName: user.value.lastName,
       userEmail: user.value.email,
       userPhoneNo: user.value.phoneNo,
-      image: newProfileImage.value,
+      image:
+        newProfileImage.value ??
+        (preview.value
+          ? base64ToFile(toBase64(auth.user.profileImage), `${auth.user.userId}.png`)
+          : null),
     }
 
     if (hasPasswordChanged) {
@@ -219,7 +228,12 @@ const cancel = () => {
                   alt="profile"
                   class="w-full h-full object-cover"
                 />
-                <div v-else class="text-gray-400 text-sm">No Image</div>
+                <img
+                  v-else
+                  src="@/assets/default.png"
+                  alt="profile"
+                  class="w-full h-full object-cover"
+                />
               </div>
               <div class="flex flex-col gap-2">
                 <button
