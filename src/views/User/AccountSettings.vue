@@ -10,25 +10,27 @@ import Footer from '@/components/Footer.vue'
 const auth = useAuthStore()
 
 // Form state
-const user = ref(auth.user ? { ...auth.user } : {})
-const preview = ref<string | null>(user.value?.profileImage || user.value?.profileImageUrl || null)
-const isSaving = ref(false)
+const user = ref(auth.user ? { ...auth.user } : {}) //- If there’s a logged-in user, copy their info into our local user box.
+const preview = ref<string | null>(user.value?.profileImage || user.value?.profileImageUrl || null) //pic preview
+const isSaving = ref(false) //flag for loading spinner
 const fileInput = ref<HTMLInputElement | null>(null) // added ref
-const newProfileImage = ref<File | null>()
-// Password change state
+const newProfileImage = ref<File | null>() //Holds the new uploaded image file
+
+// Password change state(A box holding the three password fields)
 const passwordForm = ref({
   currentPassword: '',
   newPassword: '',
   confirmPassword: '',
 })
 
+//flags to decide if each password field should be visible
 const showPasswords = ref({
   current: false,
   new: false,
   confirm: false,
 })
 
-// Form validation
+// Form validation(shows error message)
 const errors = ref<Record<string, string>>({})
 
 // Sync local user if auth.user changes
@@ -37,66 +39,72 @@ watch(
   (val) => {
     user.value = val ? { ...val } : {}
     if (user.value?.profileImage) {
-      if (user.value.profileImage.startsWith('data:')) {
+      if (user.value.profileImage.startsWith('data:')) { //uses data format(long text code for images)
         preview.value = user.value.profileImage
       } else {
-        preview.value = toBase64(user.value.profileImage)
+        preview.value = toBase64(user.value.profileImage) //if not, converts pic to base64
       }
     } else {
-      preview.value = null
+      preview.value = null //if no pic
     }
   },
   { immediate: true },
 )
 
-const hasProfileImage = computed(() => !!preview.value)
+const hasProfileImage = computed(() => !!preview.value) //stores the new profile in this variable
 
 // File handling
 const onFileChange = (e: Event) => {
-  const input = e.target as HTMLInputElement
-  if (!input.files || input.files.length === 0) return
+  const input = e.target as HTMLInputElement //grabs the thing that triggered the event
+  if (!input.files || input.files.length === 0) return //stops if there are no files selected(return)
 
-  const file = input.files[0]
+  //takes the first file the user picked, stores in file variable then saves in the newprofimagevalue box
+  const file = input.files[0] 
   newProfileImage.value = file
 
-  if (file.size > 2 * 1024 * 1024) {
+  //file size checker
+  if (file.size > 2 * 1024 * 1024) { 
     errors.value.profileImage = 'File size must be less than 2MB'
     return
   }
 
+  //allowed file types checker
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
   if (!allowedTypes.includes(file.type)) {
     errors.value.profileImage = 'Only JPG, PNG, and WEBP files are allowed'
     return
   }
 
-  const reader = new FileReader()
+  const reader = new FileReader() //helper to read files into text or data
   reader.onload = async () => {
-    const result = reader.result as string
+    const result = reader.result as string //the file turned into base64
     console.log('res', result)
-    preview.value = result
-    user.value.profileImage = result
+    preview.value = result //updates the preview value so that the new pic will show in the screen
+    user.value.profileImage = result //saves the new pic to this variable
     delete errors.value.profileImage
     console.log('result', result)
   }
-  reader.readAsDataURL(file)
+  reader.readAsDataURL(file) //tells the reader to read this file as data url, meaning turn the pic into text string that browsers can display
 }
 
+//drag and drop function
 const onDrop = (e: DragEvent) => {
-  e.preventDefault()
-  const files = e.dataTransfer?.files
-  if (files && files.length > 0) {
-    const file = files[0]
-    const fakeEvent = { target: { files: [file] } } as Event
+  e.preventDefault() //prevents to open the dropped file into a new tab
+  const files = e.dataTransfer?.files //stores the dropped files 
+  if (files && files.length > 0) { //if there are files continue if not stop
+    const file = files[0] //grabs the first file
+    const fakeEvent = { target: { files: [file] } } as Event //fake event so that onfilechage func can read this function
     onFileChange(fakeEvent)
   }
 }
 
+//allows the dragand drop function to drop files in this specific element
 const onDragOver = (e: DragEvent) => e.preventDefault()
 
+//remove photo function
 const removePhoto = () => {
-  preview.value = null
-  user.value.profileImage = null
+  preview.value = null //pic on screen turn into null to remove
+  user.value.profileImage = null //actual pic stored in the user's data turned to null to remove
   delete errors.value.profileImage
 }
 
@@ -112,16 +120,18 @@ const validateForm = () => {
   if (!user.value.lastName?.trim()) errors.value.lastName = 'Last name is required'
   if (!user.value.email?.trim()) {
     errors.value.email = 'Email is required'
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.value.email)) {
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.value.email)) { //gmail checker
     errors.value.email = 'Please enter a valid email address'
   }
   if (!user.value.phoneNo?.trim()) errors.value.phoneNo = 'Phone number is required'
 
+  //checks if there are anything in the password field
   const hasPasswordFields =
     passwordForm.value.currentPassword ||
     passwordForm.value.newPassword ||
     passwordForm.value.confirmPassword
-
+  
+  //must type current,new,confirm new password
   if (hasPasswordFields) {
     if (!passwordForm.value.currentPassword)
       errors.value.currentPassword = 'Current password is required'
@@ -133,7 +143,7 @@ const validateForm = () => {
     else if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword)
       errors.value.confirmPassword = 'Passwords do not match'
   }
-  return Object.keys(errors.value).length === 0
+  return Object.keys(errors.value).length === 0 //gives all the error messages, if 0 form is valid
 }
 
 // Save changes
@@ -141,32 +151,45 @@ const save = async () => {
   if (!validateForm()) return
   isSaving.value = true
   try {
+    const originalProfileImage = auth.user?.profileImage || '' //Grab the user’s current profile image from the auth store
     const hasProfileImageChanged =
-      user.value.profileImage && user.value.profileImage !== (auth.user?.profileImage || '')
-    const hasPersonalInfoChanged =
+      user.value.profileImage !== originalProfileImage //checker if the user changed profile
+    const isProfileImageRemoved =
+      originalProfileImage && !user.value.profileImage //checker if the user removed profile
+    const hasPersonalInfoChanged = //checker if the user changed any personal information
       user.value.firstName !== auth.user?.firstName ||
       user.value.lastName !== auth.user?.lastName ||
       user.value.email !== auth.user?.email ||
       user.value.phoneNo !== auth.user?.phoneNo
-    const hasPasswordChanged =
+    const hasPasswordChanged = //checker if the user changed password
       passwordForm.value.currentPassword &&
       passwordForm.value.newPassword &&
       passwordForm.value.confirmPassword
 
+    //updates function where it sends the package of new info to the backend
     const updates: Record<string, unknown> = {
       userFName: user.value.firstName,
       userLName: user.value.lastName,
       userEmail: user.value.email,
       userPhoneNo: user.value.phoneNo,
-      image: newProfileImage.value,
     }
 
+    // If user removed the image, send a flag to backend
+    if (isProfileImageRemoved) {
+      updates.removeImage = true
+    } else if (newProfileImage.value) {
+      // Only send image if it's a new file upload (not a removal)
+      updates.image = newProfileImage.value
+    }
+
+    //If the user is changing their password, add those fields to the update package
     if (hasPasswordChanged) {
       updates.currentPassword = passwordForm.value.currentPassword
       updates.newPassword = passwordForm.value.newPassword
       updates.confirmPassword = passwordForm.value.confirmPassword
     }
 
+    //Send the updates to the backend using auth.update
     const success = await auth.update(updates)
     if (success) {
       const { useSonnerStore } = await import('@/stores/sonner')
@@ -175,8 +198,21 @@ const save = async () => {
       if (hasPersonalInfoChanged) sonner.success('Personal information updated successfully!')
       if (hasPasswordChanged) sonner.success('Password changed successfully!')
 
-      if (user.value.profileImage) preview.value = user.value.profileImage
-      passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+      // Clear the form and ensure preview reflects the new state
+      if (isProfileImageRemoved) {
+        preview.value = null
+        // Ensure the auth store also has no profile image
+        if (auth.user) {
+          auth.user.profileImage = null
+          auth.user.profileImageUrl = null
+          // Persist the change to localStorage
+          localStorage.setItem('user', JSON.stringify(auth.user))
+        }
+      } else if (user.value.profileImage) {
+        preview.value = user.value.profileImage
+      }
+      
+      passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' } //erases all in the field
     }
   } catch (error) {
     console.error('Error updating profile:', error)
@@ -187,9 +223,9 @@ const save = async () => {
 
 const cancel = () => {
   user.value = auth.user ? { ...auth.user } : {}
-  preview.value = user.value?.profileImage || user.value?.profileImageUrl || null
-  passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
-  errors.value = {}
+  preview.value = user.value?.profileImage || user.value?.profileImageUrl || null //show the user’s original profile image again
+  passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' } //this undoes any password changes you were typing
+  errors.value = {} //remove all error messages
 }
 </script>
 
