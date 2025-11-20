@@ -1,103 +1,149 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { base64ToFile, toBase64 } from '@/plugins/convert'
+import { useUserStore } from '@/stores/user'
+import { toBase64 } from '@/plugins/convert'
 import { Eye, EyeOff, Upload } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
 import AdminHeader from '@/components/AdminHeader.vue'
 import Footer from '@/components/Footer.vue'
 
 const auth = useAuthStore()
+const userStore = useUserStore()
 
 // Form state
-const user = ref(auth.user ? { ...auth.user } : {})
-const preview = ref<string | null>(user.value?.profileImage || user.value?.profileImageUrl || null)
-const isSaving = ref(false)
+const user = ref(auth.user ? { ...auth.user } : {}) //- If there’s a logged-in user, copy their info into our local user box.
+const preview = ref<string | null>(user.value?.profileImage || user.value?.profileImageUrl || null) //pic preview
+const isSaving = ref(false) //flag for loading spinner
 const fileInput = ref<HTMLInputElement | null>(null) // added ref
-const newProfileImage = ref<File | null>()
-// Password change state
+const newProfileImage = ref<File | null>() //Holds the new uploaded image file
+const imageRemoved = ref(false) // Track if user has removed the image in this session
+
+// Password change state(A box holding the three password fields)
 const passwordForm = ref({
   currentPassword: '',
   newPassword: '',
   confirmPassword: '',
 })
 
+//flags to decide if each password field should be visible
 const showPasswords = ref({
   current: false,
   new: false,
   confirm: false,
 })
 
-// Form validation
+// Form validation(shows error message)
 const errors = ref<Record<string, string>>({})
+const hasFetchedAllUsers = ref(false)
 
 // Sync local user if auth.user changes
 watch(
   () => auth.user,
   (val) => {
-    user.value = val ? { ...val } : {}
-    if (user.value?.profileImage) {
-      if (user.value.profileImage.startsWith('data:')) {
-        preview.value = user.value.profileImage
+    if (!val) {
+      user.value = {}
+      preview.value = null
+      return
+    }
+    
+    user.value = { ...val }
+    
+    // Check localStorage flag - if image was removed, don't show it even if backend returned it
+    const wasImageRemoved = localStorage.getItem('profileImageRemoved') === 'true'
+    
+    // Reset removal flag when user data changes from external source (like login)
+    // But keep it if localStorage flag is set
+    if (!wasImageRemoved) {
+      imageRemoved.value = false
+    }
+    
+    // Check if image fields exist and are not empty/null, AND image wasn't removed
+    const hasImage = !wasImageRemoved && 
+                     ((user.value?.profileImage && typeof user.value.profileImage === 'string' && user.value.profileImage.trim() !== '') || 
+                      (user.value?.profileImageUrl && typeof user.value.profileImageUrl === 'string' && user.value.profileImageUrl.trim() !== ''))
+    
+    if (hasImage) {
+      const imageSource = user.value.profileImage || user.value.profileImageUrl
+      if (imageSource && imageSource.startsWith('data:')) { //uses data format(long text code for images)
+        preview.value = imageSource
+      } else if (imageSource) {
+        preview.value = toBase64(imageSource) //if not, converts pic to base64
       } else {
-        preview.value = toBase64(user.value.profileImage)
+        preview.value = null
       }
     } else {
-      preview.value = null
+      preview.value = null //if no pic
+      // Ensure image fields are deleted if they're empty/null or if image was removed
+      if (wasImageRemoved || !user.value?.profileImage || !user.value?.profileImageUrl) {
+        delete user.value.profileImage
+        delete user.value.profileImageUrl
+      }
     }
   },
   { immediate: true },
 )
 
-const hasProfileImage = computed(() => !!preview.value)
+const hasProfileImage = computed(() => !!preview.value) //stores the new profile in this variable
 
 // File handling
 const onFileChange = (e: Event) => {
-  const input = e.target as HTMLInputElement
-  if (!input.files || input.files.length === 0) return
+  const input = e.target as HTMLInputElement //grabs the thing that triggered the event
+  if (!input.files || input.files.length === 0) return //stops if there are no files selected(return)
 
-  const file = input.files[0]
+  //takes the first file the user picked, stores in file variable then saves in the newprofimagevalue box
+  const file = input.files[0] 
   newProfileImage.value = file
 
-  if (file.size > 2 * 1024 * 1024) {
+  //file size checker
+  if (file.size > 2 * 1024 * 1024) { 
     errors.value.profileImage = 'File size must be less than 2MB'
     return
   }
 
+  //allowed file types checker
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
   if (!allowedTypes.includes(file.type)) {
     errors.value.profileImage = 'Only JPG, PNG, and WEBP files are allowed'
     return
   }
 
-  const reader = new FileReader()
+  const reader = new FileReader() //helper to read files into text or data
   reader.onload = async () => {
-    const result = reader.result as string
+    const result = reader.result as string //the file turned into base64
     console.log('res', result)
-    preview.value = result
-    user.value.profileImage = result
+    preview.value = result //updates the preview value so that the new pic will show in the screen
+    user.value.profileImage = result //saves the new pic to this variable
+    imageRemoved.value = false // Reset removal flag when new image is selected
+    localStorage.removeItem('profileImageRemoved') // Clear removal flag when new image is selected
     delete errors.value.profileImage
     console.log('result', result)
   }
-  reader.readAsDataURL(file)
+  reader.readAsDataURL(file) //tells the reader to read this file as data url, meaning turn the pic into text string that browsers can display
 }
 
+//drag and drop function
 const onDrop = (e: DragEvent) => {
-  e.preventDefault()
-  const files = e.dataTransfer?.files
-  if (files && files.length > 0) {
-    const file = files[0]
-    const fakeEvent = { target: { files: [file] } } as unknown as Event
+  e.preventDefault() //prevents to open the dropped file into a new tab
+  const files = e.dataTransfer?.files //stores the dropped files 
+  if (files && files.length > 0) { //if there are files continue if not stop
+    const file = files[0] //grabs the first file
+    const fakeEvent = { target: { files: [file] } } as Event //fake event so that onfilechage func can read this function
     onFileChange(fakeEvent)
   }
 }
 
+//allows the dragand drop function to drop files in this specific element
 const onDragOver = (e: DragEvent) => e.preventDefault()
 
+//remove photo function
 const removePhoto = () => {
-  preview.value = null
-  user.value.profileImage = null
-
+  preview.value = null //pic on screen turn into null to remove
+  user.value.profileImage = null //actual pic stored in the user's data turned to null to remove
+  delete user.value.profileImage
+  delete user.value.profileImageUrl
+  imageRemoved.value = true // Mark that image was removed
+  newProfileImage.value = null // Clear any pending upload
   delete errors.value.profileImage
 }
 
@@ -113,16 +159,18 @@ const validateForm = () => {
   if (!user.value.lastName?.trim()) errors.value.lastName = 'Last name is required'
   if (!user.value.email?.trim()) {
     errors.value.email = 'Email is required'
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.value.email)) {
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.value.email)) { //gmail checker
     errors.value.email = 'Please enter a valid email address'
   }
   if (!user.value.phoneNo?.trim()) errors.value.phoneNo = 'Phone number is required'
 
+  //checks if there are anything in the password field
   const hasPasswordFields =
     passwordForm.value.currentPassword ||
     passwordForm.value.newPassword ||
     passwordForm.value.confirmPassword
-
+  
+  //must type current,new,confirm new password
   if (hasPasswordFields) {
     if (!passwordForm.value.currentPassword)
       errors.value.currentPassword = 'Current password is required'
@@ -134,7 +182,42 @@ const validateForm = () => {
     else if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword)
       errors.value.confirmPassword = 'Passwords do not match'
   }
-  return Object.keys(errors.value).length === 0
+  return Object.keys(errors.value).length === 0 //gives all the error messages, if 0 form is valid
+}
+
+// Helper to ensure email uniqueness before submitting to backend
+const ensureEmailIsUnique = async () => {
+  const newEmail = user.value.email?.trim()
+  const currentEmail = auth.user?.email?.trim()
+
+  if (!newEmail) return false
+  if (!currentEmail || newEmail.toLowerCase() === currentEmail.toLowerCase()) {
+    return true
+  }
+
+  try {
+    if (!hasFetchedAllUsers.value || !userStore.users.length) {
+      await userStore.getAllUsers()
+      hasFetchedAllUsers.value = true
+    }
+
+    const duplicate = userStore.users.some(
+      (existingUser) =>
+        existingUser.userId !== auth.user?.userId &&
+        existingUser.email?.toLowerCase() === newEmail.toLowerCase(),
+    )
+
+    if (duplicate) {
+      errors.value.email = 'This email is already registered to another account'
+      return false
+    }
+
+    return true
+  } catch (fetchError) {
+    console.error('Failed to verify email uniqueness', fetchError)
+    errors.value.email = 'Unable to verify email. Please try again.'
+    return false
+  }
 }
 
 // Save changes
@@ -142,50 +225,98 @@ const save = async () => {
   if (!validateForm()) return
   isSaving.value = true
   try {
-    const hasProfileImageChanged = !!(
-      (user.value.profileImage && user.value.profileImage !== (auth.user?.profileImage || '')) ||
-      !preview.value
-    )
-    const hasPersonalInfoChanged =
+    const isEmailUnique = await ensureEmailIsUnique()
+    if (!isEmailUnique) return
+    // Check for original image - treat empty strings as no image
+    const originalProfileImage = (auth.user?.profileImage && typeof auth.user.profileImage === 'string' && auth.user.profileImage.trim() !== '') 
+      ? auth.user.profileImage 
+      : ((auth.user?.profileImageUrl && typeof auth.user.profileImageUrl === 'string' && auth.user.profileImageUrl.trim() !== '') 
+          ? auth.user.profileImageUrl 
+          : '')
+    const hasProfileImageChanged =
+      (user.value.profileImage || user.value.profileImageUrl) !== originalProfileImage //checker if the user changed profile
+    // Check if image was removed: either in this session, localStorage flag, or if original had image but current doesn't
+    const currentImage = (user.value.profileImage && typeof user.value.profileImage === 'string' && user.value.profileImage.trim() !== '') 
+      ? user.value.profileImage 
+      : ((user.value.profileImageUrl && typeof user.value.profileImageUrl === 'string' && user.value.profileImageUrl.trim() !== '') 
+          ? user.value.profileImageUrl 
+          : '')
+    // Check localStorage flag to see if image was previously removed
+    const wasImageRemoved = localStorage.getItem('profileImageRemoved') === 'true'
+    const isProfileImageRemoved =
+      imageRemoved.value || wasImageRemoved || (originalProfileImage && !currentImage) //checker if the user removed profile
+    const hasPersonalInfoChanged = //checker if the user changed any personal information
       user.value.firstName !== auth.user?.firstName ||
       user.value.lastName !== auth.user?.lastName ||
       user.value.email !== auth.user?.email ||
       user.value.phoneNo !== auth.user?.phoneNo
-    const hasPasswordChanged =
+    const hasPasswordChanged = //checker if the user changed password
       passwordForm.value.currentPassword &&
       passwordForm.value.newPassword &&
       passwordForm.value.confirmPassword
-    console.log('test', hasProfileImageChanged)
-    console.log('pre', preview.value)
 
+    //updates function where it sends the package of new info to the backend
     const updates: Record<string, unknown> = {
       userFName: user.value.firstName,
       userLName: user.value.lastName,
       userEmail: user.value.email,
       userPhoneNo: user.value.phoneNo,
-      image:
-        newProfileImage.value ??
-        (preview.value
-          ? base64ToFile(toBase64(auth.user.profileImage), `${auth.user.userId}.png`)
-          : null),
     }
 
+    // If user removed the image, send a flag to backend
+    if (isProfileImageRemoved) {
+      updates.removeImage = true
+    } else if (newProfileImage.value) {
+      // Only send image if it's a new file upload (not a removal)
+      updates.image = newProfileImage.value
+    }
+
+    //If the user is changing their password, add those fields to the update package
     if (hasPasswordChanged) {
       updates.currentPassword = passwordForm.value.currentPassword
       updates.newPassword = passwordForm.value.newPassword
       updates.confirmPassword = passwordForm.value.confirmPassword
     }
 
-    const success = await auth.update(updates)
-    if (success) {
+    //Send the updates to the backend using auth.update
+    const { ok, message } = await auth.update(updates)
+    if (ok) {
       const { useSonnerStore } = await import('@/stores/sonner')
       const sonner = useSonnerStore()
       if (hasProfileImageChanged) sonner.success('Profile picture updated successfully!')
       if (hasPersonalInfoChanged) sonner.success('Personal information updated successfully!')
       if (hasPasswordChanged) sonner.success('Password changed successfully!')
 
-      if (user.value.profileImage) preview.value = user.value.profileImage
-      passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+      // Sync local state with auth store after update
+      user.value = auth.user ? { ...auth.user } : {}
+      
+      // Clear the form and ensure preview reflects the new state
+      if (isProfileImageRemoved) {
+        preview.value = null
+        user.value.profileImage = null
+        user.value.profileImageUrl = null
+        // Ensure image fields are deleted from local state
+        delete user.value.profileImage
+        delete user.value.profileImageUrl
+        // Keep the removal flag set (don't reset it) so it persists across sessions
+        // The flag will be cleared when a new image is uploaded
+      } else if (user.value.profileImage || user.value.profileImageUrl) {
+        preview.value = user.value.profileImage || user.value.profileImageUrl || null
+        // Clear removal flag if image exists
+        imageRemoved.value = false
+        localStorage.removeItem('profileImageRemoved')
+      } else {
+        preview.value = null
+      }
+      
+      // Reset new file upload reference
+      newProfileImage.value = null
+      
+      passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' } //erases all in the field
+    } else if (message) {
+      if (message.toLowerCase().includes('email')) {
+        errors.value.email = message
+      }
     }
   } catch (error) {
     console.error('Error updating profile:', error)
@@ -196,9 +327,11 @@ const save = async () => {
 
 const cancel = () => {
   user.value = auth.user ? { ...auth.user } : {}
-  preview.value = user.value?.profileImage || user.value?.profileImageUrl || null
-  passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
-  errors.value = {}
+  preview.value = user.value?.profileImage || user.value?.profileImageUrl || null //show the user's original profile image again
+  passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' } //this undoes any password changes you were typing
+  errors.value = {} //remove all error messages
+  imageRemoved.value = false // Reset removal flag on cancel
+  newProfileImage.value = null // Clear any pending upload
 }
 </script>
 
@@ -228,12 +361,7 @@ const cancel = () => {
                   alt="profile"
                   class="w-full h-full object-cover"
                 />
-                <img
-                  v-else
-                  src="@/assets/default.png"
-                  alt="profile"
-                  class="w-full h-full object-cover"
-                />
+                <div v-else class="text-gray-400 text-sm">No Image</div>
               </div>
               <div class="flex flex-col gap-2">
                 <button
