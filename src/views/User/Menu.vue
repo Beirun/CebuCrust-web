@@ -130,6 +130,17 @@ const addToCart = (item: Pizza) => {
   cart.addToCart({ pizzaId: item.pizzaId!, quantity: 1 })
 }
 
+const goToLandingContact = async () => {
+  if (router.currentRoute.value.name === 'Landing') {
+    document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' })
+  } else {
+    await router.push({ name: 'Landing', hash: '#contact' })
+    requestAnimationFrame(() => {
+      document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' })
+    })
+  }
+}
+
 // Load menu data on mount
 onMounted(async () => {
   // Fetch menu items from the store (store may call API)
@@ -319,12 +330,12 @@ const inCart = (id: number) => {
             Our admin hasn't added any menu items yet. Please check back later or contact us for
             more information.
           </p>
-          <router-link
-            to="/contact"
+          <button
+            @click="goToLandingContact"
             class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg font-medium"
           >
             Contact Us
-          </router-link>
+          </button>
         </div>
       </div>
 
