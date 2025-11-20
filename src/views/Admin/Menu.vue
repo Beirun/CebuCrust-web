@@ -6,7 +6,6 @@ import Footer from '@/components/Footer.vue'
 import { usePizzaStore } from '@/stores/pizza'
 import type { Pizza } from '@/models/pizza'
 import { toBase64 } from '@/plugins/convert'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -93,6 +92,7 @@ const handleDelete = async (id: number) => {
   //   menuStore.deleteMenuItem(id)
   // }
   await pizza.deletePizza(id)
+  deleteConfirmationOpen.value = false
 }
 
 // const toggleAvailability = (item: MenuItem) => {

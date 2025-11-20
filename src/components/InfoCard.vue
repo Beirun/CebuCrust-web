@@ -1,15 +1,22 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+
 const props = defineProps({
   sectionTitle: { type: String, default: '' },
   heading: { type: String, required: true },
   description: { type: String, required: true },
+  expandedContent: { type: String, default: '' },
   buttonText: { type: String, default: 'READ MORE' },
   imageSrc: { type: String, required: true },
   imageAlt: { type: String, default: '' },
   index: { type: Number, default: 0 },
 })
-defineEmits(['action'])
-console.log(props.imageSrc)
+
+const isExpanded = ref(false)
+
+const toggleExpand = () => {
+  isExpanded.value = !isExpanded.value
+}
 </script>
 
 <template>
@@ -27,10 +34,18 @@ console.log(props.imageSrc)
       </div>
       <div class="text-[#797B78] text-sm sm:text-base xl:text-base 2xl:text-lg">
         {{ description }}
+        <transition name="expand">
+          <div v-if="isExpanded && expandedContent" class="mt-4">
+            {{ expandedContent }}
+          </div>
+        </transition>
       </div>
       <div>
-        <button class="bg-primary text-white p-3 sm:p-4 rounded-sm" @click="$emit('action')">
-          {{ buttonText }}
+        <button 
+          class="bg-primary text-white p-3 sm:p-4 rounded-sm hover:bg-primary/90 transition-colors" 
+          @click="toggleExpand"
+        >
+          {{ isExpanded ? 'SEE LESS' : buttonText }}
         </button>
       </div>
     </div>
@@ -43,3 +58,19 @@ console.log(props.imageSrc)
     </div>
   </div>
 </template>
+
+<style scoped>
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.3s ease;
+  max-height: 1000px;
+  opacity: 1;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+</style>

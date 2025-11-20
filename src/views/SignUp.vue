@@ -41,6 +41,13 @@ async function google() {
 const togglePassword = () => (showPassword.value = !showPassword.value)
 const toggleConfirmPassword = () => (showConfirmPassword.value = !showConfirmPassword.value)
 
+const handlePhoneInput = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  // Remove all non-numeric characters
+  const numericValue = input.value.replace(/\D/g, '')
+  form.phoneNumber = numericValue
+}
+
 onBeforeMount(() => {
   sonner.setTheme('dark')
 
@@ -62,25 +69,25 @@ onBeforeUnmount(() => sonner.setTheme('light'))
       class="bg-[#0A1316] grid place-items-center p-4 sm:p-8 lg:p-45 py-8 sm:py-12 lg:py-15 min-h-screen"
     >
       <div
-        class="h-auto min-h-[135vh] lg:h-[135vh] w-full max-w-6xl mx-auto rounded-xl overflow-hidden flex flex-col lg:flex-row"
+        class="h-auto min-h-[90vh] w-full max-w-6xl mx-auto rounded-xl flex flex-col lg:flex-row"
       >
-        <div class="relative h-64 sm:h-80 lg:h-full w-full lg:w-1/2 min-h-64">
+        <div class="relative h-64 sm:h-80 lg:h-auto lg:min-h-[90vh] w-full lg:w-1/2 rounded-l-xl overflow-hidden">
           <div class="absolute inset-0 bg-[url('@/assets/sign-bg.png')] bg-cover bg-center"></div>
           <div class="absolute inset-0 bg-black/50"></div>
         </div>
         <div
-          class="flex flex-col justify-center items-center h-auto lg:h-full w-full lg:w-1/2 bg-[#192124] text-lg px-4 sm:px-8 lg:px-16 py-8 lg:py-8"
+          class="flex flex-col justify-center items-center h-auto w-full lg:w-1/2 bg-[#192124] text-lg px-4 sm:px-8 lg:px-16 py-8 lg:py-12"
         >
           <div class="flex flex-col items-center gap-2 my-3">
             <div class="text-white font-bold text-2xl sm:text-3xl">Create Your Account</div>
-            <div class="text-[#797B78] text-base">
+            <div class="text-[#797B78] text-base text-center">
               Join Cebu Crust and get your pizza delivered hot and fresh.
             </div>
           </div>
 
           <div class="w-full flex flex-col sm:flex-row my-3 gap-4 sm:gap-6">
             <div class="flex flex-col w-full gap-2 text-base">
-              <label class="text-white">First Name</label>
+              <label class="text-white">First Name <span class="text-red-400">*</span></label>
               <input
                 v-model="form.firstName"
                 type="text"
@@ -89,7 +96,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
               />
             </div>
             <div class="flex flex-col w-full gap-2 text-base">
-              <label class="text-white">Last Name</label>
+              <label class="text-white">Last Name <span class="text-red-400">*</span></label>
               <input
                 v-model="form.lastName"
                 type="text"
@@ -100,7 +107,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           </div>
 
           <div class="flex flex-col w-full gap-2 text-base my-3">
-            <label class="text-white">Email Address</label>
+            <label class="text-white">Email Address <span class="text-red-400">*</span></label>
             <input
               v-model="form.email"
               type="text"
@@ -110,17 +117,18 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           </div>
 
           <div class="flex flex-col w-full gap-2 text-base my-3">
-            <label class="text-white">Phone Number</label>
+            <label class="text-white">Phone Number <span class="text-red-400">*</span></label>
             <input
               v-model="form.phoneNumber"
-              type="text"
+              type="tel"
+              @input="handlePhoneInput"
               placeholder="Enter your Phone Number"
               class="placeholder:text-[#D1D5DB] text-[#D1D5DB] focus:text-white bg-[#121A1D] rounded-md border border-[#D3D3D3]/30 p-3"
             />
           </div>
 
           <div class="flex flex-col w-full gap-2 text-base my-3">
-            <label class="text-white">Password</label>
+            <label class="text-white">Password <span class="text-red-400">*</span></label>
             <div class="relative flex w-full">
               <input
                 v-model="form.password"
@@ -142,7 +150,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           </div>
 
           <div class="flex flex-col w-full gap-2 text-base my-3">
-            <label class="text-white">Confirm Password</label>
+            <label class="text-white">Confirm Password <span class="text-red-400">*</span></label>
             <div class="relative flex w-full">
               <input
                 v-model="form.confirmPassword"
@@ -166,7 +174,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           <div class="flex my-3 items-center w-full gap-2 text-[#A19E9B] text-base">
             <Checkbox v-model="form.agree" class="size-5" />
             I agree to the <span class="text-primary">Terms of Use</span> and
-            <span class="text-primary">Privacy Policy</span>
+            <span class="text-primary">Privacy Policy</span> <span class="text-red-400">*</span>
           </div>
 
           <button
