@@ -3,6 +3,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { usePizzaStore } from '@/stores/pizza'
+import { useAuthStore } from '@/stores/auth'
 import ScrollToTopButton from '@/components/ScrollToTopButton.vue'
 import LandingNavbar from '@/components/LandingNavbar.vue'
 import LandingHero from '@/components/LandingHero.vue'
@@ -10,9 +11,11 @@ import InfoCard from '@/components/InfoCard.vue'
 import Footer from '@/components/Footer.vue'
 import { useSonnerStore } from '@/stores/sonner'
 import { toBase64 } from '@/plugins/convert'
+import router from '@/router'
 
 const sonner = useSonnerStore()
 const pizzaStore = usePizzaStore()
+const auth = useAuthStore()
 const showAllPizzas = ref(false)
 
 // Fetch pizzas on component mount
@@ -36,12 +39,34 @@ const togglePizzaVisibility = () => {
 const formatRatingValue = (rating?: number) => (rating ?? 0).toFixed(1)
 const formatRatingCount = (count?: number) => count ?? 0
 
+// Handle Order Now button click
+const handleOrderNow = () => {
+  if (auth.isAuthenticated) {
+    // If user is authenticated, go to menu page
+    router.push('/menu')
+  } else {
+    // If not authenticated, go to sign in and redirect to menu after login
+    sessionStorage.setItem('redirectAfterLogin', '/menu')
+    router.push('/signin')
+  }
+}
+
+// Handle Contact Us button click - scroll to contact section
+const handleContactUs = () => {
+  const contactSection = document.getElementById('contact')
+  if (contactSection) {
+    contactSection.scrollIntoView({ behavior: 'smooth' })
+  }
+}
+
 const aboutSection = [
   {
     sectionTitle: 'ABOUT US',
     heading: 'Order Pizza Fresh from the Oven—Anytime, Anywhere!',
     description:
       'At Cebu Crust, we bring authentic Italian flavors to Cebu City with our wood-fired pizzas made from the finest ingredients. Our commitment to quality and tradition ensures every pizza is crafted with passion and served fresh from our brick oven.',
+    expandedContent:
+      'Founded with a passion for authentic Italian cuisine, Cebu Crust has been serving the Cebu City community since our opening. We source only the finest ingredients, from our imported Italian tomatoes to our locally sourced fresh vegetables. Our traditional wood-fired brick oven reaches temperatures of over 900°F, creating that perfect crispy crust with a smoky flavor that can only come from authentic wood-fired cooking. Every pizza is hand-crafted by our experienced chefs who have trained in traditional Italian techniques. We believe in supporting local farmers and suppliers while maintaining the highest standards of quality. Whether you\'re dining in, taking out, or having it delivered, we ensure your pizza arrives hot, fresh, and full of flavor. Join us in celebrating the art of pizza making, one slice at a time.',
     buttonText: 'READ MORE',
     imageSrc: '../src/assets/aboutus.png',
     imageAlt: 'About Us',
@@ -51,6 +76,8 @@ const aboutSection = [
     heading: 'Premium Pizza, Seamless Ordering',
     description:
       'Discover our extensive menu featuring classic Margherita, spicy Pepperoni Supreme, tropical Hawaiian Paradise, and many more delicious options. Each pizza is made with fresh, locally sourced ingredients and our signature thin crust.',
+    expandedContent:
+      'Our menu is carefully curated to offer something for everyone. Start with our classic Margherita, featuring fresh mozzarella, basil, and our signature tomato sauce. For meat lovers, our Pepperoni Supreme combines premium pepperoni with Italian sausage, ham, and bacon. The Hawaiian Paradise brings a tropical twist with pineapple, ham, and our special sweet and savory sauce. We also offer vegetarian options like our Garden Delight, loaded with fresh bell peppers, mushrooms, onions, olives, and tomatoes. Our specialty pizzas include unique combinations like the Four Cheese, featuring mozzarella, gorgonzola, parmesan, and ricotta. All our pizzas are available in multiple sizes, and you can customize any pizza with additional toppings. We also offer gluten-free options and can accommodate various dietary preferences. Order online for quick delivery or visit us for the full dining experience.',
     buttonText: 'READ MORE',
     imageSrc: '../src/assets/pizzamenu.png',
     imageAlt: 'Pizza Menu',
@@ -60,6 +87,8 @@ const aboutSection = [
     heading: 'Use the Tips & Recipes of Our Pizza Artisans',
     description:
       'Our skilled chefs bring years of experience in traditional Italian cooking techniques. From hand-tossed dough to perfectly balanced toppings, our team ensures every pizza meets our high standards of taste and quality.',
+    expandedContent:
+      'Our culinary team is led by Chef Marco, who trained in Naples, Italy, the birthplace of pizza. With over 15 years of experience in authentic Italian cuisine, Chef Marco brings traditional techniques and modern innovation to every dish. Our dough is prepared daily using a 48-hour fermentation process that develops complex flavors and the perfect texture. Each pizza is hand-stretched and topped with precision, ensuring consistent quality in every bite. Our team of pizza artisans includes skilled dough makers, sauce specialists, and topping experts who work together to create the perfect pizza. We regularly participate in pizza competitions and culinary workshops to stay updated with the latest techniques and trends. Our commitment to excellence means continuous training and development for all team members. We take pride in our craft and love sharing our passion for authentic Italian pizza with our customers. Every member of our team is dedicated to providing you with an exceptional dining experience.',
     buttonText: 'READ MORE',
     imageSrc: '../src/assets/ourteam.png',
     imageAlt: 'Our Team',
@@ -107,6 +136,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
         :section-title="section.sectionTitle"
         :heading="section.heading"
         :description="section.description"
+        :expanded-content="section.expandedContent"
         :button-text="section.buttonText"
         :image-src="section.imageSrc"
         :image-alt="section.imageAlt"
@@ -350,9 +380,15 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           Experience Authentic Italian Pizza in Cebu City
         </div>
         <div class="flex flex-col sm:flex-row text-sm sm:text-base lg:text-lg gap-3 sm:gap-4">
-          <button class="bg-primary text-white p-3 sm:p-4 rounded-sm">Order Now</button>
+          <button 
+            @click="handleOrderNow"
+            class="bg-primary text-white p-3 sm:p-4 rounded-sm hover:bg-primary/90 transition-colors cursor-pointer"
+          >
+            Order Now
+          </button>
           <button
-            class="bg-transparent border border-white text-white p-3 sm:p-4 rounded-sm hover:bg-white hover:text-black transition-colors"
+            @click="handleContactUs"
+            class="bg-transparent border border-white text-white p-3 sm:p-4 rounded-sm hover:bg-white hover:text-black transition-colors cursor-pointer"
           >
             Contact Us
           </button>

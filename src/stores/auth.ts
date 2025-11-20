@@ -12,8 +12,15 @@ export const useAuthStore = defineStore('auth', () => {
   //   const notification = useNotificationStore()
   const URL = import.meta.env.VITE_BASE_URL ?? 'http://localhost:5135/api'
 
-  const token = ref(localStorage.getItem('token'))
-  const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
+  // Check both localStorage and sessionStorage for token/user
+  const getStoredToken = () => localStorage.getItem('token') || sessionStorage.getItem('token')
+  const getStoredUser = () => {
+    const userStr = localStorage.getItem('user') || sessionStorage.getItem('user')
+    return userStr ? JSON.parse(userStr) : {}
+  }
+  
+  const token = ref(getStoredToken())
+  const user = ref(getStoredUser())
   const isLoading = ref(false)
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() =>
@@ -121,7 +128,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const login = async (credentials: { email: string; password: string }) => {
+  const login = async (credentials: { email: string; password: string }, rememberMe: boolean = false) => {
     isLoading.value = true
     try {
       const res = await useFetch(URL + '/account/login', {
@@ -130,8 +137,26 @@ export const useAuthStore = defineStore('auth', () => {
         body: JSON.stringify(credentials),
         credentials: 'include',
       })
-      const data = await res.json()
-      if (!res.ok) return sonner.error(data.message)
+      
+      let data
+      try {
+        data = await res.json()
+      } catch (jsonError) {
+        // If JSON parsing fails, show default error message
+        return sonner.error('Account does not exist. Please check your credentials.')
+      }
+      
+      if (!res.ok) {
+        // Display error message from backend, or default message
+        let errorMessage = data?.message || data?.error || 'Account does not exist. Please check your credentials.'
+        
+        // Replace generic "Invalid Credentials" with more helpful message
+        if (errorMessage.toLowerCase().includes('invalid credentials')) {
+          errorMessage = 'Account does not exist. Please check your email and password.'
+        }
+        
+        return sonner.error(errorMessage)
+      }
 
       sonner.success(data.message)
       token.value = data.token
@@ -139,8 +164,21 @@ export const useAuthStore = defineStore('auth', () => {
 
       //   await notification.fetchNotifications(user.value.userId)
 
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('user', JSON.stringify(data.user))
+      // Use localStorage if rememberMe is true, otherwise use sessionStorage
+      const storage = rememberMe ? localStorage : sessionStorage
+      
+      // Clear the other storage to avoid conflicts
+      if (rememberMe) {
+        sessionStorage.removeItem('token')
+        sessionStorage.removeItem('user')
+      } else {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+      }
+      
+      storage.setItem('token', data.token)
+      storage.setItem('user', JSON.stringify(data.user))
+      
       const redirectPath = sessionStorage.getItem('redirectAfterLogin')
       sessionStorage.removeItem('redirectAfterLogin')
 
@@ -153,8 +191,17 @@ export const useAuthStore = defineStore('auth', () => {
         router.push('/dashboard')
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred'
-      sonner.error(errorMessage)
+      // Handle network errors or other unexpected errors
+      if (err instanceof Error) {
+        // Check if it's a network error
+        if (err.message.includes('fetch') || err.message.includes('network')) {
+          sonner.error('Network error. Please check your connection and try again.')
+        } else {
+          sonner.error('Account does not exist. Please check your credentials.')
+        }
+      } else {
+        sonner.error('Account does not exist. Please check your credentials.')
+      }
     } finally {
       isLoading.value = false
     }
@@ -175,8 +222,11 @@ export const useAuthStore = defineStore('auth', () => {
       sonner.success(data.message)
       token.value = null
       user.value = null
+      // Clear both localStorage and sessionStorage
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      sessionStorage.removeItem('token')
+      sessionStorage.removeItem('user')
       router.push('/signin')
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
@@ -225,13 +275,16 @@ export const useAuthStore = defineStore('auth', () => {
         return false
       }
 
+      // Determine which storage was used (check if token exists in localStorage or sessionStorage)
+      const storage = localStorage.getItem('token') ? localStorage : sessionStorage
+      
       if (data.user) {
         user.value = { ...user.value, ...data.user }
-        localStorage.setItem('user', JSON.stringify(user.value))
+        storage.setItem('user', JSON.stringify(user.value))
       } else {
         // Update local user data with the updates we sent
         user.value = { ...user.value, ...data }
-        localStorage.setItem('user', JSON.stringify(user.value))
+        storage.setItem('user', JSON.stringify(user.value))
       }
 
       return true
@@ -248,8 +301,11 @@ export const useAuthStore = defineStore('auth', () => {
   const handleTokenExpiry = () => {
     token.value = null
     user.value = null
+    // Clear both localStorage and sessionStorage
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
     if (router.currentRoute.value.path !== '/') {
       sessionStorage.setItem('redirectAfterLogin', router.currentRoute.value.fullPath)
     }
@@ -274,6 +330,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
   const setToken = (newToken: string) => {
     token.value = newToken
+    // Update token in the same storage that currently has a token
+    // Default to localStorage if neither has it (for refresh token scenarios)
+    const storage = localStorage.getItem('token') ? localStorage 
+      : (sessionStorage.getItem('token') ? sessionStorage : localStorage)
+    storage.setItem('token', newToken)
   }
 
   return {

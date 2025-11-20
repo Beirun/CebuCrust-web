@@ -11,14 +11,18 @@ import type { Notification } from '@/models/notification'
 import { toDate } from '@/plugins/convert'
 import { useNotificationStore } from '@/stores/notification'
 
-defineProps<{ notifications: Notification[] }>()
-const { updateNotificationStatus } = useNotificationStore()
+const props = defineProps<{ notifications: Notification[] }>()
+const { updateNotificationStatus, markAllAsRead } = useNotificationStore()
 
 const open = ref(false)
 
 const readNotification = async (id: number) => {
   await updateNotificationStatus(id, 'read')
 }
+
+const unreadCount = computed(() =>
+  props.notifications.filter((n) => n.notificationStatus !== 'read').length
+)
 
 // Reactive window width check
 const windowWidth = ref(window.innerWidth)
@@ -51,6 +55,17 @@ onUnmounted(() => window.removeEventListener('resize', handleResize))
           </div>
         </template>
         <template v-else>
+          <div
+            v-if="unreadCount > 0"
+            class="px-4 py-2 border-b border-[#D3D3D3]/30"
+          >
+            <button
+              @click="markAllAsRead"
+              class="w-full text-left text-primary text-sm font-medium hover:text-primary/80 transition-colors py-2"
+            >
+              Mark all as read
+            </button>
+          </div>
           <div
             v-for="n in notifications"
             :key="n.notificationId"
@@ -88,7 +103,16 @@ onUnmounted(() => window.removeEventListener('resize', handleResize))
           </div>
         </template>
         <template v-else>
-          <h4 class="text-center py-4 text-white font-semibold text-lg">Notifications</h4>
+          <div class="flex items-center justify-between px-4 py-4 border-b border-[#D3D3D3]/30">
+            <h4 class="text-white font-semibold text-lg">Notifications</h4>
+            <button
+              v-if="unreadCount > 0"
+              @click="markAllAsRead"
+              class="text-primary text-sm font-medium hover:text-primary/80 transition-colors"
+            >
+              Mark all as read
+            </button>
+          </div>
           <div
             v-for="n in notifications"
             :key="n.notificationId"
