@@ -12,21 +12,54 @@ export const useAuthStore = defineStore('auth', () => {
   //   const notification = useNotificationStore()
   const URL = import.meta.env.VITE_BASE_URL ?? 'http://localhost:5135/api'
 
-  // Check both localStorage and sessionStorage for token/user
-  const getStoredToken = () => localStorage.getItem('token') || sessionStorage.getItem('token')
-  const getStoredUser = () => {
-    const userStr = localStorage.getItem('user') || sessionStorage.getItem('user')
-    return userStr ? JSON.parse(userStr) : {}
+  // Helper function to clean empty/null image fields from user data
+  const cleanImageFields = (userData: any): any => {
+    if (!userData) return userData
+    const cleaned = { ...userData }
+    // Remove image fields if they're empty, null, undefined, or whitespace-only
+    if (!cleaned.profileImage || (typeof cleaned.profileImage === 'string' && cleaned.profileImage.trim() === '')) {
+      delete cleaned.profileImage
+    }
+    if (!cleaned.profileImageUrl || (typeof cleaned.profileImageUrl === 'string' && cleaned.profileImageUrl.trim() === '')) {
+      delete cleaned.profileImageUrl
+    }
+    return cleaned
   }
-  
-  const token = ref(getStoredToken())
-  const user = ref(getStoredUser())
+
+  const token = ref(localStorage.getItem('token'))
+  // Clean image fields on initial load if they're empty/null
+  const initialUserData = JSON.parse(localStorage.getItem('user') || '{}')
+  const user = ref(cleanImageFields(initialUserData))
   const isLoading = ref(false)
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() =>
     token.value ? Object.values(jwtDecode(token.value))[2] === 'Admin' : false,
   )
   const userInfo = computed(() => user.value)
+
+  // Helper function to safely store user data without image fields if needed
+  const storeUserData = (userData: any, removeImageFields: boolean = false) => {
+    if (removeImageFields) {
+      const cleanedUser = { ...userData }
+      delete cleanedUser.profileImage
+      delete cleanedUser.profileImageUrl
+      user.value = cleanedUser
+      localStorage.setItem('user', JSON.stringify(cleanedUser))
+      // Set flag that image was removed
+      localStorage.setItem('profileImageRemoved', 'true')
+    } else {
+      // Always clean empty/null image fields before storing
+      const cleanedUser = cleanImageFields(userData)
+      user.value = cleanedUser
+      localStorage.setItem('user', JSON.stringify(cleanedUser))
+      // If both image fields are missing, mark as removed
+      if (!cleanedUser.profileImage && !cleanedUser.profileImageUrl) {
+        localStorage.setItem('profileImageRemoved', 'true')
+      } else {
+        localStorage.removeItem('profileImageRemoved')
+      }
+    }
+  }
 
   const register = async (credentials: {
     firstName: string
@@ -50,12 +83,14 @@ export const useAuthStore = defineStore('auth', () => {
       sonner.success(data.message)
 
       token.value = data.token
-      user.value = data.user
+      // Clean image fields from register response if they're empty/null
+      const cleanedUser = cleanImageFields(data.user)
+      user.value = cleanedUser
 
       //   await notification.fetchNotifications(user.value.userId)
 
       localStorage.setItem('token', data.token)
-      localStorage.setItem('user', JSON.stringify(data.user))
+      localStorage.setItem('user', JSON.stringify(cleanedUser))
 
       // check if admin
       if (isAdmin.value) {
@@ -104,11 +139,19 @@ export const useAuthStore = defineStore('auth', () => {
       }
       sonner.success(data.message)
       token.value = data.token
-      user.value = data.user
+      
+      // Clean image fields from Google login response if they're empty/null
+      const cleanedUser = cleanImageFields(data.user)
+      // If profileImageRemoved flag exists, remove image fields even if backend returned them
+      if (localStorage.getItem('profileImageRemoved') === 'true') {
+        delete cleanedUser.profileImage
+        delete cleanedUser.profileImageUrl
+      }
+      user.value = cleanedUser
 
       // await notification.fetchNotifications(user.value.userId)
       localStorage.setItem('token', data.token)
-      localStorage.setItem('user', JSON.stringify(data.user))
+      localStorage.setItem('user', JSON.stringify(cleanedUser))
 
       const redirectPath = sessionStorage.getItem('redirectAfterLogin')
       sessionStorage.removeItem('redirectAfterLogin')
@@ -128,7 +171,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const login = async (credentials: { email: string; password: string }, rememberMe: boolean = false) => {
+  const login = async (credentials: { email: string; password: string }) => {
     isLoading.value = true
     try {
       const res = await useFetch(URL + '/account/login', {
@@ -137,48 +180,25 @@ export const useAuthStore = defineStore('auth', () => {
         body: JSON.stringify(credentials),
         credentials: 'include',
       })
-      
-      let data
-      try {
-        data = await res.json()
-      } catch (jsonError) {
-        // If JSON parsing fails, show default error message
-        return sonner.error('Account does not exist. Please check your credentials.')
-      }
-      
-      if (!res.ok) {
-        // Display error message from backend, or default message
-        let errorMessage = data?.message || data?.error || 'Account does not exist. Please check your credentials.'
-        
-        // Replace generic "Invalid Credentials" with more helpful message
-        if (errorMessage.toLowerCase().includes('invalid credentials')) {
-          errorMessage = 'Account does not exist. Please check your email and password.'
-        }
-        
-        return sonner.error(errorMessage)
-      }
+      const data = await res.json()
+      if (!res.ok) return sonner.error(data.message)
 
       sonner.success(data.message)
       token.value = data.token
-      user.value = data.user
+      
+      // Clean image fields from login response if they're empty/null
+      const cleanedUser = cleanImageFields(data.user)
+      // If profileImageRemoved flag exists, remove image fields even if backend returned them
+      if (localStorage.getItem('profileImageRemoved') === 'true') {
+        delete cleanedUser.profileImage
+        delete cleanedUser.profileImageUrl
+      }
+      user.value = cleanedUser
 
       //   await notification.fetchNotifications(user.value.userId)
 
-      // Use localStorage if rememberMe is true, otherwise use sessionStorage
-      const storage = rememberMe ? localStorage : sessionStorage
-      
-      // Clear the other storage to avoid conflicts
-      if (rememberMe) {
-        sessionStorage.removeItem('token')
-        sessionStorage.removeItem('user')
-      } else {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-      }
-      
-      storage.setItem('token', data.token)
-      storage.setItem('user', JSON.stringify(data.user))
-      
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(cleanedUser))
       const redirectPath = sessionStorage.getItem('redirectAfterLogin')
       sessionStorage.removeItem('redirectAfterLogin')
 
@@ -191,17 +211,8 @@ export const useAuthStore = defineStore('auth', () => {
         router.push('/dashboard')
       }
     } catch (err: unknown) {
-      // Handle network errors or other unexpected errors
-      if (err instanceof Error) {
-        // Check if it's a network error
-        if (err.message.includes('fetch') || err.message.includes('network')) {
-          sonner.error('Network error. Please check your connection and try again.')
-        } else {
-          sonner.error('Account does not exist. Please check your credentials.')
-        }
-      } else {
-        sonner.error('Account does not exist. Please check your credentials.')
-      }
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred'
+      sonner.error(errorMessage)
     } finally {
       isLoading.value = false
     }
@@ -222,11 +233,8 @@ export const useAuthStore = defineStore('auth', () => {
       sonner.success(data.message)
       token.value = null
       user.value = null
-      // Clear both localStorage and sessionStorage
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      sessionStorage.removeItem('token')
-      sessionStorage.removeItem('user')
       router.push('/signin')
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
@@ -246,7 +254,7 @@ export const useAuthStore = defineStore('auth', () => {
     currentPassword?: string
     newPassword?: string
     confirmPassword?: string
-  }) => {
+  }): Promise<{ ok: boolean; message?: string }> => {
     isLoading.value = true
     try {
       console.log('Updating user with ID:', userInfo.value.userId)
@@ -256,8 +264,21 @@ export const useAuthStore = defineStore('auth', () => {
       if (updates.userLName) fd.append('UserLName', updates.userLName)
       if (updates.userEmail) fd.append('UserEmail', updates.userEmail)
       if (updates.userPhoneNo) fd.append('UserPhoneNo', updates.userPhoneNo)
-      if (updates.image instanceof File) fd.append('Image', updates.image)
-      else if (typeof updates.image === 'string') fd.append('Image', updates.image)
+
+      // Handle image removal or update
+      if (updates.removeImage) {
+
+        // Send removal flag to backend - do NOT send empty Image field
+        fd.append('RemoveImage', 'true')
+        console.log('Setting RemoveImage flag to true')
+      } else if (updates.image instanceof File) {
+        fd.append('Image', updates.image)
+        console.log('Sending new image file')
+      } else if (typeof updates.image === 'string' && updates.image) {
+        fd.append('Image', updates.image)
+        console.log('Sending image string')
+      }
+
       if (updates.currentPassword) fd.append('CurrentPassword', updates.currentPassword)
       if (updates.newPassword) fd.append('NewPassword', updates.newPassword)
       if (updates.confirmPassword) fd.append('ConfirmPassword', updates.confirmPassword)
@@ -271,28 +292,45 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('Backend response:', data)
       console.log('removeImage flag was set:', updates.removeImage)
       if (!res.ok) {
-        sonner.error(`${data.message}`)
-        return false
+        const message = data?.message || 'Failed to update profile.'
+        sonner.error(message)
+        return { ok: false, message }
       }
-
-      // Determine which storage was used (check if token exists in localStorage or sessionStorage)
-      const storage = localStorage.getItem('token') ? localStorage : sessionStorage
       
-      if (data.user) {
-        user.value = { ...user.value, ...data.user }
-        storage.setItem('user', JSON.stringify(user.value))
+      // CRITICAL: If removeImage was requested, filter out image fields from backend response
+      let responseData = data.user || data
+      if (updates.removeImage) {
+        console.log('REMOVING IMAGE: Filtering image fields from backend response')
+        // Create a clean copy without image fields
+        const { profileImage, profileImageUrl, ...cleanData } = responseData
+        responseData = cleanData
+      }
+      
+      // Merge updates with filtered response data
+      user.value = { ...user.value, ...responseData }
+      
+      // CRITICAL: If removeImage was requested, explicitly remove image fields before storing
+      if (updates.removeImage) {
+        console.log('REMOVING IMAGE: Explicitly removing image fields from user data')
+        // Explicitly delete image fields to prevent them from being restored
+        delete user.value.profileImage
+        delete user.value.profileImageUrl
+        // Use helper to ensure clean storage and set removal flag
+        storeUserData(user.value, true)
       } else {
-        // Update local user data with the updates we sent
-        user.value = { ...user.value, ...data }
-        storage.setItem('user', JSON.stringify(user.value))
+        // Always clean empty/null image fields before storing
+        const cleanedUser = cleanImageFields(user.value)
+        user.value = cleanedUser
+        // Normal storage (will also clean and set/remove flag)
+        storeUserData(user.value, false)
       }
 
-      return true
+      return { ok: true }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
       console.error('Update error:', errorMessage)
       sonner.error(errorMessage)
-      return false
+      return { ok: false, message: errorMessage }
     } finally {
       isLoading.value = false
     }
@@ -301,11 +339,8 @@ export const useAuthStore = defineStore('auth', () => {
   const handleTokenExpiry = () => {
     token.value = null
     user.value = null
-    // Clear both localStorage and sessionStorage
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    sessionStorage.removeItem('token')
-    sessionStorage.removeItem('user')
     if (router.currentRoute.value.path !== '/') {
       sessionStorage.setItem('redirectAfterLogin', router.currentRoute.value.fullPath)
     }
@@ -330,11 +365,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
   const setToken = (newToken: string) => {
     token.value = newToken
-    // Update token in the same storage that currently has a token
-    // Default to localStorage if neither has it (for refresh token scenarios)
-    const storage = localStorage.getItem('token') ? localStorage 
-      : (sessionStorage.getItem('token') ? sessionStorage : localStorage)
-    storage.setItem('token', newToken)
   }
 
   return {
