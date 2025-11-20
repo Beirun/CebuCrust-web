@@ -10,6 +10,7 @@ import { googleTokenLogin } from 'vue3-google-login'
 const auth = useAuthStore()
 const sonner = useSonnerStore()
 const showPassword = ref(false)
+const rememberMe = ref(false)
 const form = reactive({
   email: '',
   password: '',
@@ -83,6 +84,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           <div class="flex w-full justify-between items-center my-3">
             <div class="flex items-center gap-2">
               <input
+                v-model="rememberMe"
                 type="checkbox"
                 id="remember"
                 class="w-4 h-4 text-primary bg-[#121A1D] border-[#D3D3D3]/30 rounded focus:ring-primary focus:ring-2"
@@ -93,7 +95,7 @@ onBeforeUnmount(() => sonner.setTheme('light'))
           </div>
 
           <button
-            @click="auth.login(form)"
+            @click="auth.login(form, rememberMe)"
             :disabled="auth.isLoading"
             class="flex justify-center items-center gap-2 w-full bg-primary my-3 p-3 text-white rounded-md disabled:brightness-70 disabled:cursor-auto transition-all duration-300"
           >
