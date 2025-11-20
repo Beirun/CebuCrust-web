@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useUserStore } from '@/stores/user'
 import { toBase64 } from '@/plugins/convert'
 import { Eye, EyeOff, Upload } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
@@ -8,6 +9,7 @@ import AdminHeader from '@/components/AdminHeader.vue'
 import Footer from '@/components/Footer.vue'
 
 const auth = useAuthStore()
+const userStore = useUserStore()
 
 // Form state
 const user = ref(auth.user ? { ...auth.user } : {}) //- If there’s a logged-in user, copy their info into our local user box.
@@ -15,6 +17,7 @@ const preview = ref<string | null>(user.value?.profileImage || user.value?.profi
 const isSaving = ref(false) //flag for loading spinner
 const fileInput = ref<HTMLInputElement | null>(null) // added ref
 const newProfileImage = ref<File | null>() //Holds the new uploaded image file
+const imageRemoved = ref(false) // Track if user has removed the image in this session
 
 // Password change state(A box holding the three password fields)
 const passwordForm = ref({
@@ -32,20 +35,50 @@ const showPasswords = ref({
 
 // Form validation(shows error message)
 const errors = ref<Record<string, string>>({})
+const hasFetchedAllUsers = ref(false)
 
 // Sync local user if auth.user changes
 watch(
   () => auth.user,
   (val) => {
-    user.value = val ? { ...val } : {}
-    if (user.value?.profileImage) {
-      if (user.value.profileImage.startsWith('data:')) { //uses data format(long text code for images)
-        preview.value = user.value.profileImage
+    if (!val) {
+      user.value = {}
+      preview.value = null
+      return
+    }
+    
+    user.value = { ...val }
+    
+    // Check localStorage flag - if image was removed, don't show it even if backend returned it
+    const wasImageRemoved = localStorage.getItem('profileImageRemoved') === 'true'
+    
+    // Reset removal flag when user data changes from external source (like login)
+    // But keep it if localStorage flag is set
+    if (!wasImageRemoved) {
+      imageRemoved.value = false
+    }
+    
+    // Check if image fields exist and are not empty/null, AND image wasn't removed
+    const hasImage = !wasImageRemoved && 
+                     ((user.value?.profileImage && typeof user.value.profileImage === 'string' && user.value.profileImage.trim() !== '') || 
+                      (user.value?.profileImageUrl && typeof user.value.profileImageUrl === 'string' && user.value.profileImageUrl.trim() !== ''))
+    
+    if (hasImage) {
+      const imageSource = user.value.profileImage || user.value.profileImageUrl
+      if (imageSource && imageSource.startsWith('data:')) { //uses data format(long text code for images)
+        preview.value = imageSource
+      } else if (imageSource) {
+        preview.value = toBase64(imageSource) //if not, converts pic to base64
       } else {
-        preview.value = toBase64(user.value.profileImage) //if not, converts pic to base64
+        preview.value = null
       }
     } else {
       preview.value = null //if no pic
+      // Ensure image fields are deleted if they're empty/null or if image was removed
+      if (wasImageRemoved || !user.value?.profileImage || !user.value?.profileImageUrl) {
+        delete user.value.profileImage
+        delete user.value.profileImageUrl
+      }
     }
   },
   { immediate: true },
@@ -81,6 +114,8 @@ const onFileChange = (e: Event) => {
     console.log('res', result)
     preview.value = result //updates the preview value so that the new pic will show in the screen
     user.value.profileImage = result //saves the new pic to this variable
+    imageRemoved.value = false // Reset removal flag when new image is selected
+    localStorage.removeItem('profileImageRemoved') // Clear removal flag when new image is selected
     delete errors.value.profileImage
     console.log('result', result)
   }
@@ -105,6 +140,10 @@ const onDragOver = (e: DragEvent) => e.preventDefault()
 const removePhoto = () => {
   preview.value = null //pic on screen turn into null to remove
   user.value.profileImage = null //actual pic stored in the user's data turned to null to remove
+  delete user.value.profileImage
+  delete user.value.profileImageUrl
+  imageRemoved.value = true // Mark that image was removed
+  newProfileImage.value = null // Clear any pending upload
   delete errors.value.profileImage
 }
 
@@ -146,16 +185,66 @@ const validateForm = () => {
   return Object.keys(errors.value).length === 0 //gives all the error messages, if 0 form is valid
 }
 
+// Helper to ensure email uniqueness before submitting to backend
+const ensureEmailIsUnique = async () => {
+  const newEmail = user.value.email?.trim()
+  const currentEmail = auth.user?.email?.trim()
+
+  if (!newEmail) return false
+  if (!currentEmail || newEmail.toLowerCase() === currentEmail.toLowerCase()) {
+    return true
+  }
+
+  try {
+    if (!hasFetchedAllUsers.value || !userStore.users.length) {
+      await userStore.getAllUsers()
+      hasFetchedAllUsers.value = true
+    }
+
+    const duplicate = userStore.users.some(
+      (existingUser) =>
+        existingUser.userId !== auth.user?.userId &&
+        existingUser.email?.toLowerCase() === newEmail.toLowerCase(),
+    )
+
+    if (duplicate) {
+      errors.value.email = 'This email is already registered to another account'
+      return false
+    }
+
+    return true
+  } catch (fetchError) {
+    console.error('Failed to verify email uniqueness', fetchError)
+    errors.value.email = 'Unable to verify email. Please try again.'
+    return false
+  }
+}
+
 // Save changes
 const save = async () => {
   if (!validateForm()) return
   isSaving.value = true
   try {
-    const originalProfileImage = auth.user?.profileImage || '' //Grab the user’s current profile image from the auth store
+    const isEmailUnique = await ensureEmailIsUnique()
+    if (!isEmailUnique) return
+    // Check for original image - treat empty strings as no image
+    const originalProfileImage = (auth.user?.profileImage && typeof auth.user.profileImage === 'string' && auth.user.profileImage.trim() !== '') 
+      ? auth.user.profileImage 
+      : ((auth.user?.profileImageUrl && typeof auth.user.profileImageUrl === 'string' && auth.user.profileImageUrl.trim() !== '') 
+          ? auth.user.profileImageUrl 
+          : '')
     const hasProfileImageChanged =
-      user.value.profileImage !== originalProfileImage //checker if the user changed profile
+      (user.value.profileImage || user.value.profileImageUrl) !== originalProfileImage //checker if the user changed profile
+    // Check if image was removed: either in this session, localStorage flag, or if original had image but current doesn't
+    const currentImage = (user.value.profileImage && typeof user.value.profileImage === 'string' && user.value.profileImage.trim() !== '') 
+      ? user.value.profileImage 
+      : ((user.value.profileImageUrl && typeof user.value.profileImageUrl === 'string' && user.value.profileImageUrl.trim() !== '') 
+          ? user.value.profileImageUrl 
+          : '')
+    // Check localStorage flag to see if image was previously removed
+    const wasImageRemoved = localStorage.getItem('profileImageRemoved') === 'true'
     const isProfileImageRemoved =
-      originalProfileImage && !user.value.profileImage //checker if the user removed profile
+      imageRemoved.value || wasImageRemoved || (originalProfileImage && !currentImage) //checker if the user removed profile
     const hasPersonalInfoChanged = //checker if the user changed any personal information
       user.value.firstName !== auth.user?.firstName ||
       user.value.lastName !== auth.user?.lastName ||
@@ -190,35 +279,44 @@ const save = async () => {
     }
 
     //Send the updates to the backend using auth.update
-    const success = await auth.update(updates)
-    if (success) {
+    const { ok, message } = await auth.update(updates)
+    if (ok) {
       const { useSonnerStore } = await import('@/stores/sonner')
       const sonner = useSonnerStore()
       if (hasProfileImageChanged) sonner.success('Profile picture updated successfully!')
       if (hasPersonalInfoChanged) sonner.success('Personal information updated successfully!')
       if (hasPasswordChanged) sonner.success('Password changed successfully!')
 
+      // Sync local state with auth store after update
+      user.value = auth.user ? { ...auth.user } : {}
+      
       // Clear the form and ensure preview reflects the new state
       if (isProfileImageRemoved) {
         preview.value = null
         user.value.profileImage = null
         user.value.profileImageUrl = null
-        // The auth store has already been updated in the auth.update() method
-        // but let's ensure consistency by syncing from auth.user
-        if (auth.user) {
-          auth.user.profileImage = null
-          auth.user.profileImageUrl = null
-          delete auth.user.profileImage
-          delete auth.user.profileImageUrl
-        }
-      } else if (user.value.profileImage) {
-        preview.value = user.value.profileImage
+        // Ensure image fields are deleted from local state
+        delete user.value.profileImage
+        delete user.value.profileImageUrl
+        // Keep the removal flag set (don't reset it) so it persists across sessions
+        // The flag will be cleared when a new image is uploaded
+      } else if (user.value.profileImage || user.value.profileImageUrl) {
+        preview.value = user.value.profileImage || user.value.profileImageUrl || null
+        // Clear removal flag if image exists
+        imageRemoved.value = false
+        localStorage.removeItem('profileImageRemoved')
+      } else {
+        preview.value = null
       }
       
       // Reset new file upload reference
       newProfileImage.value = null
       
       passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' } //erases all in the field
+    } else if (message) {
+      if (message.toLowerCase().includes('email')) {
+        errors.value.email = message
+      }
     }
   } catch (error) {
     console.error('Error updating profile:', error)
@@ -229,9 +327,11 @@ const save = async () => {
 
 const cancel = () => {
   user.value = auth.user ? { ...auth.user } : {}
-  preview.value = user.value?.profileImage || user.value?.profileImageUrl || null //show the user’s original profile image again
+  preview.value = user.value?.profileImage || user.value?.profileImageUrl || null //show the user's original profile image again
   passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' } //this undoes any password changes you were typing
   errors.value = {} //remove all error messages
+  imageRemoved.value = false // Reset removal flag on cancel
+  newProfileImage.value = null // Clear any pending upload
 }
 </script>
 
