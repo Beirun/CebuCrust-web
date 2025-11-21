@@ -7,6 +7,7 @@ export type Pizza = {
   pizzaImage?: string | File | null
   stock: number
   isDeleted: boolean
+  favoriteCount?: number
   averageRating?: number
   totalRatings?: number
 }
