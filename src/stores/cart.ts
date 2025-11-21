@@ -93,6 +93,11 @@ export const useCartStore = defineStore('cart', () => {
         credentials: 'include',
       })
       if (!res.ok) {
+        // If item not found (404), silently remove from local cart state
+        if (res.status === 404) {
+          cart.value = cart.value.filter((c) => c.pizzaId !== pizzaId)
+          return
+        }
         const data = await res.json()
         return sonner.error(data.message ?? 'Failed to remove item')
       }

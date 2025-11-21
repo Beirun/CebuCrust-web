@@ -21,7 +21,12 @@ export const useNotificationStore = defineStore('notification', () => {
       })
       const data = await res.json()
       if (!res.ok) return sonner.error(data.message ?? 'Failed to fetch notifications')
-      notifications.value = data
+      // Sort by dateCreated descending (newest first)
+      notifications.value = data.sort((a: Notification, b: Notification) => {
+        const dateA = a.dateCreated ? new Date(a.dateCreated).getTime() : 0
+        const dateB = b.dateCreated ? new Date(b.dateCreated).getTime() : 0
+        return dateB - dateA // Descending order (newest first)
+      })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error fetching notifications'
       sonner.error(msg)

@@ -101,8 +101,12 @@ export const useOrderStore = defineStore('order', () => {
       orders.value.push(data)
       await router.push('/orders')
       setPendingOrder([])
-      order.orderLists.map(async (o) => {
-        await cart.removeFromCart(o.pizzaId)
+      // Only remove items from cart if they exist in the cart
+      order.orderLists.forEach(async (o) => {
+        const cartItem = cart.cart.find((c) => c.pizzaId === o.pizzaId)
+        if (cartItem) {
+          await cart.removeFromCart(o.pizzaId)
+        }
       })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error creating order'
