@@ -347,7 +347,13 @@ onMounted(async () => {
             <div class="flex justify-between items-center mb-4">
               <div class="flex items-center gap-1">
                 <Star class="h-4 w-4 text-yellow-400 fill-current" />
-                <span class="text-white text-sm">0 (0)</span>
+                <span class="text-white text-sm">
+                  {{
+                    item.averageRating && item.averageRating > 0
+                      ? `${item.averageRating} (${item.totalRatings})`
+                      : '0 (0)'
+                  }}
+                </span>
               </div>
               <span class="text-xl font-bold text-primary">₱{{ item.pizzaPrice }}</span>
             </div>
@@ -806,9 +812,7 @@ onMounted(async () => {
                   </div>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Pizza Stock<span class="text-red-500 ml-1">*</span>
-                  </label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Pizza Stock</label>
                   <div class="relative">
                     <input
                       v-model.number="formData.stock"

@@ -491,7 +491,6 @@ watch(pizzaId, async () => {
                 <p class="text-gray-700 mb-2">{{ review.comment }}</p>
                 <div class="flex items-center gap-4 text-sm text-gray-500">
                   <span>{{ review.date }}</span>
-                  <span>Size: {{ review.size }}</span>
                 </div>
               </div>
             </div>
