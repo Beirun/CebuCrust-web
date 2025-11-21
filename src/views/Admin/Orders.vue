@@ -244,7 +244,9 @@ onBeforeMount(async () => {
 
         <div class="flex gap-2">
           <Select v-model="sortBy">
-            <SelectTrigger class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white w-40">
+            <SelectTrigger
+              class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white w-40"
+            >
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
             <SelectContent>
@@ -598,7 +600,8 @@ onBeforeMount(async () => {
                         <SelectItem
                           v-if="
                             selectedOrder?.orderStatus === 'pending' ||
-                            selectedOrder?.orderStatus === 'ready'
+                            selectedOrder?.orderStatus === 'ready' ||
+                            selectedOrder?.orderStatus === 'preparing'
                           "
                           value="ready"
                           >Ready</SelectItem

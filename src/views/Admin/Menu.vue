@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { Plus, Search, Edit, Trash2, Star, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Star,
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  Image as ImageIcon,
+} from 'lucide-vue-next'
 import AdminHeader from '@/components/AdminHeader.vue'
 import Footer from '@/components/Footer.vue'
 import { usePizzaStore } from '@/stores/pizza'
 import type { Pizza } from '@/models/pizza'
-import { toBase64 } from '@/plugins/convert'
+import { base64ToFile, toBase64 } from '@/plugins/convert'
 import {
   Dialog,
   DialogContent,
@@ -15,10 +25,16 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+
 const pizza = usePizzaStore()
 const isAddModalOpen = ref(false)
 const isEditModalOpen = ref(false)
 const deleteConfirmationOpen = ref(false)
+
+// New refs for Image Handling
+const imagePreview = ref<string | null>(null)
+const isDragging = ref(false)
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 // Form data for adding/editing items
 const formData = ref<Partial<Pizza>>({
@@ -28,6 +44,7 @@ const formData = ref<Partial<Pizza>>({
   pizzaCategory: '',
   pizzaPrice: 0,
   pizzaImage: null,
+  stock: 0,
 })
 
 const resetForm = () => {
@@ -38,7 +55,11 @@ const resetForm = () => {
     pizzaCategory: '',
     pizzaPrice: 0,
     pizzaImage: null,
+    stock: 0,
   }
+  imagePreview.value = null
+  isDragging.value = false
+  if (fileInputRef.value) fileInputRef.value.value = ''
 }
 
 const openAddModal = () => {
@@ -47,40 +68,104 @@ const openAddModal = () => {
 }
 
 const openEditModal = (item: Pizza) => {
-  console.table(item)
   formData.value = {
     pizzaId: item.pizzaId,
     pizzaName: item.pizzaName,
     pizzaDescription: item.pizzaDescription,
     pizzaCategory: item.pizzaCategory,
     pizzaPrice: item.pizzaPrice,
-    isAvailable: item.isAvailable,
-    pizzaImage: null,
+    stock: item.stock ?? 0,
+    pizzaImage: item.pizzaImage,
   }
+
+  // Set existing image as preview using your helper
+  if (item.pizzaImage) {
+    imagePreview.value = toBase64(item.pizzaImage as string)
+  } else {
+    imagePreview.value = null
+  }
+
   isEditModalOpen.value = true
+}
+
+// --- Image Handling Logic ---
+
+const processFile = (file: File) => {
+  if (!file.type.match('image.*')) {
+    alert('Please upload an image file')
+    return
+  }
+
+  formData.value.pizzaImage = file
+
+  // Create local preview URL
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    imagePreview.value = e.target?.result as string
+  }
+  reader.readAsDataURL(file)
 }
 
 const handleImageUpload = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files[0]) {
-    formData.value.pizzaImage = target.files[0]
+    processFile(target.files[0])
   }
 }
 
-const handleSubmit = () => {
-  if (isAddModalOpen.value) {
-    isAddModalOpen.value = false
-  }
-  pizza.createPizza(formData.value as Partial<Pizza>)
-  resetForm()
+const onDragOver = (e: DragEvent) => {
+  e.preventDefault()
+  isDragging.value = true
 }
 
-const handleUpdateSubmit = () => {
-  if (isEditModalOpen.value) {
-    isEditModalOpen.value = false
+const onDragLeave = (e: DragEvent) => {
+  e.preventDefault()
+  isDragging.value = false
+}
+
+const onDrop = (e: DragEvent) => {
+  e.preventDefault()
+  isDragging.value = false
+
+  if (e.dataTransfer?.files && e.dataTransfer.files[0]) {
+    processFile(e.dataTransfer.files[0])
   }
-  pizza.updatePizza(formData.value as Partial<Pizza>)
-  resetForm()
+}
+
+const removeImage = () => {
+  formData.value.pizzaImage = null
+  imagePreview.value = null
+  if (fileInputRef.value) fileInputRef.value.value = ''
+}
+
+const triggerFileInput = () => {
+  fileInputRef.value?.click()
+}
+
+// --- End Image Handling Logic ---
+
+const handleSubmit = async () => {
+  const ok = await pizza.createPizza(formData.value as Partial<Pizza>)
+  if (ok) {
+    resetForm()
+    if (isAddModalOpen.value) {
+      isAddModalOpen.value = false
+    }
+  }
+}
+
+const handleUpdateSubmit = async () => {
+  formData.value.pizzaImage =
+    formData.value.pizzaImage instanceof File
+      ? formData.value.pizzaImage
+      : base64ToFile(toBase64(formData.value.pizzaImage as string), `${formData.value.pizzaId}.png`)
+  const ok = await pizza.updatePizza(formData.value as Partial<Pizza>)
+  if (ok) {
+    if (isEditModalOpen.value) {
+      isEditModalOpen.value = false
+    }
+    resetForm()
+  }
 }
 
 const categories = computed(() => {
@@ -88,16 +173,9 @@ const categories = computed(() => {
 })
 
 const handleDelete = async (id: number) => {
-  // if (confirm('Are you sure you want to delete this menu item?')) {
-  //   menuStore.deleteMenuItem(id)
-  // }
   await pizza.deletePizza(id)
   deleteConfirmationOpen.value = false
 }
-
-// const toggleAvailability = (item: MenuItem) => {
-//   menuStore.updateMenuItem(item.id, { isAvailable: !item.isAvailable })
-// }
 
 // Pagination
 const currentPage = ref(1)
@@ -126,7 +204,6 @@ const sortBy = ref('')
 const filteredMenuItems = computed(() => {
   let filtered = pizza.pizzas.filter((p) => !p.isDeleted)
 
-  // Filter by search query
   if (searchQuery.value) {
     filtered = filtered.filter(
       (item) =>
@@ -135,12 +212,10 @@ const filteredMenuItems = computed(() => {
     )
   }
 
-  // Filter by category
   if (selectedCategory.value !== 'All Pizzas') {
     filtered = filtered.filter((item) => item.pizzaCategory === selectedCategory.value)
   }
 
-  // Sort items
   if (sortBy.value) {
     switch (sortBy.value) {
       case 'name':
@@ -169,8 +244,6 @@ watch(totalPages, (newTotal) => {
 
 onMounted(async () => {
   await pizza.fetchAll()
-
-  console.log(pizza.pizzas)
 })
 </script>
 
@@ -180,7 +253,7 @@ onMounted(async () => {
     <AdminHeader />
 
     <!-- Main Content -->
-    <main class="w-screen px-4 sm:px-8 lg:px-30 py-8">
+    <main class="w-screen min-h-[calc(100vh-5rem)] px-4 sm:px-8 lg:px-30 py-8">
       <!-- Page Header -->
       <div class="flex justify-between items-center mb-8">
         <div>
@@ -266,9 +339,11 @@ onMounted(async () => {
           </div>
 
           <div class="p-4">
-            <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
+            <h3 class="text-lg font-semibold text-primary mb-1">
+              {{ item.pizzaName }}
+            </h3>
             <p class="text-gray-300 text-sm mb-3 line-clamp-2">{{ item.pizzaDescription }}</p>
-
+            <span class="text-xs text-gray-300 mb-3">{{ item.stock }} Available</span>
             <div class="flex justify-between items-center mb-4">
               <div class="flex items-center gap-1">
                 <Star class="h-4 w-4 text-yellow-400 fill-current" />
@@ -467,56 +542,100 @@ onMounted(async () => {
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">
                   Pizza Image<span class="text-red-500 ml-1">*</span>
                 </h3>
+
+                <input
+                  type="file"
+                  ref="fileInputRef"
+                  @change="handleImageUpload"
+                  accept="image/jpeg,image/png,image/webp"
+                  class="hidden"
+                />
+
                 <div
-                  class="border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-gray-400 transition-colors bg-gray-50"
+                  v-if="imagePreview"
+                  class="relative rounded-lg overflow-hidden border border-gray-200 group"
                 >
-                  <input
-                    type="file"
-                    @change="handleImageUpload"
-                    accept="image/jpeg,image/png,image/webp"
-                    class="hidden"
-                    id="image-upload"
-                  />
-                  <label for="image-upload" class="cursor-pointer flex flex-col items-center">
-                    <div
-                      class="w-16 h-16 mb-4 bg-gray-200 rounded-lg flex items-center justify-center"
+                  <img :src="imagePreview" alt="Preview" class="w-full h-64 object-contain" />
+
+                  <div
+                    class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4"
+                  >
+                    <button
+                      @click="triggerFileInput"
+                      class="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 text-white transition-colors"
+                      title="Change Image"
                     >
-                      <svg
-                        class="w-8 h-8 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
-                    <p class="text-gray-600 font-medium text-center">
-                      Drag & drop an image here, or click to browse
-                    </p>
-                    <p class="text-sm text-gray-500 mt-2">JPG, PNG, WEBP (Max 5MB)</p>
-                  </label>
+                      <Edit class="w-6 h-6" />
+                    </button>
+                    <button
+                      @click="removeImage"
+                      class="p-2 bg-red-500/80 backdrop-blur-sm rounded-full hover:bg-red-600 text-white transition-colors"
+                      title="Remove Image"
+                    >
+                      <Trash2 class="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  v-else
+                  @dragover.prevent="onDragOver"
+                  @dragleave.prevent="onDragLeave"
+                  @drop.prevent="onDrop"
+                  @click="triggerFileInput"
+                  :class="[
+                    'border-2 border-dashed rounded-lg p-8 transition-all cursor-pointer flex flex-col items-center justify-center h-64',
+                    isDragging
+                      ? 'border-primary bg-primary/5 scale-[1.02]'
+                      : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100',
+                  ]"
+                >
+                  <div
+                    class="w-16 h-16 mb-4 bg-white rounded-full shadow-sm flex items-center justify-center"
+                  >
+                    <Upload
+                      :class="[
+                        'w-8 h-8 transition-colors',
+                        isDragging ? 'text-primary' : 'text-gray-400',
+                      ]"
+                    />
+                  </div>
+                  <p class="text-gray-900 font-medium text-center mb-1">
+                    {{ isDragging ? 'Drop image here' : 'Click to upload or drag and drop' }}
+                  </p>
+                  <p class="text-sm text-gray-500 text-center">
+                    SVG, PNG, JPG or GIF (max. 800x400px)
+                  </p>
                 </div>
               </div>
 
               <div>
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Pricing & Availability</h3>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Pizza Price<span class="text-red-500 ml-1">*</span>
-                  </label>
-                  <div class="relative">
-                    <span class="absolute left-3 top-2 text-gray-500 font-medium">₱</span>
-                    <input
-                      v-model.number="formData.pizzaPrice"
-                      type="number"
-                      placeholder="695"
-                      class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                    />
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Pizza Price<span class="text-red-500 ml-1">*</span>
+                    </label>
+                    <div class="relative">
+                      <span class="absolute left-3 top-2 text-gray-500 font-medium">₱</span>
+                      <input
+                        v-model.number="formData.pizzaPrice"
+                        type="number"
+                        placeholder="695"
+                        class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Pizza Stock</label>
+                    <div class="relative">
+                      <input
+                        v-model.number="formData.stock"
+                        type="number"
+                        placeholder="695"
+                        class="w-full pl-3 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -617,22 +736,54 @@ onMounted(async () => {
 
             <div>
               <h3 class="text-lg font-semibold text-gray-900 mb-4">Pizza Image</h3>
+
+              <input
+                type="file"
+                @change="handleImageUpload"
+                accept="image/jpeg,image/png,image/webp"
+                class="hidden"
+                id="edit-file-input"
+              />
+
               <div
-                class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors"
+                v-if="imagePreview"
+                class="relative rounded-lg overflow-hidden border border-gray-200 group"
               >
-                <input
-                  type="file"
-                  @change="handleImageUpload"
-                  accept="image/jpeg,image/png,image/webp"
-                  class="hidden"
-                  id="edit-image-upload"
-                />
-                <label for="edit-image-upload" class="cursor-pointer">
-                  <div class="text-4xl mb-2">📷</div>
-                  <p class="text-gray-600">Drag & drop an image here, or click to browse</p>
-                  <p class="text-sm text-gray-500 mt-1">JPG, PNG, WEBP, Max 5MB</p>
-                </label>
+                <img :src="imagePreview" alt="Preview" class="w-full h-64 object-contain" />
+
+                <div
+                  class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                >
+                  <label
+                    for="edit-file-input"
+                    class="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/40 text-white transition-colors cursor-pointer"
+                  >
+                    <Edit class="w-6 h-6" />
+                  </label>
+                </div>
               </div>
+
+              <label
+                v-else
+                for="edit-file-input"
+                @dragover.prevent="onDragOver"
+                @dragleave.prevent="onDragLeave"
+                @drop.prevent="onDrop"
+                :class="[
+                  'border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer block h-64 flex flex-col items-center justify-center',
+                  isDragging
+                    ? 'border-primary bg-primary/5 scale-[1.02]'
+                    : 'border-gray-300 hover:border-gray-400',
+                ]"
+              >
+                <div
+                  class="w-16 h-16 mb-4 bg-gray-100 rounded-full flex items-center justify-center"
+                >
+                  <ImageIcon class="w-8 h-8 text-gray-400" />
+                </div>
+                <p class="text-gray-600 font-medium">Click to upload or drag and drop</p>
+                <p class="text-sm text-gray-500 mt-1">JPG, PNG, WEBP, Max 5MB</p>
+              </label>
             </div>
 
             <div>
@@ -647,6 +798,17 @@ onMounted(async () => {
                       type="number"
                       placeholder="695"
                       class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Pizza Stock</label>
+                  <div class="relative">
+                    <input
+                      v-model.number="formData.stock"
+                      type="number"
+                      placeholder="695"
+                      class="w-full pl-3 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                 </div>

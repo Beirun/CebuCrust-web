@@ -191,7 +191,7 @@ onMounted(async () => {
 
               <!-- Unavailable Overlay -->
               <div
-                v-if="!item.isAvailable"
+                v-if="item.stock === 0"
                 class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center"
               >
                 <span class="text-white font-semibold">Currently Unavailable</span>
@@ -201,8 +201,8 @@ onMounted(async () => {
             <!-- Pizza Details -->
             <div class="p-4">
               <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
-              <p class="text-[#D1D5DB] text-sm mb-3 line-clamp-2">{{ item.pizzaDescription }}</p>
-
+              <p class="text-[#D1D5DB] text-sm line-clamp-2">{{ item.pizzaDescription }}</p>
+              <span class="text-xs text-gray-300 mb-3">{{ item.stock }} Available</span>
               <!-- Price and Rating -->
               <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center gap-1">
@@ -220,18 +220,18 @@ onMounted(async () => {
 
               <!-- Action Buttons -->
               <button
-                :disabled="!item.isAvailable || inCart(item.pizzaId!)"
+                :disabled="item.stock === 0 || inCart(item.pizzaId!)"
                 @click.stop="addToCart(item)"
                 class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
                 :class="
-                  item.isAvailable && !inCart(item.pizzaId!)
+                  item.stock !== 0 && !inCart(item.pizzaId!)
                     ? 'bg-primary hover:bg-primary/80'
                     : 'bg-gray-300 text-gray-500 cursor-default'
                 "
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
                 {{
-                  !item.isAvailable
+                  item.stock === 0
                     ? 'Unavailable'
                     : inCart(item.pizzaId!)
                       ? 'In Cart'

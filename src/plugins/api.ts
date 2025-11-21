@@ -21,6 +21,7 @@ async function refreshAccessToken(): Promise<string | null> {
       if (!res.ok) throw new Error('Session Expired')
 
       const data = await res.json()
+      console.log(`refresh data: ${data}`)
       localStorage.setItem('token', data.token)
       auth.setToken(data.token)
       return data.token

@@ -72,6 +72,7 @@ export const usePizzaStore = defineStore('pizza', () => {
       formData.append('PizzaName', pizza.pizzaName!)
       formData.append('PizzaDescription', pizza.pizzaDescription!)
       formData.append('PizzaCategory', pizza.pizzaCategory!)
+      formData.append('Stock', String(pizza.stock))
       formData.append('PizzaPrice', String(pizza.pizzaPrice!))
       if (pizza.pizzaImage) formData.append('Image', pizza.pizzaImage)
 
@@ -81,13 +82,17 @@ export const usePizzaStore = defineStore('pizza', () => {
         credentials: 'include',
       })
       const data = await res.json()
-      if (!res.ok) return sonner.error(data.message ?? 'Failed to create pizza')
+      if (!res.ok) {
+        sonner.error(data.message ?? 'Failed to create pizza')
+        return false
+      }
       sonner.success('Pizza created')
       await fetchAll()
-      return data
+      return true
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error creating pizza'
       sonner.error(msg)
+      return false
     } finally {
       isLoading.value = false
     }
@@ -98,9 +103,11 @@ export const usePizzaStore = defineStore('pizza', () => {
     console.log('Pizza', pizza)
     try {
       const formData = new FormData()
+
       formData.append('PizzaName', pizza.pizzaName!)
       formData.append('PizzaDescription', pizza.pizzaDescription!)
       formData.append('PizzaCategory', pizza.pizzaCategory!)
+      formData.append('Stock', String(pizza.stock))
       formData.append('PizzaPrice', String(pizza.pizzaPrice!))
       if (pizza.pizzaImage!) formData.append('Image', pizza.pizzaImage!)
 
@@ -110,13 +117,17 @@ export const usePizzaStore = defineStore('pizza', () => {
         credentials: 'include',
       })
       const data = await res.json()
-      if (!res.ok) return sonner.error(data.message ?? 'Failed to update pizza')
+      if (!res.ok) {
+        sonner.error(data.message ?? 'Failed to update pizza')
+        return false
+      }
       sonner.success('Pizza updated')
       await fetchAll()
-      return data
+      return true
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error updating pizza'
       sonner.error(msg)
+      return false
     } finally {
       isLoading.value = false
     }
