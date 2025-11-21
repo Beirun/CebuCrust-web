@@ -327,6 +327,9 @@ watch(pizzaId, async () => {
               <span class="text-gray-400">•</span>
               <span class="text-gray-600">{{ soldCount }} Sold</span>
             </div>
+            <span class="text-gray-600 font-semibold text-lg"
+              >{{ currentPizza.stock }} Available</span
+            >
 
             <!-- Row 3: Price and Delivery Time -->
             <div class="flex items-center justify-between">

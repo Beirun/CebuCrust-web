@@ -5,7 +5,7 @@ export type Pizza = {
   pizzaCategory: string
   pizzaPrice: number
   pizzaImage?: string | File | null
-  isAvailable: boolean
+  stock: number
   isDeleted: boolean
   averageRating?: number
   totalRatings?: number

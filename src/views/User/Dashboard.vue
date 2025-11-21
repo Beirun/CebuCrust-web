@@ -58,6 +58,7 @@ const currentOrder = computed(() => {
   const activeOrders = order.orders.filter(
     (o) => o.orderStatus !== 'delivered' && o.orderStatus !== 'cancelled',
   )
+  console.log(activeOrders[0])
   return activeOrders.length > 0 ? activeOrders[0] : null
 })
 
@@ -66,13 +67,11 @@ const orderSteps = ref([
   { id: 'pending', label: 'Received', completed: false, active: false },
   { id: 'preparing', label: 'Preparing', completed: false, active: false },
   { id: 'ready', label: 'Ready', completed: false, active: false },
-  { id: 'out_for_delivery', label: 'Out for Delivery', completed: false, active: false },
+  { id: 'out for delivery', label: 'Out for Delivery', completed: false, active: false },
   { id: 'delivered', label: 'Delivered', completed: false, active: false },
 ])
 
-const completedSegments = computed(
-  () => orderSteps.value.filter((step) => step.completed).length,
-)
+const completedSegments = computed(() => orderSteps.value.filter((step) => step.completed).length)
 
 const totalSegments = computed(() => Math.max(orderSteps.value.length - 1, 0))
 
@@ -245,7 +244,7 @@ onMounted(async () => {
 })
 
 const updateStepsFromStatus = (status: string) => {
-  const statusOrder = ['pending', 'preparing', 'ready', 'out_for_delivery', 'delivered']
+  const statusOrder = ['pending', 'preparing', 'ready', 'out for delivery', 'delivered']
   const index = statusOrder.indexOf(status)
   orderSteps.value = orderSteps.value.map((s, i) => ({
     ...s,
@@ -660,8 +659,11 @@ const inCart = (id: number) => {
             </div>
 
             <div class="p-4">
-              <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
-              <p class="text-[#D1D5DB] text-sm mb-3 line-clamp-2">{{ item.pizzaDescription }}</p>
+              <h3 class="text-lg font-semibold text-primary mb-1">
+                {{ item.pizzaName }}
+              </h3>
+              <p class="text-[#D1D5DB] text-sm line-clamp-2">{{ item.pizzaDescription }}</p>
+              <span class="text-xs text-gray-300 mb-3">{{ item.stock }} Available</span>
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center">
                   <Star class="w-4 h-4 text-yellow-400 fill-current" />
@@ -676,18 +678,18 @@ const inCart = (id: number) => {
                 <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
               </div>
               <button
-                :disabled="!item.isAvailable || inCart(item.pizzaId!)"
+                :disabled="item.stock === 0 || inCart(item.pizzaId!)"
                 @click.stop="addToCart(item)"
                 class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
                 :class="
-                  item.isAvailable && !inCart(item.pizzaId!)
+                  item.stock !== 0 && !inCart(item.pizzaId!)
                     ? 'bg-primary hover:bg-primary/80'
                     : 'bg-gray-300 text-gray-500 cursor-default'
                 "
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
                 {{
-                  !item.isAvailable
+                  item.stock === 0
                     ? 'Unavailable'
                     : inCart(item.pizzaId!)
                       ? 'In Cart'
@@ -767,8 +769,11 @@ const inCart = (id: number) => {
             </div>
 
             <div class="p-4">
-              <h3 class="text-lg font-semibold text-primary mb-1">{{ item.pizzaName }}</h3>
-              <p class="text-[#D1D5DB] text-sm mb-3 line-clamp-2">{{ item.pizzaDescription }}</p>
+              <h3 class="text-lg font-semibold text-primary mb-1">
+                {{ item.pizzaName }}
+              </h3>
+              <p class="text-[#D1D5DB] text-sm line-clamp-2">{{ item.pizzaDescription }}</p>
+              <span class="text-xs text-gray-300 mb-3">{{ item.stock }} Available</span>
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center">
                   <Star class="w-4 h-4 text-yellow-400 fill-current" />
@@ -783,18 +788,18 @@ const inCart = (id: number) => {
                 <span class="text-lg font-bold text-primary">₱{{ item.pizzaPrice }}</span>
               </div>
               <button
-                :disabled="!item.isAvailable || inCart(item.pizzaId!)"
+                :disabled="item.stock === 0 || inCart(item.pizzaId!)"
                 @click.stop="addToCart(item)"
                 class="w-full text-white py-2 rounded-lg font-medium flex items-center justify-center"
                 :class="
-                  item.isAvailable && !inCart(item.pizzaId!)
+                  item.stock !== 0 && !inCart(item.pizzaId!)
                     ? 'bg-primary hover:bg-primary/80'
                     : 'bg-gray-300 text-gray-500 cursor-default'
                 "
               >
                 <ShoppingCart class="w-4 h-4 mr-2" />
                 {{
-                  !item.isAvailable
+                  item.stock === 0
                     ? 'Unavailable'
                     : inCart(item.pizzaId!)
                       ? 'In Cart'
