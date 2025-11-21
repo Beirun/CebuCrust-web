@@ -644,13 +644,15 @@ onMounted(async () => {
         </div>
 
         <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-          <button
+          <Button
+            :disabled="pizza.isLoading"
             @click="isAddModalOpen = false"
             class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            :disabled="pizza.isLoading"
             @click="handleSubmit"
             class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2"
           >
@@ -663,7 +665,7 @@ onMounted(async () => {
               />
             </svg>
             Add to Menu
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -818,18 +820,20 @@ onMounted(async () => {
         </div>
 
         <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-          <button
+          <Button
+            :disabled="pizza.isLoading"
             @click="isEditModalOpen = false"
             class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            :disabled="pizza.isLoading"
             @click="handleUpdateSubmit"
             class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
           >
             Update Pizza
-          </button>
+          </Button>
         </div>
       </div>
     </div>
