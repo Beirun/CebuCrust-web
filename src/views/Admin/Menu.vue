@@ -627,7 +627,9 @@ onMounted(async () => {
                     </div>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Pizza Stock</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Pizza Stock<span class="text-red-500 ml-1">*</span>
+                    </label>
                     <div class="relative">
                       <input
                         v-model.number="formData.stock"
@@ -804,7 +806,9 @@ onMounted(async () => {
                   </div>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Pizza Stock</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Pizza Stock<span class="text-red-500 ml-1">*</span>
+                  </label>
                   <div class="relative">
                     <input
                       v-model.number="formData.stock"
