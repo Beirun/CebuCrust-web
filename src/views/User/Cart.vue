@@ -38,6 +38,7 @@ import { useLocationStore } from '@/stores/location'
 import { barangays } from '@/data/barangay'
 import type { Location } from '@/models/location'
 import { useOrderStore } from '@/stores/orders'
+import { sanitizePostalCode } from '@/lib/utils'
 
 const cart = useCartStore()
 const pizza = usePizzaStore()
@@ -212,6 +213,11 @@ const openEditAddress = (loc: Location) => {
   fromSelectAddress.value = true
   showChangeAddressModal.value = false
   isEdit.value = true
+}
+
+const onPostalInput = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  locationForm.locationPostal = sanitizePostalCode(target.value)
 }
 
 const deleteAddress = async (loc: Location) => {
@@ -681,6 +687,10 @@ onBeforeMount(async () => {
                 class="h-12"
                 id="postalCode"
                 v-model="locationForm.locationPostal"
+                maxlength="4"
+                inputmode="numeric"
+                pattern="\d*"
+                @input="onPostalInput"
                 placeholder="Enter postal code"
               />
             </div>

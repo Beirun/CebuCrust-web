@@ -35,6 +35,7 @@ import { barangays } from '@/data/barangay'
 import type { Location } from '@/models/location'
 import { useOrderStore } from '@/stores/orders'
 import router from '@/router'
+import { sanitizePostalCode } from '@/lib/utils'
 
 const cart = useCartStore()
 const pizza = usePizzaStore()
@@ -105,6 +106,11 @@ const openEditAddress = (loc: Location) => {
   locationForm.isDefault = loc.isDefault
   showAddressModal.value = true
   isEdit.value = true
+}
+
+const onPostalInput = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  locationForm.locationPostal = sanitizePostalCode(target.value)
 }
 
 const pizzasInCart = computed(() =>
@@ -522,6 +528,10 @@ const removeCount = (pizzaId: number, delay = 500) => {
                   class="h-12"
                   id="postalCode"
                   v-model="locationForm.locationPostal"
+                  maxlength="4"
+                  inputmode="numeric"
+                  pattern="\d*"
+                  @input="onPostalInput"
                   placeholder="Enter postal code"
                 />
               </div>
