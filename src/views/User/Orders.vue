@@ -40,6 +40,7 @@ import type { Order } from '@/models/order'
 import type { Cart } from '@/models/cart'
 import type { RatingRequest } from '@/models/rating'
 import router from '@/router'
+import { sanitizePostalCode } from '@/lib/utils'
 
 const cart = useCartStore()
 const pizza = usePizzaStore()
@@ -81,6 +82,11 @@ const locationForm = reactive({
   locationLandmark: '',
   isDefault: false,
 })
+
+const onPostalInput = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  locationForm.locationPostal = sanitizePostalCode(target.value)
+}
 
 const saveAddress = async () => {
   if (isEdit.value) {
@@ -1010,6 +1016,10 @@ watch(() => order.orders, async (newOrders) => {
                   class="h-12"
                   id="postalCode"
                   v-model="locationForm.locationPostal"
+                  maxlength="4"
+                  inputmode="numeric"
+                  pattern="\d*"
+                  @input="onPostalInput"
                   placeholder="Enter postal code"
                 />
               </div>
