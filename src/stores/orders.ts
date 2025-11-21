@@ -183,9 +183,9 @@ export const useOrderStore = defineStore('order', () => {
           notificationMessage: 'The order has been delivered successfully.',
         },
         cancelled: {
-          userId: 1,
+          userId: userId ?? 1,
           notificationTitle: 'Order Cancelled',
-          notificationMessage: 'The order has been cancelled.',
+          notificationMessage: 'Your order has been cancelled.',
         },
       }
 
