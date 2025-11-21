@@ -16,12 +16,21 @@ const { updateNotificationStatus, markAllAsRead } = useNotificationStore()
 
 const open = ref(false)
 
+// Sort notifications by dateCreated descending (newest first) as a safety measure
+const sortedNotifications = computed(() => {
+  return [...props.notifications].sort((a, b) => {
+    const dateA = a.dateCreated ? new Date(a.dateCreated).getTime() : 0
+    const dateB = b.dateCreated ? new Date(b.dateCreated).getTime() : 0
+    return dateB - dateA // Descending order (newest first)
+  })
+})
+
 const readNotification = async (id: number) => {
   await updateNotificationStatus(id, 'read')
 }
 
 const unreadCount = computed(() =>
-  props.notifications.filter((n) => n.notificationStatus !== 'read').length
+  sortedNotifications.value.filter((n) => n.notificationStatus !== 'read').length
 )
 
 // Reactive window width check
@@ -46,7 +55,7 @@ onUnmounted(() => window.removeEventListener('resize', handleResize))
       <DropdownMenuContent
         class="mt-2 w-102 bg-[#192124] rounded-lg shadow-lg border border-[#D3D3D3]/30 py-2"
       >
-        <template v-if="notifications.length === 0">
+        <template v-if="sortedNotifications.length === 0">
           <div
             class="px-10 py-10 text-gray-400 text-xl font-semibold grid place-items-center gap-4"
           >
@@ -67,7 +76,7 @@ onUnmounted(() => window.removeEventListener('resize', handleResize))
             </button>
           </div>
           <div
-            v-for="n in notifications"
+            v-for="n in sortedNotifications"
             :key="n.notificationId"
             @click="readNotification(n.notificationId!)"
             class="px-4 py-3 hover:bg-[#232c30] cursor-pointer transition-colors flex flex-col gap-1"
@@ -94,7 +103,7 @@ onUnmounted(() => window.removeEventListener('resize', handleResize))
         <slot></slot>
       </SheetTrigger>
       <SheetContent class="bg-[#192124]">
-        <template v-if="notifications.length === 0">
+        <template v-if="sortedNotifications.length === 0">
           <div
             class="px-10 py-10 text-gray-400 text-xl font-semibold grid place-items-center gap-4"
           >
@@ -114,7 +123,7 @@ onUnmounted(() => window.removeEventListener('resize', handleResize))
             </button>
           </div>
           <div
-            v-for="n in notifications"
+            v-for="n in sortedNotifications"
             :key="n.notificationId"
             @click="readNotification(n.notificationId!)"
             class="px-4 py-3 hover:bg-[#232c30] cursor-pointer transition-colors flex flex-col gap-1"

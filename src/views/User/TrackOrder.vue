@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UserHeader from '@/components/UserHeader.vue'
 import Footer from '@/components/Footer.vue'
@@ -31,7 +31,7 @@ import { usePizzaStore } from '@/stores/pizza'
 import { useLocationStore } from '@/stores/location'
 import { useRatingStore } from '@/stores/rating'
 import { useAuthStore } from '@/stores/auth'
-import { toBase64 } from '@/plugins/convert'
+import { toBase64, toDate } from '@/plugins/convert'
 import type { Order } from '@/models/order'
 import type { Pizza } from '@/models/pizza'
 import type { Location } from '@/models/location'
@@ -59,6 +59,10 @@ const pizzaRatings = ref<Map<number, number>>(new Map()) // Track rating for eac
 const pizzaMessages = ref<Map<number, string>>(new Map()) // Track message for each pizza (pizzaId -> message)
 const isSubmittingRating = ref(false)
 const orderRatedStatus = ref<Map<number, boolean>>(new Map()) // Track which orders are fully rated
+
+// Timer for updating remaining time
+const updateTimer = ref<ReturnType<typeof setInterval> | null>(null)
+const forceUpdate = ref(0) // Force reactivity update
 
 // Order progress steps
 const orderSteps = ref([
@@ -114,33 +118,111 @@ const orderSteps = ref([
   },
 ])
 
+// Helper function to parse estimate string like "25-35 mins" or "15-25 mins"
+const parseEstimate = (estimate: string): { min: number; max: number } | null => {
+  const match = estimate.match(/(\d+)-(\d+)\s*mins?/)
+  if (match) {
+    return { min: parseInt(match[1]), max: parseInt(match[2]) }
+  }
+  return null
+}
+
+// Helper function to convert UTC date to Manila time (+8 hours)
+const toManilaTime = (date: Date): Date => {
+  return new Date(date.getTime() + 8 * 60 * 60 * 1000)
+}
+
 // Computed properties
 const estimatedDelivery = computed(() => {
-  if (!order.value?.orderEstimate) return '3:15 PM'
+  // Just show the estimate range (e.g., "25-35 mins")
+  if (!order.value?.orderEstimate) return 'TBD'
   return order.value.orderEstimate
 })
 
 const remainingTime = computed(() => {
-  // Mock calculation - in real app, calculate based on order time and estimated delivery
-  return '25-30 mins remaining'
+  // Force reactivity by referencing forceUpdate
+  const _ = forceUpdate.value
+
+  // If order is delivered or cancelled, don't show remaining time
+  if (!order.value || order.value.orderStatus === 'delivered') {
+    return 'Delivered'
+  }
+  if (order.value.orderStatus === 'cancelled') {
+    return 'Cancelled'
+  }
+
+  if (!order.value.orderEstimate || !order.value.dateCreated) {
+    return 'Calculating...'
+  }
+
+  const estimate = parseEstimate(order.value.orderEstimate)
+  if (!estimate) return 'Calculating...'
+
+  // Parse the order creation date - handle both string and Date objects
+  // dateCreated is stored as UTC in the database, so we need to parse it correctly
+  let orderTime: Date
+  if (typeof order.value.dateCreated === 'string') {
+    // If it's a string, parse it - if it doesn't have timezone info, assume UTC
+    const dateStr = order.value.dateCreated
+    // If the string doesn't end with Z or timezone, it might be interpreted as local time
+    // So we'll explicitly parse it as UTC if needed
+    orderTime = dateStr.endsWith('Z') || dateStr.includes('+') || dateStr.includes('-', 10)
+      ? new Date(dateStr)
+      : new Date(dateStr + 'Z') // Add Z to indicate UTC if not present
+  } else if (order.value.dateCreated instanceof Date) {
+    orderTime = order.value.dateCreated
+  } else {
+    return 'Calculating...'
+  }
+
+  // Check if date is valid
+  if (isNaN(orderTime.getTime())) {
+    return 'Calculating...'
+  }
+
+  const now = new Date()
+  const elapsedMs = now.getTime() - orderTime.getTime()
+  
+  // If order time is in the future (shouldn't happen, but handle edge case)
+  if (elapsedMs < 0) {
+    // Order is in the future, show full estimate
+    return `${estimate.min}-${estimate.max} mins remaining`
+  }
+  
+  const elapsedMinutes = Math.floor(elapsedMs / (1000 * 60))
+
+  // Calculate remaining time (how much time is left from the estimate)
+  const remainingMin = Math.max(0, estimate.min - elapsedMinutes)
+  const remainingMax = Math.max(0, estimate.max - elapsedMinutes)
+
+  // Debug: Log the calculation (remove in production if needed)
+  // console.log('Order time:', orderTime, 'Now:', now, 'Elapsed:', elapsedMinutes, 'Remaining:', remainingMin, '-', remainingMax)
+
+  // Only show "Arriving soon" when BOTH min and max have passed (all time has elapsed)
+  if (remainingMax <= 0 && remainingMin <= 0) {
+    return 'Arriving soon'
+  }
+
+  // If min time has passed but max hasn't, show remaining max time
+  if (remainingMin <= 0 && remainingMax > 0) {
+    return `${remainingMax} min${remainingMax !== 1 ? 's' : ''} remaining`
+  }
+
+  // If both are still positive, show the range
+  if (remainingMin > 0 && remainingMax > 0) {
+    return `${remainingMin}-${remainingMax} mins remaining`
+  }
+
+  // Fallback
+  return 'Calculating...'
 })
 
 const orderDate = computed(() => {
-  if (!order.value?.dateCreated) return 'October 15, 2024 • 2:30 PM'
-  const date = new Date(order.value.dateCreated)
-  return (
-    date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    }) +
-    ' • ' +
-    date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    })
-  )
+  if (!order.value?.dateCreated) return ''
+  // Use toDate function which handles timezone conversion (UTC to Manila time +8 hours)
+  const dateStr = toDate(order.value.dateCreated as Date)
+  // Replace the comma before time with bullet point to match the design
+  return dateStr.replace(', ', ' • ')
 })
 
 const subtotal = computed(() => {
@@ -219,8 +301,9 @@ const updateOrderProgress = () => {
       step.time = null
     })
   } else {
-    // Get order creation time
+    // Get order creation time and convert to Manila time (+8 hours)
     const orderTime = order.value.dateCreated ? new Date(order.value.dateCreated) : new Date()
+    const manilaOrderTime = toManilaTime(orderTime)
 
     orderSteps.value.forEach((step, index) => {
       // Special case for delivered status - all steps are completed
@@ -236,8 +319,8 @@ const updateOrderProgress = () => {
 
       // Set time only for completed and active steps
       if (step.completed || step.active) {
-        // Calculate time based on step progression
-        const stepTime = new Date(orderTime.getTime() + index * 15 * 60 * 1000) // Add 15 minutes per step
+        // Calculate time based on step progression (using Manila time)
+        const stepTime = new Date(manilaOrderTime.getTime() + index * 15 * 60 * 1000) // Add 15 minutes per step
         step.time = stepTime.toLocaleTimeString('en-US', {
           hour: 'numeric',
           minute: '2-digit',
@@ -720,6 +803,19 @@ onMounted(async () => {
   // Check rating status if order is delivered
   if (order.value && order.value.orderStatus === 'delivered') {
     await checkOrderRatingStatus(order.value)
+  }
+
+  // Set up timer to update remaining time every minute
+  updateTimer.value = setInterval(() => {
+    forceUpdate.value++
+  }, 60000) // Update every 60 seconds
+})
+
+onBeforeUnmount(() => {
+  // Clean up timer
+  if (updateTimer.value) {
+    clearInterval(updateTimer.value)
+    updateTimer.value = null
   }
 })
 

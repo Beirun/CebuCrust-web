@@ -220,13 +220,56 @@ const ensureEmailIsUnique = async () => {
   }
 }
 
+// Helper to ensure phone number uniqueness before submitting to backend
+const ensurePhoneIsUnique = async () => {
+  const newPhone = user.value.phoneNo?.trim()
+  const currentPhone = auth.user?.phoneNo?.trim()
+
+  if (!newPhone) return false
+  if (!currentPhone || newPhone === currentPhone) {
+    return true
+  }
+
+  try {
+    if (!hasFetchedAllUsers.value || !userStore.users.length) {
+      await userStore.getAllUsers()
+      hasFetchedAllUsers.value = true
+    }
+
+    const duplicate = userStore.users.some(
+      (existingUser) =>
+        existingUser.userId !== auth.user?.userId &&
+        existingUser.phoneNo?.trim() === newPhone,
+    )
+
+    if (duplicate) {
+      errors.value.phoneNo = 'This phone number is already registered to another account'
+      return false
+    }
+
+    return true
+  } catch (fetchError) {
+    console.error('Failed to verify phone number uniqueness', fetchError)
+    errors.value.phoneNo = 'Unable to verify phone number. Please try again.'
+    return false
+  }
+}
+
 // Save changes
 const save = async () => {
   if (!validateForm()) return
   isSaving.value = true
   try {
     const isEmailUnique = await ensureEmailIsUnique()
-    if (!isEmailUnique) return
+    if (!isEmailUnique) {
+      isSaving.value = false
+      return
+    }
+    const isPhoneUnique = await ensurePhoneIsUnique()
+    if (!isPhoneUnique) {
+      isSaving.value = false
+      return
+    }
     // Check for original image - treat empty strings as no image
     const originalProfileImage = (auth.user?.profileImage && typeof auth.user.profileImage === 'string' && auth.user.profileImage.trim() !== '') 
       ? auth.user.profileImage 
@@ -316,6 +359,8 @@ const save = async () => {
     } else if (message) {
       if (message.toLowerCase().includes('email')) {
         errors.value.email = message
+      } else if (message.toLowerCase().includes('phone')) {
+        errors.value.phoneNo = message
       }
     }
   } catch (error) {
