@@ -1,7 +1,7 @@
 # /product/:id
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeMount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ShoppingCart, Heart, Star, Truck } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
@@ -70,9 +70,6 @@ const relatedPizzas = computed(() => {
 })
 
 // Real data from database
-const favoriteCount = computed(() => {
-  return favorite.favorites.length || 0
-})
 
 const totalReviews = computed(() => {
   return rating.getTotalRatings(pizzaId.value) || 0
@@ -202,18 +199,31 @@ const proceedToCheckout = () => {
   confirmationOpen.value = false
 }
 
-const toggleFavorite = (pizzaId: number) => {
-  if (favorite.favorites.includes(pizzaId)) {
+let debounceTimeout: ReturnType<typeof setTimeout> | null = null
+
+const toggleFavorite = (pizzaId: number, delay = 500) => {
+  if (isFavorite.value.includes(pizzaId)) {
     isFavorite.value = isFavorite.value.filter((f) => f !== pizzaId)
+    if (currentPizza.value?.favoriteCount)
+      currentPizza.value.favoriteCount = currentPizza.value?.favoriteCount - 1
   } else {
     isFavorite.value = [...isFavorite.value, pizzaId]
+    if (currentPizza.value?.favoriteCount || currentPizza.value?.favoriteCount === 0)
+      currentPizza.value.favoriteCount = currentPizza.value?.favoriteCount + 1
   }
-  // Call API to update favorites
-  if (favorite.favorites.includes(pizzaId)) {
-    favorite.removeFavorite(pizzaId)
-  } else {
-    favorite.addFavorite(pizzaId)
-  }
+  toggle(pizzaId, delay)
+}
+
+const toggle = (pizzaId: number, delay = 500) => {
+  if (debounceTimeout) clearTimeout(debounceTimeout)
+
+  debounceTimeout = setTimeout(async () => {
+    if (favorite.favorites.includes(pizzaId)) {
+      await favorite.removeFavorite(pizzaId)
+    } else {
+      await favorite.addFavorite(pizzaId)
+    }
+  }, delay)
 }
 
 const incrementQuantity = () => {
@@ -226,7 +236,7 @@ const decrementQuantity = () => {
   }
 }
 
-onMounted(async () => {
+onBeforeMount(async () => {
   await pizza.fetchAll()
   await favorite.fetchFavorites()
   await order.fetchUserOrders() // Fetch orders to get user names
@@ -300,7 +310,7 @@ watch(pizzaId, async () => {
                   "
                   class="w-5 h-5"
                 />
-                <span>{{ favoriteCount }}</span>
+                <span>{{ currentPizza.favoriteCount }}</span>
               </button>
             </div>
 
