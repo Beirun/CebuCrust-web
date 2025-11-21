@@ -297,6 +297,10 @@ export const useAuthStore = defineStore('auth', () => {
         return { ok: false, message }
       }
       
+      // Preserve existing image data before merging response (in case backend doesn't return it)
+      const existingImage = user.value?.profileImage || null
+      const existingImageUrl = user.value?.profileImageUrl || null
+      
       // CRITICAL: If removeImage was requested, filter out image fields from backend response
       let responseData = data.user || data
       if (updates.removeImage) {
@@ -318,6 +322,21 @@ export const useAuthStore = defineStore('auth', () => {
         // Use helper to ensure clean storage and set removal flag
         storeUserData(user.value, true)
       } else {
+        // Preserve existing image if backend didn't return it and no new image was uploaded
+        const responseHasImage = (responseData.profileImage && typeof responseData.profileImage === 'string' && responseData.profileImage.trim() !== '') ||
+                                 (responseData.profileImageUrl && typeof responseData.profileImageUrl === 'string' && responseData.profileImageUrl.trim() !== '')
+        const hasNewImage = updates.image instanceof File || (typeof updates.image === 'string' && updates.image)
+        
+        if (!responseHasImage && !hasNewImage) {
+          // Backend didn't return image and no new image was uploaded, preserve existing image
+          if (existingImage && typeof existingImage === 'string' && existingImage.trim() !== '') {
+            user.value.profileImage = existingImage
+          }
+          if (existingImageUrl && typeof existingImageUrl === 'string' && existingImageUrl.trim() !== '') {
+            user.value.profileImageUrl = existingImageUrl
+          }
+        }
+        
         // Always clean empty/null image fields before storing
         const cleanedUser = cleanImageFields(user.value)
         user.value = cleanedUser
