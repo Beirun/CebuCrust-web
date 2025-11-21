@@ -202,14 +202,13 @@ const proceedToCheckout = () => {
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null
 
 const toggleFavorite = (pizzaId: number, delay = 500) => {
-  console.log(`favorites: ${favorite.favorites}`)
   if (isFavorite.value.includes(pizzaId)) {
     isFavorite.value = isFavorite.value.filter((f) => f !== pizzaId)
     if (currentPizza.value?.favoriteCount)
       currentPizza.value.favoriteCount = currentPizza.value?.favoriteCount - 1
   } else {
     isFavorite.value = [...isFavorite.value, pizzaId]
-    if (currentPizza.value?.favoriteCount)
+    if (currentPizza.value?.favoriteCount || currentPizza.value?.favoriteCount === 0)
       currentPizza.value.favoriteCount = currentPizza.value?.favoriteCount + 1
   }
   toggle(pizzaId, delay)
