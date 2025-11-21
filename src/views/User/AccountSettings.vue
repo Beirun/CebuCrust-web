@@ -2,7 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUserStore } from '@/stores/user'
-import { toBase64 } from '@/plugins/convert'
+import { toBase64, base64ToFile } from '@/plugins/convert'
 import { Eye, EyeOff, Upload } from 'lucide-vue-next'
 import UserHeader from '@/components/UserHeader.vue'
 import AdminHeader from '@/components/AdminHeader.vue'
@@ -298,6 +298,10 @@ const save = async () => {
       passwordForm.value.newPassword &&
       passwordForm.value.confirmPassword
 
+    // Store original image data to preserve it if only personal info is updated
+    const originalImageData = originalProfileImage || null
+    const originalImageField = auth.user?.profileImage ? 'profileImage' : (auth.user?.profileImageUrl ? 'profileImageUrl' : null)
+    
     //updates function where it sends the package of new info to the backend
     const updates: Record<string, unknown> = {
       userFName: user.value.firstName,
@@ -312,6 +316,19 @@ const save = async () => {
     } else if (newProfileImage.value) {
       // Only send image if it's a new file upload (not a removal)
       updates.image = newProfileImage.value
+    } else if (originalImageData && !isProfileImageRemoved) {
+      // CRITICAL: Backend deletes image if Image is null, so we must send existing image
+      // when only personal info is updated to preserve it
+      // Convert base64 to File object - handle both data URLs and plain base64
+      let imageDataToConvert = originalImageData
+      // If it's not a data URL, convert it to one first
+      if (!originalImageData.includes(',')) {
+        imageDataToConvert = toBase64(originalImageData)
+      }
+      const existingImageFile = base64ToFile(imageDataToConvert, 'profile.jpg')
+      if (existingImageFile) {
+        updates.image = existingImageFile
+      }
     }
 
     //If the user is changing their password, add those fields to the update package
@@ -333,6 +350,31 @@ const save = async () => {
       // Sync local state with auth store after update
       user.value = auth.user ? { ...auth.user } : {}
       
+      // Preserve image if it wasn't removed and no new image was uploaded
+      // This ensures the image stays when only personal info is updated
+      if (!isProfileImageRemoved && !newProfileImage.value && originalImageData) {
+        // Check if backend returned the image
+        const backendHasImage = (auth.user?.profileImage && typeof auth.user.profileImage === 'string' && auth.user.profileImage.trim() !== '') ||
+                                (auth.user?.profileImageUrl && typeof auth.user.profileImageUrl === 'string' && auth.user.profileImageUrl.trim() !== '')
+        
+        if (!backendHasImage) {
+          // Backend didn't return image, restore it from original data in local state
+          if (originalImageField === 'profileImage') {
+            user.value.profileImage = originalImageData
+          } else if (originalImageField === 'profileImageUrl') {
+            user.value.profileImageUrl = originalImageData
+          }
+        } else {
+          // Backend returned image, use it
+          if (auth.user?.profileImage) {
+            user.value.profileImage = auth.user.profileImage
+          }
+          if (auth.user?.profileImageUrl) {
+            user.value.profileImageUrl = auth.user.profileImageUrl
+          }
+        }
+      }
+      
       // Clear the form and ensure preview reflects the new state
       if (isProfileImageRemoved) {
         preview.value = null
@@ -344,7 +386,14 @@ const save = async () => {
         // Keep the removal flag set (don't reset it) so it persists across sessions
         // The flag will be cleared when a new image is uploaded
       } else if (user.value.profileImage || user.value.profileImageUrl) {
-        preview.value = user.value.profileImage || user.value.profileImageUrl || null
+        const imageToShow = user.value.profileImage || user.value.profileImageUrl
+        if (imageToShow && imageToShow.startsWith('data:')) {
+          preview.value = imageToShow
+        } else if (imageToShow) {
+          preview.value = toBase64(imageToShow)
+        } else {
+          preview.value = null
+        }
         // Clear removal flag if image exists
         imageRemoved.value = false
         localStorage.removeItem('profileImageRemoved')
